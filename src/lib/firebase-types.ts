@@ -1,0 +1,170 @@
+// src/lib/firebase-types.ts
+import { Timestamp } from 'firebase/firestore';
+
+// Base interfaces
+export interface BaseDocument {
+  id?: string;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+// User types
+export interface User extends BaseDocument {
+  email: string;
+  role: 'admin' | 'client' | 'support';
+  companyName?: string;
+  displayName?: string;
+  phone?: string;
+}
+
+// Client/Customer types
+export interface Client extends BaseDocument {
+  email: string;
+  name: string;
+  phone?: string;
+  billingAddress?: Address;
+  shippingAddress?: Address;
+  tags?: string[];
+  active: boolean;
+}
+
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+}
+
+// Product types
+export interface Category extends BaseDocument {
+  name: string;
+  path: string[];
+  attributes: string[];
+}
+
+export interface Product extends BaseDocument {
+  sku: string;
+  name: string;
+  brand: string;
+  description?: string;
+  categoryId: string;
+  basePrice: number; // in cents/paise
+  attributes: Record<string, string[]>;
+  relatedProductIds?: string[];
+  active: boolean;
+}
+
+export interface ProductImage {
+  id: string;
+  url: string;
+  alt: string;
+  order: number;
+}
+
+export interface ProductVariant extends BaseDocument {
+  sku: string;
+  company: string;
+  color?: string;
+  size?: string;
+  barcode?: string;
+  basePrice?: number; // optional override
+  active: boolean;
+}
+
+export interface Inventory {
+  onHand: number;
+  reserved: number;
+  reorderLevel: number;
+}
+
+// Pricing types
+export interface ClientPriceOverride extends BaseDocument {
+  clientId: string;
+  productId: string;
+  variantId?: string;
+  price: number;
+  currency: string;
+  source: string; // e.g., "excel:uploadId"
+  effectiveFrom?: Timestamp;
+  effectiveTo?: Timestamp;
+}
+
+export interface PriceOverrideMeta extends BaseDocument {
+  uploadedBy: string;
+  filePath: string; // Storage path
+  countUpdated: number;
+}
+
+// Cart types
+export interface Cart {
+  updatedAt: Timestamp;
+}
+
+export interface CartItem {
+  productId: string;
+  variantId?: string;
+  qty: number;
+  priceSnap: {
+    base: number;
+    override?: number;
+    final: number;
+  };
+  nameSnap: string;
+  brandSnap: string;
+  imageSnap?: string;
+}
+
+// Order types
+export interface Order extends BaseDocument {
+  clientId: string;
+  clientEmail: string;
+  status: 'placed' | 'confirmed' | 'cancelled' | 'fulfilled';
+  totals: {
+    items: number;
+    subtotal: number;
+  };
+  shippingInfo: {
+    name: string;
+    phone: string;
+    address: Address;
+  };
+}
+
+export interface OrderItem {
+  productId: string;
+  variantId?: string;
+  nameSnap: string;
+  brandSnap: string;
+  imageSnap?: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+}
+
+// Support ticket types
+export interface SupportTicket extends BaseDocument {
+  clientId: string;
+  clientEmail: string;
+  channel: 'chatbot' | 'email' | 'phone';
+  subject: string;
+  message: string;
+  status: 'open' | 'in_progress' | 'resolved';
+  priority: 'normal' | 'high' | 'urgent';
+  assigneeUserId?: string;
+}
+
+export interface TicketEvent {
+  id: string;
+  type: 'created' | 'note' | 'status_changed';
+  byUserId?: string;
+  message: string;
+  at: Timestamp;
+}
+
+// Recommendations
+export interface Recommendations {
+  lastPurchasedProductIds: string[];
+  frequentlyBoughtTogether: Record<string, string[]>;
+  updatedAt: Timestamp;
+}

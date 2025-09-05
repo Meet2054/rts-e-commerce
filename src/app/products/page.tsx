@@ -1,9 +1,9 @@
-import Navigation from '@/components/coustom-ui/navigation';
+import Navigation from '@/app/components/Header';
 import ProductList from '@/components/products/product-list';
 
 export default function ProductsPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
       <Navigation />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
@@ -15,7 +15,7 @@ export default function ProductsPage() {
         
         <ProductList />
       </div>
-    </div>
+    </>
   );
 }
 

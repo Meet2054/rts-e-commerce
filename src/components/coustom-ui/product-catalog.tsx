@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, ShoppingCart, Star, Filter } from 'lucide-react';
+import { Search, ShoppingCart } from 'lucide-react';
 
 interface Product {
   id: string;

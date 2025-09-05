@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth-clients';
-import AdminDashboard from '@/components/ui/admin-dashboard';
+import { getCurrentUser } from '@/lib/auth-client';
+import AdminDashboard from '../../../../components/coustom-ui/admin-dashboard';
 
 export default async function AdminDashboardPage() {
   const user = await getCurrentUser();

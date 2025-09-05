@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingCart, User, Package, Home, LogOut, Settings } from 'lucide-react';
+import { ShoppingCart, Package, Home, LogOut, Settings } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { signOut } from '@/lib/firebase-auth';
 

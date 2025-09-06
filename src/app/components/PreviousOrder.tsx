@@ -1,0 +1,101 @@
+'use client';
+import React from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowRight, Plus, Minus } from 'lucide-react';
+
+const previousOrders = [
+	{
+		id: 1,
+		name: 'DJI Phantom 2 Vision+',
+		price: 599,
+		image: '/product.png',
+		rating: 4.5,
+		reviews: 243,
+		quantity: 1,
+	},
+	{
+		id: 2,
+		name: 'DJI Phantom 2 Vision+',
+		price: 599,
+		image: '/product.png',
+		rating: 4.5,
+		reviews: 243,
+		quantity: 1,
+	},
+	{
+		id: 3,
+		name: 'DJI Phantom 2 Vision+',
+		price: 599,
+		image: '/product.png',
+		rating: 4.5,
+		reviews: 243,
+		quantity: 1,
+	},
+];
+
+const PreviousOrder = () => {
+		return (
+			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-16 py-10 mt-10 gap-10">
+                <div className='flex flex-col w-full lg:w-[80%]'>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-2xl pl-3 font-bold text-black">Your Previous Orders</h2>
+                        <Link href="/orders" className="flex items-center py-2 text-gray-700 hover:text-black text-sm font-medium">
+                            View more
+                            <ArrowRight size={20} />
+                        </Link>
+                    </div>
+
+                    {/* Product Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {previousOrders.map((order) => (
+                            <div key={order.id} className="bg-white rounded-md shadow-sm p-4 flex flex-col">
+                                <div className="relative w-full justify-center flex mb-2">
+                                    <button className="absolute right-0 -rotate-45" title="Open">
+                                        <ArrowRight size={20} />
+                                    </button>
+                                    <Image 
+                                        src={order.image} 
+                                        alt={order.name} 
+                                        width={300} 
+                                        height={200} 
+                                        className="object-contain my-10 rounded-lg" 
+                                    />
+                                    
+                                </div>
+
+                                <div className='flex flex-row justify-between'>
+                                    <div className='flex flex-col gap-1'>
+                                        <div className="font-semibold text-base text-black">{order.name}</div>
+                                        <div className="text-lg font-bold text-black">${order.price}</div>
+                                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                                            {/* Star rating */}
+                                            <span className="flex items-center gap-1">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <svg key={i} width="16" height="16" fill={i < Math.floor(order.rating) ? '#FFA500' : '#E5E7EB'} stroke="none" className="inline"><polygon points="8,2 10,6 14,6.5 11,9.5 12,14 8,11.5 4,14 5,9.5 2,6.5 6,6" /></svg>
+                                                ))}
+                                            </span>
+                                            <span>{order.reviews}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
+                                            <button className=""><Minus size={16} /></button>
+                                            <span className="px-2 text-base">{order.quantity}</span>
+                                            <button className=""><Plus size={16} /></button>
+                                        </div>
+                                        <button className="mt-2 bg-black text-white px-4 py-1.5 rounded-md text-base">Add Cart</button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Diwali Sale Banner Image */}
+                <Image src="/diwali.png" alt="Diwali Sale" width={340} height={340} className="rounded-xs" />
+			</div>
+	);
+};
+
+export default PreviousOrder;

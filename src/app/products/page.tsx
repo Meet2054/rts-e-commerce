@@ -1,10 +1,8 @@
-import Navigation from '@/app/components/Header';
-import ProductList from '@/components/products/product-list';
+import ProductList from '@/app/products/components/product-list';
 
 export default function ProductsPage() {
   return (
     <>
-      <Navigation />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Our Products</h1>

@@ -1,10 +1,10 @@
 import Header from '@/app/components/Header';
 import ProductHeader from './components/ProductHeader';
-import HeroSection from './components/Hero';
-import Welcom from './components/Welcom';
-import PreviousOrder from './components/PreviousOrder';
-import BestSelling from './components/BestSelling';
-import Categories from './components/Categories';
+import HeroSection from '../components/home/Hero';
+import Welcom from '../components/home/Welcom';
+import PreviousOrder from '../components/home/PreviousOrder';
+import BestSelling from '../components/home/BestSelling';
+import Categories from '../components/home/Categories';
 import Footer from './components/Footer';
 
 export default function HomePage() {

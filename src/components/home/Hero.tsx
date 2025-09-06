@@ -21,7 +21,7 @@ export default function HeroSection() {
     <div className="w-full flex justify-center">
       <div className="relative max-w-[1550px] w-full h-full px-4 sm:px-16 flex items-center justify-center overflow-hidden">
         {/* Content Left */}
-        <div className="absolute left-32 top-1/2 -translate-y-1/2 max-w-md space-y-3 z-20">
+        {/* <div className="absolute left-32 top-1/2 -translate-y-1/2 max-w-md space-y-3 z-20">
           <h1 className="text-4xl font-extrabold leading-snug">
             High-Quality Printing, <br /> Every Page, Every Time.
           </h1>
@@ -31,7 +31,7 @@ export default function HeroSection() {
           <button className="px-6 py-4 bg-orange-400 hover:bg-orange-600 text-white text-base font-semibold rounded-xs shadow-lg">
             Smart Printing Starts Here.
           </button>
-        </div>
+        </div> */}
 
         {/* Image Right */}
         <div className="w-full flex justify-center items-center">

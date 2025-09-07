@@ -67,18 +67,18 @@ export default function ProductDetail({ product, related }: { product: Product, 
                 ))}
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-5">
                 {/* Main image */}
                 <div className="bg-white rounded-md p-4 flex-1 flex justify-center">
                     <Image src={gallery[selectedImg]} alt={product.name} width={650} height={500} className="rounded-md" />
                 </div>
 
                 {/* Gallery info */}
-                <div className="grid grid-cols-2 gap-4 justify-center">
-                    <div className="flex items-center justify-center col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
+                <div className="grid grid-cols-2 gap-2 justify-center">
+                    <div className="flex items-center justify-center col-span-2 md:col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
                     <span>🚚</span> Free shipping worldwide
                     </div>
-                    <div className="flex items-center justify-center col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
+                    <div className="flex items-center justify-center col-span-2 md:col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
                     <span>🔒</span> 100% Secured Payment
                     </div>
                     <div className="flex items-center justify-center col-span-2 gap-2 text-xs font-medium bg-white rounded py-2.5">
@@ -89,7 +89,8 @@ export default function ProductDetail({ product, related }: { product: Product, 
         </div>
 
         {/* Product Info */}
-        <div className="w-full lg:w-2/5 flex flex-col gap-2">
+        <div className="w-full lg:w-2/5">
+        <div className="w-full max-w-sm flex flex-col gap-3">
           <div className="flex items-center gap-2 text-yellow-500 text-base font-semibold">
             {"★".repeat(Math.floor(product.rating))}
             <span className="text-gray-600 font-normal">{product.reviews} Reviews</span>
@@ -117,25 +118,26 @@ export default function ProductDetail({ product, related }: { product: Product, 
               ))}
             </div>
           </div>
-          <div className="flex gap-3 mt-4">
-            <button className="bg-black text-white px-6 py-2 rounded-md text-lg">Add to cart</button>
-            <button className="bg-blue-600 text-white px-6 py-2 rounded-md text-lg">Buy Now</button>
+          <div className="flex flex-col w-full gap-3 mt-4">
+            <button className="bg-white text-black px-6 py-2 rounded-md text-base">Add to cart</button>
+            <button className="bg-black text-white px-6 py-2 rounded-md text-base">Buy Now</button>
           </div>
+        </div>
         </div>
       </div>
 
       {/* Tabs and Related Products in 2/3 and 1/3 layout */}
-      <div className="mt-10 flex flex-col lg:flex-row gap-8">
+      <div className="mt-10 flex flex-col lg:flex-row gap-20">
         {/* Tabs */}
         <div className="w-full lg:w-3/5">
           <div className="flex gap-6 border-b mb-4">
             {["Description", "Specifications", "Support"].map((t) => (
-              <button key={t} className={`py-2 px-4 font-semibold text-base border-b-2 ${tab === t.toLowerCase() ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`} onClick={() => setTab(t.toLowerCase())}>{t}</button>
+              <button key={t} className={`py-2 px-4 font-semibold text-base border-b-2 ${tab === t.toLowerCase() ? "border-black text-black" : "border-transparent text-gray-500"}`} onClick={() => setTab(t.toLowerCase())}>{t}</button>
             ))}
           </div>
-          <div className="bg-white rounded-lg p-6 min-h-[120px]">
+          <div className="rounded-lg p-4">
           {tab === "description" && (
-            <div>
+            <div className="">
               <div className="text-sm text-gray-500">OEM: {product.oem} ({product.oemPN})</div>
               <div className="text-sm text-gray-500">Katun PN: {product.katunPN}</div>
               <div className="text-sm text-gray-500">Comments: {product.comments}</div>
@@ -190,27 +192,30 @@ export default function ProductDetail({ product, related }: { product: Product, 
         </div>
         {/* Related Products */}
         <div className="w-full lg:w-2/5">
-          <div className="text-xl font-bold mb-4 text-black">Related Products</div>
-          <div className="grid grid-cols-1 gap-6">
+          <div className="text-xl font-bold text-black">Related Products</div>
+          <div className="grid grid-cols-1 gap-5">
             {related.map((rp) => (
               <div key={rp.sku} className="bg-white rounded-lg shadow-sm p-4 flex flex-col">
-                <div className="flex gap-3 items-center">
-                  <Image src={rp.image} alt={rp.name} width={100} height={80} className="object-contain rounded" />
+                <div className="flex gap-4 items-center">
+                  <Image src={rp.image} alt={rp.name} width={300} height={80} className="object-contain rounded" />
                   <div>
+                    <div className="flex items-center gap-2 text-yellow-500 text-base font-semibold">
+                      {"★".repeat(Math.floor(rp.rating))}
+                      <span className="text-gray-600 text-sm font-normal">{rp.reviews} Reviews</span>
+                    </div>
                     <div className="font-semibold text-base text-black">{rp.name}</div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">{"★".repeat(Math.floor(rp.rating))}<span>{rp.reviews} Reviews</span></div>
                     <div className="text-lg font-bold text-black mt-1">${rp.price}</div>
+                    <div className="flex flex-col gap-2 mt-4">
+                      <Link href={`/products/${rp.sku}`} className="bg-gray-200 text-black px-4 py-1.5 rounded-md text-base text-center">Add to cart</Link>
+                      <Link href={`/products/${rp.sku}`} className="bg-black text-white px-4 py-1.5 rounded-md text-base text-center">Buy Now</Link>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <Link href={`/products/${rp.sku}`} className="bg-black text-white px-4 py-1.5 rounded-md text-base text-center">Add to cart</Link>
-                  <Link href={`/products/${rp.sku}`} className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-base text-center">Buy Now</Link>
                 </div>
               </div>
             ))}
           </div>
-          <div className="mt-6 text-right">
-            <Link href="/products" className="text-blue-600 font-semibold hover:underline">View more</Link>
+          <div className="bg-white mt-3 text-center rounded-md py-2">
+            <Link href="/products" className="text-black font-semibold hover:underline">View more</Link>
           </div>
         </div>
       </div>

@@ -4,9 +4,11 @@ import ProductHeader from "@/app/components/ProductHeader";
 import SubFooter from "@/app/components/SubFooter";
 import ProductDetails from "../components/ProductDetail";
 import { products } from "../../components/data";
+import SimilarProducts from "../components/SimilarProducts";
 
-export default function ProductDescriptionPage({ params }: { params: { slug: string }}) {
-  const product = products.find((p) => p.sku === params.slug);
+export default async function ProductDescriptionPage({ params }: { params: { slug: string }}) {
+  const awaitedParams = await params;
+  const product = products.find((p) => p.sku === awaitedParams.slug);
   if (!product) return null;
   const related = products.filter((p) => p.brand === product.brand && p.sku !== product.sku).slice(0, 2);
 
@@ -15,6 +17,7 @@ export default function ProductDescriptionPage({ params }: { params: { slug: str
       <Header />
       <ProductHeader />
       <ProductDetails product={product} related={related} />
+      <SimilarProducts product={product} products={products} />
       <SubFooter />
       <Footer />
     </div>

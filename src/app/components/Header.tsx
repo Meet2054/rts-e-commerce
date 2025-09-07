@@ -173,7 +173,7 @@ const Header = () => {
                   )}
                 </AnimatePresence>
               </div>
-              <Link href="/products" className="p-2 rounded-lg hover:bg-gray-100">
+              <Link href="/cart" className="p-2 rounded-lg hover:bg-gray-100">
                 <ShoppingCart className="h-6 w-6" />
               </Link>
               {/* Three-dot icon with dropdown */}

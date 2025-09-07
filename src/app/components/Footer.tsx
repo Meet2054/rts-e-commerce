@@ -24,7 +24,7 @@ const navLinks = [
 
 const Footer = () => {
 	return (
-        <div className="max-w-[1550px] mx-auto mb-3 px-4 sm:px-16 flex flex-col items-center justify-between">
+        <div className="max-w-[1550px] mx-auto pb-3 px-4 sm:px-16 flex flex-col items-center justify-between">
             <div className='h-0.5 bg-black/40 w-full'></div>
             
             <div className='flex flex-col md:flex-row w-full items-center justify-between py-5 gap-6'>

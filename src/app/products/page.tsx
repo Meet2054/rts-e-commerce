@@ -1,23 +1,18 @@
-import ProductList from '@/app/products/components/product-list';
+import Header from '@/app/components/Header';
+import Footer from '../components/Footer';
+import ProductHeader from '../components/ProductHeader';
+import SubFooter from '../components/SubFooter';
+import ProductList from './components/product-list';
 
-export default function ProductsPage() {
+
+export default function ProductPage() {
   return (
-    <>
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Our Products</h1>
-          <p className="text-gray-600">
-            Browse our complete catalog with special pricing for business customers
-          </p>
-        </div>
-        
-        <ProductList />
-      </div>
-    </>
+    <div className='space-y-3 bg-[#F1F2F4]'>
+      <Header />
+      <ProductHeader />
+      <ProductList />
+      <SubFooter />
+      <Footer />
+    </div>
   );
 }
-
-export const metadata = {
-  title: 'Products - B2B Store',
-  description: 'Browse our complete product catalog with special pricing for business customers.'
-}; 

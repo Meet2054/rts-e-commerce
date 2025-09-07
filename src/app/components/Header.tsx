@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Search, LogOut, Settings, CircleUserRound, EllipsisVertical, } from 'lucide-react';
+import SearchDropdown from './SearchDropdown';
 import { useAuth } from '@/components/auth/auth-provider';
 import { signOut } from '@/lib/firebase-auth';
 import Image from 'next/image';
@@ -14,6 +15,7 @@ const Header = () => {
   const { user, userData, loading } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const menuDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -93,11 +95,34 @@ const Header = () => {
           ) : (
             <div className="flex items-center text-black gap-2 sm:gap-5 relative">
               {/* Search Bar */}
-              <div className=" flex items-center gap-2">
-                <Search className="h-6 w-6" />
-                <a href="#" className=" text-xl hover:text-blue-600">
-                  Search
-                </a>
+              <div className="flex items-center gap-2 relative">
+                <button
+                  className="flex items-center gap-2 text-xl hover:text-blue-600 focus:outline-none"
+                  onClick={() => setShowSearchDropdown(true)}
+                  aria-label="Open search"
+                >
+                  <Search className="h-6 w-6" />
+                  <span>Search</span>
+                </button>
+                <AnimatePresence>
+                  {showSearchDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.2 }}
+                      className="fixed left-1/2 -translate-x-1/2 top-10 z-50 w-full flex justify-center"
+                    >
+                      <SearchDropdown />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {showSearchDropdown && (
+                  <div
+                    className="fixed inset-0"
+                    onClick={() => setShowSearchDropdown(false)}
+                  />
+                )}
               </div>
               {/* Icons */}
               {/* User Icon with Dropdown */}

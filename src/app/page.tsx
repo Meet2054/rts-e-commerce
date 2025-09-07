@@ -6,6 +6,7 @@ import PreviousOrder from '../components/home/PreviousOrder';
 import BestSelling from '../components/home/BestSelling';
 import Categories from '../components/home/Categories';
 import Footer from './components/Footer';
+import SubFooter from './components/SubFooter';
 
 export default function HomePage() {
   return (
@@ -17,6 +18,7 @@ export default function HomePage() {
       <PreviousOrder />
       <BestSelling />
       <Categories />
+      <SubFooter />
       <Footer />
     </div>
   );

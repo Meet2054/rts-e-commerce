@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { CartContext } from "../../../context/CartContext";
 // import { useAuth } from '@/components/auth/auth-provider';
 // import { Product } from '@/lib/firebase-types';
 import { products as staticProducts } from '../../components/data';
 import { Package, ArrowRight, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
-import Link from 'next/link';
 
-export default function ProductPage() {
+function ProductPage() {
+  const cartCtx = useContext(CartContext);
+  const { addToCart } = cartCtx ?? {};
 
 // interface ProductWithPricing extends Product {
 //   effectivePrice: number;
@@ -191,49 +193,74 @@ export default function ProductPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {filteredProducts.map((order) => (
-        <Link key={order.id} href={`/products/${order.sku}`} className="bg-white rounded-md shadow-sm p-4 flex flex-col hover:shadow-lg transition-shadow">
-          <div className="relative w-full justify-center flex mb-2">
-            <span className="absolute right-0 -rotate-45" title="Open">
-              <ArrowRight size={20} />
-            </span>
-            <Image 
-              src={order.image} 
-              alt={order.name} 
-              width={300} 
-              height={200} 
-              className="object-contain my-10 rounded-lg" 
-            />
-          </div>
+            {filteredProducts.map((order) => (
+              <div key={order.id} className="bg-white rounded-md shadow-sm p-4 flex flex-col hover:shadow-lg transition-shadow">
+                <div className="relative w-full justify-center flex mb-2">
+                  <span className="absolute right-0 -rotate-45" title="Open">
+                    <ArrowRight size={20} />
+                  </span>
+                  <div
+                    className="cursor-pointer"
+                    onClick={() => window.location.href = `/products/${order.sku}`}
+                  >
+                    <Image 
+                      src={order.image} 
+                      alt={order.name} 
+                      width={300} 
+                      height={200} 
+                      className="object-contain my-10 rounded-lg" 
+                    />
+                  </div>
+                </div>
 
-          <div className='flex flex-row justify-between'>
-            <div className='flex flex-col gap-1'>
-              <div className="font-semibold text-base text-black">{order.name}</div>
-              <div className="text-lg font-bold text-black">${order.price}</div>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                {/* Star rating */}
-                <span className="flex items-center gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <svg key={i} width="16" height="16" fill={i < Math.floor(order.rating) ? '#FFA500' : '#E5E7EB'} stroke="none" className="inline"><polygon points="8,2 10,6 14,6.5 11,9.5 12,14 8,11.5 4,14 5,9.5 2,6.5 6,6" /></svg>
-                  ))}
-                </span>
-                <span>{order.reviews}</span>
+                <div className='flex flex-row justify-between'>
+                  <div className='flex flex-col gap-1'>
+                    <div
+                      className="font-semibold text-base text-black cursor-pointer"
+                      onClick={() => window.location.href = `/products/${order.sku}`}
+                    >
+                      {order.name}
+                    </div>
+                    <div className="text-lg font-bold text-black">${order.price}</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      {/* Star rating */}
+                      <span className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <svg key={i} width="16" height="16" fill={i < Math.floor(order.rating) ? '#FFA500' : '#E5E7EB'} stroke="none" className="inline"><polygon points="8,2 10,6 14,6.5 11,9.5 12,14 8,11.5 4,14 5,9.5 2,6.5 6,6" /></svg>
+                        ))}
+                      </span>
+                      <span>{order.reviews}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
+                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: Math.max(1, q[order.id] - 1) })); }}><Minus size={16} /></button>
+                      <span className="px-2 text-base">{quantities[order.id]}</span>
+                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: q[order.id] + 1 })); }}><Plus size={16} /></button>
+                    </div>
+                    <button
+                      className="mt-2 bg-black cursor-pointer text-white px-4 py-1.5 rounded-md text-base"
+                      onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (addToCart) {
+                          addToCart({ id: order.id, name: order.name, image: order.image, price: order.price }, quantities[order.id]);
+                        }
+                      }}
+                    >
+                      Add Cart
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
-                <button className="" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: Math.max(1, q[order.id] - 1) })); }}><Minus size={16} /></button>
-                <span className="px-2 text-base">{quantities[order.id]}</span>
-                <button className="" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: q[order.id] + 1 })); }}><Plus size={16} /></button>
-              </div>
-              <button className="mt-2 bg-black text-white px-4 py-1.5 rounded-md text-base" onClick={e => e.preventDefault()}>Add Cart</button>
-            </div>
+            ))}
           </div>
-        </Link>
-      ))}
-        </div>
         )}
       </div>
     </div>
   );
-};
+}
+
+export default function ProductListWithCart() {
+  return <ProductPage />;
+}

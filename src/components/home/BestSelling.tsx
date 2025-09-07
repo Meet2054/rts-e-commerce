@@ -74,7 +74,7 @@ const BestSelling = () => {
                                 </div>
 
                                 <div className='flex flex-row justify-between'>
-                                    <div className='flex flex-col gap-1'>
+                                    <div className='flex flex-col w-[60%] gap-1'>
                                         <div className="font-semibold text-base text-black">{order.name}</div>
                                         <div className="text-lg font-bold text-black">${order.price}</div>
                                         <div className="flex items-center gap-2 text-sm text-gray-600">

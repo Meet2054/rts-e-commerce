@@ -45,6 +45,7 @@ const Welcom = () => {
 					</div>
 				)}
 				{/* Guest Welcome */}
+				{!user && (
                 <div className="flex items-center sm:justify-between bg-white rounded-xs shadow-sm p-4">
                         <div className='flex gap-4'>
                             <Image
@@ -67,6 +68,7 @@ const Welcom = () => {
 							</button>
 						</div>
 					</div>
+				)}
 			</div>
 		);
 };

@@ -8,7 +8,7 @@ import { products as staticProducts } from '../../components/data';
 import { Package, ArrowRight, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
 
-function ProductPage() {
+function ProductList() {
   const cartCtx = useContext(CartContext);
   const { addToCart } = cartCtx ?? {};
 
@@ -262,5 +262,5 @@ function ProductPage() {
 }
 
 export default function ProductListWithCart() {
-  return <ProductPage />;
+  return <ProductList />;
 }

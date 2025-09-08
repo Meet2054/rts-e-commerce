@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
-import { Upload, Database, Trash2, CheckCircle } from 'lucide-react';
+import { Upload, Database, Trash2, CheckCircle, Package, DollarSign } from 'lucide-react';
 
 export default function TestAdminPanel() {
   const { userData, token } = useAuth();
@@ -10,9 +10,14 @@ export default function TestAdminPanel() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // Price upload state
+  const [selectedPriceFile, setSelectedPriceFile] = useState<File | null>(null);
   const [customerEmail, setCustomerEmail] = useState('test@customer.com');
-  const [uploadResult, setUploadResult] = useState<any>(null);
+  const [priceUploadResult, setPriceUploadResult] = useState<any>(null);
+
+  // Product upload state
+  const [selectedProductFile, setSelectedProductFile] = useState<File | null>(null);
+  const [productUploadResult, setProductUploadResult] = useState<any>(null);
 
   if (!userData || userData.role !== 'admin') {
     return (
@@ -81,19 +86,19 @@ export default function TestAdminPanel() {
     }
   };
 
-  const handleFileUpload = async () => {
-    if (!selectedFile) {
-      setError('Please select a file');
+  const handlePriceFileUpload = async () => {
+    if (!selectedPriceFile) {
+      setError('Please select a price file');
       return;
     }
 
     setLoading(true);
     setError('');
-    setUploadResult(null);
+    setPriceUploadResult(null);
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('file', selectedPriceFile);
       formData.append('clientEmail', customerEmail);
 
       const response = await fetch('/api/admin/pricing/upload', {
@@ -107,13 +112,50 @@ export default function TestAdminPanel() {
       const data = await response.json();
 
       if (data.success) {
-        setUploadResult(data.result);
+        setPriceUploadResult(data.result);
         setMessage('✅ Price upload completed successfully');
       } else {
         setError(data.error);
       }
     } catch (err) {
       setError('Failed to upload pricing file');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProductFileUpload = async () => {
+    if (!selectedProductFile) {
+      setError('Please select a product file');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setProductUploadResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedProductFile);
+
+      const response = await fetch('/api/admin/products/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setProductUploadResult(data.result);
+        setMessage('✅ Product upload completed successfully');
+      } else {
+        setError(data.error);
+      }
+    } catch (err) {
+      setError('Failed to upload product file');
     } finally {
       setLoading(false);
     }
@@ -164,11 +206,86 @@ export default function TestAdminPanel() {
           </div>
         </div>
 
-        {/* Price Upload Testing */}
-        <div className="border rounded-lg p-4">
+        {/* Product Upload Section */}
+        <div className="border rounded-lg p-4 mb-6">
           <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            <Upload className="h-5 w-5" />
-            Test Price Upload
+            <Package className="h-5 w-5" />
+            Bulk Product Upload
+          </h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Product Excel File</label>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(e) => setSelectedProductFile(e.target.files?.[0] || null)}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+            </div>
+
+            <button
+              onClick={handleProductFileUpload}
+              disabled={loading || !selectedProductFile}
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              <Package className="h-4 w-4" />
+              {loading ? 'Uploading Products...' : 'Upload Products'}
+            </button>
+          </div>
+
+          {/* Product Upload Results */}
+          {productUploadResult && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-2">Product Upload Results:</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Total Rows:</span> {productUploadResult.totalRows}
+                </div>
+                <div>
+                  <span className="font-medium">Successfully Added:</span> 
+                  <span className="text-green-600 ml-1">{productUploadResult.successfulAdds}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Failed:</span> 
+                  <span className="text-red-600 ml-1">{productUploadResult.failedAdds}</span>
+                </div>
+                <div>
+                  <span className="font-medium">Duplicates Skipped:</span> 
+                  <span className="text-yellow-600 ml-1">{productUploadResult.duplicatesSkipped || 0}</span>
+                </div>
+              </div>
+
+              {productUploadResult.errors?.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="font-medium text-red-600">Errors:</h4>
+                  <ul className="text-xs text-red-600 list-disc list-inside max-h-40 overflow-y-auto">
+                    {productUploadResult.errors.map((error: any, index: number) => (
+                      <li key={index}>Row {error.row}: {error.error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {productUploadResult.warnings?.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="font-medium text-yellow-600">Warnings:</h4>
+                  <ul className="text-xs text-yellow-600 list-disc list-inside max-h-40 overflow-y-auto">
+                    {productUploadResult.warnings.map((warning: any, index: number) => (
+                      <li key={index}>Row {warning.row}: {warning.warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Price Upload Section */}
+        <div className="border rounded-lg p-4 mb-6">
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Customer Price Upload
           </h2>
           
           <div className="space-y-4">
@@ -184,51 +301,51 @@ export default function TestAdminPanel() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Excel File</label>
+              <label className="block text-sm font-medium mb-1">Price Excel File</label>
               <input
                 type="file"
                 accept=".xlsx,.xls"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                onChange={(e) => setSelectedPriceFile(e.target.files?.[0] || null)}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               />
             </div>
 
             <button
-              onClick={handleFileUpload}
-              disabled={loading || !selectedFile}
+              onClick={handlePriceFileUpload}
+              disabled={loading || !selectedPriceFile}
               className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg flex items-center gap-2"
             >
-              <Upload className="h-4 w-4" />
-              {loading ? 'Uploading...' : 'Upload Prices'}
+              <DollarSign className="h-4 w-4" />
+              {loading ? 'Uploading Prices...' : 'Upload Prices'}
             </button>
           </div>
 
-          {/* Upload Results */}
-          {uploadResult && (
+          {/* Price Upload Results */}
+          {priceUploadResult && (
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold mb-2">Upload Results:</h3>
+              <h3 className="font-semibold mb-2">Price Upload Results:</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Total Rows:</span> {uploadResult.totalRows}
+                  <span className="font-medium">Total Rows:</span> {priceUploadResult.totalRows}
                 </div>
                 <div>
                   <span className="font-medium">Successful:</span> 
-                  <span className="text-green-600 ml-1">{uploadResult.successfulUpdates}</span>
+                  <span className="text-green-600 ml-1">{priceUploadResult.successfulUpdates}</span>
                 </div>
                 <div>
                   <span className="font-medium">Failed:</span> 
-                  <span className="text-red-600 ml-1">{uploadResult.failedUpdates}</span>
+                  <span className="text-red-600 ml-1">{priceUploadResult.failedUpdates}</span>
                 </div>
                 <div>
-                  <span className="font-medium">File:</span> {uploadResult.fileName}
+                  <span className="font-medium">File:</span> {priceUploadResult.fileName}
                 </div>
               </div>
 
-              {uploadResult.errors?.length > 0 && (
+              {priceUploadResult.errors?.length > 0 && (
                 <div className="mt-3">
                   <h4 className="font-medium text-red-600">Errors:</h4>
-                  <ul className="text-xs text-red-600 list-disc list-inside">
-                    {uploadResult.errors.map((error: any, index: number) => (
+                  <ul className="text-xs text-red-600 list-disc list-inside max-h-40 overflow-y-auto">
+                    {priceUploadResult.errors.map((error: any, index: number) => (
                       <li key={index}>Row {error.row}: {error.error}</li>
                     ))}
                   </ul>
@@ -236,35 +353,7 @@ export default function TestAdminPanel() {
               )}
             </div>
           )}
-        </div>
-
-        {/* Sample Excel Format */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h3 className="font-semibold mb-2">📊 Sample Excel Format:</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left p-2 font-medium">sku</th>
-                  <th className="text-left p-2 font-medium">price</th>
-                  <th className="text-left p-2 font-medium">productName</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-2">HP-LASERJET-1100</td>
-                  <td className="p-2">179.99</td>
-                  <td className="p-2">HP LaserJet Pro 1100</td>
-                </tr>
-                <tr>
-                  <td className="p-2">HP-INK-664-BK</td>
-                  <td className="p-2">25.99</td>
-                  <td className="p-2">HP 664 Black Ink</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        </div>   
       </div>
     </div>
   );

@@ -11,7 +11,6 @@ export default function ProductPage() {
       <Header />
       <ProductHeader />
       <ProductListWithCart />
-      <ProductPage />
       <SubFooter />
       <Footer />
     </div>

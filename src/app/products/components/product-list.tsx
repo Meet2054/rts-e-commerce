@@ -1,107 +1,113 @@
 'use client';
 
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { CartContext } from "../../../context/CartContext";
-// import { useAuth } from '@/components/auth/auth-provider';
+import { useAuth } from '@/components/auth/auth-provider';
 // import { Product } from '@/lib/firebase-types';
-import { products as staticProducts } from '../../components/data';
+// import { products as staticProducts } from '../../components/data';
 import { Package, ArrowRight, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
+
+interface Product {
+  id: number;
+  sku: string;
+  name: string;
+  price: number;
+  image?: string;
+  rating?: number;
+}
 
 function ProductList() {
   const cartCtx = useContext(CartContext);
   const { addToCart } = cartCtx ?? {};
 
-// interface ProductWithPricing extends Product {
-//   effectivePrice: number;
-//   hasCustomPricing: boolean;
-// }
-
-  // const { token } = useAuth();
-  // const [products, setProducts] = useState<ProductWithPricing[]>([]);
-  // const [loading, setLoading] = useState(true);
+  const { token } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm] = useState('');
   const [sortOption, setSortOption] = useState('featured');
-  const [quantities, setQuantities] = useState(() => {
-    const initial: Record<number, number> = {};
-    staticProducts.forEach(p => { initial[p.id] = 1; });
-    return initial;
-  });
-  // const [error, setError] = useState('');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [error, setError] = useState('');
 
-  // useEffect(() => {
-  //   fetchProducts();
-  // }, [searchTerm, token]);
+  useEffect(() => {
+    fetchProducts();
+  }, [searchTerm, token]);
 
-  // const fetchProducts = async () => {
-  //   try {
-  //     setLoading(true);
-  //     const params = new URLSearchParams();
-  //     if (searchTerm) params.append('search', searchTerm);
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
 
-  //     const headers: HeadersInit = {
-  //       'Content-Type': 'application/json',
-  //     };
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
 
-  //     if (token) {
-  //       headers.Authorization = `Bearer ${token}`;
-  //     }
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
 
-  //     const response = await fetch(`/api/products?${params}`, { headers });
-  //     const data = await response.json();
+      const response = await fetch(`/api/products?${params}`, { headers });
+      const data = await response.json();
 
-  //     if (data.success) {
-  //       setProducts(data.products);
-  //       setError('');
-  //     } else {
-  //       setError(data.error || 'Failed to fetch products');
-  //     }
-  //   } catch (err) {
-  //     setError('Failed to fetch products');
-  //     console.error('Error fetching products:', err);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+      if (data.success) {
+        setProducts(data.products);
+        
+        // Initialize quantities for all products
+        const initial: Record<string, number> = {};
+        data.products.forEach((p: Product) => { initial[p.id] = 1; });
+        setQuantities(initial);
+        
+        setError('');
+      } else {
+        setError(data.error || 'Failed to fetch products');
+      }
+    } catch (err) {
+      setError('Failed to fetch products');
+      console.error('Error fetching products:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // const formatPrice = (price: number) => {
-  //   return `$${(price / 100).toFixed(2)}`; // Convert from cents
-  // };
+  const formatPrice = (price: number) => {
+    return `${price.toFixed(2)}`;
+  };
 
-  // if (loading) {
-  //   return (
-  //     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-  //       {[...Array(8)].map((_, i) => (
-  //         <div key={i} className="bg-white rounded-lg shadow animate-pulse">
-  //           <div className="h-48 bg-gray-200 rounded-t-lg"></div>
-  //           <div className="p-4 space-y-3">
-  //             <div className="h-4 bg-gray-200 rounded"></div>
-  //             <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-  //             <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-  //           </div>
-  //         </div>
-  //       ))}
-  //     </div>
-  //   );
-  // }
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {[...Array(8)].map((_, i) => (
+          <div key={i} className="bg-white rounded-lg shadow animate-pulse">
+            <div className="h-48 bg-gray-200 rounded-t-lg"></div>
+            <div className="p-4 space-y-3">
+              <div className="h-4 bg-gray-200 rounded"></div>
+              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+              <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
-  // if (error) {
-  //   return (
-  //     <div className="text-center py-12">
-  //       <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-  //       <p className="text-red-600">{error}</p>
-  //       <button 
-  //         onClick={fetchProducts}
-  //         className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-  //       >
-  //         Try Again
-  //       </button>
-  //     </div>
-  //   );
-  // }
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={fetchProducts}
+          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
-  // Use static products from data.ts
-  let filteredProducts = staticProducts.filter(product =>
+  // Use fetched products from database
+  let filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -111,7 +117,7 @@ function ProductList() {
   } else if (sortOption === 'price-high') {
     filteredProducts = [...filteredProducts].sort((a, b) => b.price - a.price);
   } else if (sortOption === 'rating') {
-    filteredProducts = [...filteredProducts].sort((a, b) => b.rating - a.rating);
+    filteredProducts = [...filteredProducts].sort((a, b) => (b.rating || 0) - (a.rating || 0));
   }
 
   return (
@@ -204,7 +210,7 @@ function ProductList() {
                     onClick={() => window.location.href = `/products/${order.sku}`}
                   >
                     <Image 
-                      src={order.image} 
+                      src={'/product.png'} 
                       alt={order.name} 
                       width={300} 
                       height={200} 
@@ -213,30 +219,22 @@ function ProductList() {
                   </div>
                 </div>
 
-                <div className='flex flex-row justify-between'>
-                  <div className='flex flex-col gap-1'>
+                <div className='flex flex-row gap-4 justify-between'>
+                  <div className='flex flex-col w-[65%] gap-1'>
                     <div
                       className="font-semibold text-base text-black cursor-pointer"
                       onClick={() => window.location.href = `/products/${order.sku}`}
                     >
                       {order.name}
                     </div>
-                    <div className="text-lg font-bold text-black">${order.price}</div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      {/* Star rating */}
-                      <span className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                          <svg key={i} width="16" height="16" fill={i < Math.floor(order.rating) ? '#FFA500' : '#E5E7EB'} stroke="none" className="inline"><polygon points="8,2 10,6 14,6.5 11,9.5 12,14 8,11.5 4,14 5,9.5 2,6.5 6,6" /></svg>
-                        ))}
-                      </span>
-                      <span>{order.reviews}</span>
-                    </div>
+                    <div className="text-lg font-bold text-black">{formatPrice(order.price)}</div>
+          
                   </div>
-                  <div>
+                  <div className='flex flex-col w-[35%] gap-1'>
                     <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
-                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: Math.max(1, q[order.id] - 1) })); }}><Minus size={16} /></button>
-                      <span className="px-2 text-base">{quantities[order.id]}</span>
-                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: q[order.id] + 1 })); }}><Plus size={16} /></button>
+                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: Math.max(1, (q[order.id] || 1) - 1) })); }}><Minus size={16} /></button>
+                      <span className="px-2 text-base">{quantities[order.id] || 1}</span>
+                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: (q[order.id] || 1) + 1 })); }}><Plus size={16} /></button>
                     </div>
                     <button
                       className="mt-2 bg-black cursor-pointer text-white px-4 py-1.5 rounded-md text-base"
@@ -244,7 +242,12 @@ function ProductList() {
                         e.preventDefault();
                         e.stopPropagation();
                         if (addToCart) {
-                          addToCart({ id: order.id, name: order.name, image: order.image, price: order.price }, quantities[order.id]);
+                          addToCart({ 
+                            id: order.id, 
+                            name: order.name, 
+                            image: order.image || '/product.png', 
+                            price: order.price 
+                          }, quantities[order.id] || 1);
                         }
                       }}
                     >

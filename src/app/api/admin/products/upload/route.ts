@@ -9,7 +9,7 @@ interface KatunProductRow {
   'OEM PN:': string;
   'Katun PN:': number | string;
   'Name:': string;
-  'AUD': number | string;
+  'Price': number | string;
   'Comments:': string;
   'Description:': string;
   'Brand:': string;
@@ -60,7 +60,7 @@ function convertKatunToStandard(katunRow: KatunProductRow): StandardProductRow {
     description: katunRow['Description:'] ? String(katunRow['Description:']).trim() : undefined,
     category: katunRow['OEM:'] ? String(katunRow['OEM:']).trim().toLowerCase() : 'general',
     brand: katunRow['Brand:'] ? String(katunRow['Brand:']).trim() : undefined,
-    price: katunRow['AUD'] ? parseFloat(String(katunRow['AUD:'])) : undefined,
+    price: katunRow['Price'] ? parseFloat(String(katunRow['Price'])) : undefined,
     oem: katunRow['OEM:'] ? String(katunRow['OEM:']).trim() : undefined,
     oemPN: katunRow['OEM PN:'] ? String(katunRow['OEM PN:']).trim() : undefined,
     katunPN: String(katunRow['Katun PN:']).trim(),

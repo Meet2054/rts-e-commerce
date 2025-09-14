@@ -1,108 +1,78 @@
 // src/app/api/products/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { ProductService, PricingService } from '@/lib/firebase-products';
-import { getUserData } from '@/lib/firebase-auth';
-import { adminAuth } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('Fetching products from Firestore...');
+    
     const { searchParams } = new URL(request.url);
-    const categoryId = searchParams.get('categoryId');
     const searchTerm = searchParams.get('search');
-    const pageSize = parseInt(searchParams.get('pageSize') || '20');
+    const pageSize = parseInt(searchParams.get('pageSize') || '200');
 
-    // Get products
-    const result = await ProductService.getProducts({
-      categoryId: categoryId || undefined,
-      searchTerm: searchTerm || undefined,
-      pageSize,
+    // Simplified query - just get all active products
+    const query = adminDb.collection('products')
+      .where('isActive', '==', true)
+      .limit(pageSize);
+
+    const snapshot = await query.get();
+    console.log(`Found ${snapshot.docs.length} products`);
+
+    const products = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        sku: data.sku,
+        name: data.name,
+        description: data.description || '',
+        brand: data.brand || '',
+        price: data.price || 0,
+        image: data.image || data.imageUrl || '/product-placeholder.png',
+        imageUrl: data.imageUrl || data.image || '/product-placeholder.png',
+        rating: data.rating || 0,
+        reviews: data.reviews || 0,
+        oem: data.oem || '',
+        oemPN: data.oemPN || '',
+        katunPN: data.katunPN || '',
+        comments: data.comments || '',
+        forUseIn: data.forUseIn || '',
+        sourceSheet: data.sourceSheet || '',
+        isActive: data.isActive,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt
+      };
     });
 
-    // Get current user for pricing
-    const authHeader = request.headers.get('authorization');
-    let clientId: string | null = null;
-
-    if (authHeader?.startsWith('Bearer ')) {
-      try {
-        const token = authHeader.substring(7);
-        const decodedToken = await adminAuth.verifyIdToken(token);
-        clientId = decodedToken.uid;
-      } catch (error) {
-        // User not authenticated, continue without custom pricing
-      }
+    // Apply search filter in memory (since we have limited data)
+    let filteredProducts = products;
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      filteredProducts = products.filter(product => 
+        product.name.toLowerCase().includes(search) ||
+        product.sku.toLowerCase().includes(search) ||
+        product.brand.toLowerCase().includes(search) ||
+        product.description.toLowerCase().includes(search) ||
+        product.oem.toLowerCase().includes(search)
+      );
     }
 
-    // Add custom pricing if user is authenticated
-    const productsWithPricing = await Promise.all(
-      result.products.map(async (product) => {
-        let effectivePrice = product.basePrice;
-        
-        if (clientId) {
-          try {
-            effectivePrice = await PricingService.getEffectivePrice(clientId, product.id!);
-          } catch (error) {
-            // Use base price if custom pricing fails
-          }
-        }
-
-        return {
-          ...product,
-          effectivePrice,
-          hasCustomPricing: effectivePrice !== product.basePrice,
-        };
-      })
-    );
+    console.log(`Returning ${filteredProducts.length} products after search filter`);
 
     return NextResponse.json({
       success: true,
-      products: productsWithPricing,
-      hasMore: result.hasMore,
+      products: filteredProducts,
+      hasMore: false,
+      totalFound: filteredProducts.length
     });
 
   } catch (error) {
     console.error('Error in products API:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch products' },
-      { status: 500 }
-    );
-  }
-}
-
-// POST - Create new product (Admin only)
-export async function POST(request: NextRequest) {
-  try {
-    // Verify admin access
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const decodedToken = await adminAuth.verifyIdToken(token);
-    const userData = await getUserData(decodedToken.uid);
-
-    if (!userData || userData.role !== 'admin') {
-      return NextResponse.json(
-        { success: false, error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const productData = await request.json();
-    const productId = await ProductService.createProduct(productData);
-
-    return NextResponse.json({
-      success: true,
-      productId,
-    });
-
-  } catch (error) {
-    console.error('Error creating product:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create product' },
+      { 
+        success: false, 
+        error: 'Failed to fetch products',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getCurrentUser } from '@/lib/auth-client';
+import { getCurrentUser } from '@/lib/auth-utils';
 import AdminDashboard from '../../../../components/coustom-ui/admin-dashboard';
 
 export default async function AdminDashboardPage() {

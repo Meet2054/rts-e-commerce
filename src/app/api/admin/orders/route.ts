@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { orders } from '@/db/schema';
 import { eq, and, count, desc } from 'drizzle-orm';
-import { getCurrentUser } from '@/lib/auth-clients';
+import { getCurrentUser } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,11 +47,10 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    const totalQuery = db.select({ count: count() }).from(orders);
-    if (conditions.length > 0) {
-      totalQuery.where(and(...conditions));
-    }
-    const totalResult = await totalQuery;
+    const totalResult = await (conditions.length > 0 
+      ? db.select({ count: count() }).from(orders).where(and(...conditions))
+      : db.select({ count: count() }).from(orders)
+    );
     const total = totalResult[0].count;
 
     return NextResponse.json({

@@ -67,3 +67,17 @@ export async function verifyAuthToken(request: NextRequest): Promise<AuthResult>
     };
   }
 }
+
+export async function getCurrentUser(request?: NextRequest): Promise<any> {
+  if (!request) {
+    return null;
+  }
+
+  const authResult = await verifyAuthToken(request);
+  
+  if (authResult.success && authResult.userData) {
+    return authResult.userData;
+  }
+  
+  return null;
+}

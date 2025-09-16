@@ -8,6 +8,7 @@ import {
   addDoc, 
   updateDoc, 
   deleteDoc, 
+  setDoc,
   query, 
   where, 
   orderBy, 
@@ -18,9 +19,12 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { Product, ProductVariant, Category, ClientPriceOverride } from './firebase-types';
+import CachedFirebaseService from './firebase-cache';
+import { RedisCache, CacheKeys } from './redis-cache';
 
 // Product CRUD operations
 export class ProductService {
+  // Use cached version for reading products
   static async getProducts(options: {
     categoryId?: string;
     searchTerm?: string;
@@ -28,48 +32,23 @@ export class ProductService {
     lastDoc?: DocumentSnapshot;
   } = {}) {
     try {
-      let q = query(
-        collection(db, 'products'),
-        where('active', '==', true),
-        orderBy('createdAt', 'desc')
-      );
-
-      if (options.categoryId) {
-        q = query(q, where('categoryId', '==', options.categoryId));
-      }
-
-      if (options.pageSize) {
-        q = query(q, limit(options.pageSize));
-      }
-
-      if (options.lastDoc) {
-        q = query(q, startAfter(options.lastDoc));
-      }
-
-      const snapshot = await getDocs(q);
-      const products = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Product[];
-
-      return {
-        products,
-        lastDoc: snapshot.docs[snapshot.docs.length - 1] || null,
-        hasMore: snapshot.docs.length === (options.pageSize || 20)
-      };
+      // Use cached service for better performance
+      return await CachedFirebaseService.getProducts({
+        categoryId: options.categoryId,
+        searchTerm: options.searchTerm,
+        limitCount: options.pageSize || 20,
+        isActive: true
+      });
     } catch (error) {
       console.error('Error fetching products:', error);
       throw error;
     }
   }
 
+  // Use cached version for single product
   static async getProduct(productId: string): Promise<Product | null> {
     try {
-      const productDoc = await getDoc(doc(db, 'products', productId));
-      if (productDoc.exists()) {
-        return { id: productId, ...productDoc.data() } as Product;
-      }
-      return null;
+      return await CachedFirebaseService.getProduct(productId);
     } catch (error) {
       console.error('Error fetching product:', error);
       throw error;
@@ -83,6 +62,11 @@ export class ProductService {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+      
+      // Invalidate cache after creation
+      await RedisCache.deletePattern('products:*');
+      await RedisCache.deletePattern('search:products:*');
+      
       return docRef.id;
     } catch (error) {
       console.error('Error creating product:', error);
@@ -96,6 +80,10 @@ export class ProductService {
         ...updates,
         updatedAt: serverTimestamp(),
       });
+      
+      // Invalidate cache after update
+      await CachedFirebaseService.invalidateProduct(productId);
+      
     } catch (error) {
       console.error('Error updating product:', error);
       throw error;
@@ -105,6 +93,10 @@ export class ProductService {
   static async deleteProduct(productId: string) {
     try {
       await deleteDoc(doc(db, 'products', productId));
+      
+      // Invalidate cache after deletion
+      await CachedFirebaseService.invalidateProduct(productId);
+      
     } catch (error) {
       console.error('Error deleting product:', error);
       throw error;
@@ -129,17 +121,21 @@ export class ProductService {
 
 // Category service
 export class CategoryService {
+  // Use cached version for reading categories
   static async getCategories(): Promise<Category[]> {
     try {
-      const snapshot = await getDocs(
-        query(collection(db, 'categories'), orderBy('name'))
-      );
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Category[];
+      return await CachedFirebaseService.getCategories();
     } catch (error) {
       console.error('Error fetching categories:', error);
+      throw error;
+    }
+  }
+
+  static async getCategory(categoryId: string): Promise<Category | null> {
+    try {
+      return await CachedFirebaseService.getCategory(categoryId);
+    } catch (error) {
+      console.error('Error fetching category:', error);
       throw error;
     }
   }
@@ -150,6 +146,10 @@ export class CategoryService {
         ...categoryData,
         createdAt: serverTimestamp(),
       });
+      
+      // Invalidate cache after creation
+      await CachedFirebaseService.invalidateCategory(docRef.id);
+      
       return docRef.id;
     } catch (error) {
       console.error('Error creating category:', error);

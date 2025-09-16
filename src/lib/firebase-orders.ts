@@ -13,6 +13,8 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { Order, OrderItem, CartItem } from './firebase-types';
+import CachedFirebaseService from './firebase-cache';
+import { RedisCache, CacheKeys } from './redis-cache';
 
 export class OrderService {
   static async createOrder(orderData: {
@@ -59,6 +61,10 @@ export class OrderService {
       });
 
       await batch.commit();
+      
+      // Invalidate user orders cache
+      await CachedFirebaseService.invalidateUserOrders(orderData.clientEmail);
+      
       return orderRef.id;
     } catch (error) {
       console.error('Error creating order:', error);
@@ -68,18 +74,8 @@ export class OrderService {
 
   static async getClientOrders(clientId: string): Promise<Order[]> {
     try {
-      const snapshot = await getDocs(
-        query(
-          collection(db, 'orders'),
-          where('clientId', '==', clientId),
-          orderBy('createdAt', 'desc')
-        )
-      );
-
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Order[];
+      // Use cached service for better performance
+      return await CachedFirebaseService.getUserOrders(clientId);
     } catch (error) {
       console.error('Error fetching client orders:', error);
       throw error;
@@ -92,6 +88,10 @@ export class OrderService {
         status,
         updatedAt: serverTimestamp(),
       });
+      
+      // Invalidate order cache
+      await CachedFirebaseService.invalidateOrder(orderId);
+      
     } catch (error) {
       console.error('Error updating order status:', error);
       throw error;

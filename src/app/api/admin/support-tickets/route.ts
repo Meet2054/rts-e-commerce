@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { supportTickets, user } from '@/db/schema';
 import { eq, and, count, desc } from 'drizzle-orm';
-import { getCurrentUser } from '@/lib/auth-clients';
+import { getCurrentUser } from '@/lib/auth-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +19,16 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit;
 
-    let query = db.select({
+    const conditions = [];
+    if (status) {
+      conditions.push(eq(supportTickets.status, status));
+    }
+    if (priority) {
+      conditions.push(eq(supportTickets.priority, priority));
+    }
+
+    // Build base query
+    const baseQuery = db.select({
       id: supportTickets.id,
       ticketNumber: supportTickets.ticketNumber,
       customerEmail: supportTickets.customerEmail,
@@ -36,28 +45,20 @@ export async function GET(request: NextRequest) {
     .from(supportTickets)
     .leftJoin(user, eq(supportTickets.assignedTo, user.id));
 
-    const conditions = [];
-    if (status) {
-      conditions.push(eq(supportTickets.status, status));
-    }
-    if (priority) {
-      conditions.push(eq(supportTickets.priority, priority));
-    }
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
-    }
-
-    const result = await query
+    // Apply conditions and execute query
+    const result = await (conditions.length > 0 
+      ? baseQuery.where(and(...conditions))
+      : baseQuery
+    )
       .orderBy(desc(supportTickets.createdAt))
       .limit(limit)
       .offset(offset);
 
-    const totalQuery = db.select({ count: count() }).from(supportTickets);
-    if (conditions.length > 0) {
-      totalQuery.where(and(...conditions));
-    }
-    const totalResult = await totalQuery;
+    // Get total count
+    const totalResult = await (conditions.length > 0 
+      ? db.select({ count: count() }).from(supportTickets).where(and(...conditions))
+      : db.select({ count: count() }).from(supportTickets)
+    );
     const total = totalResult[0].count;
 
     return NextResponse.json({

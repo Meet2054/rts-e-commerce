@@ -5,7 +5,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { Upload, Database, Trash2, CheckCircle, Package, DollarSign } from 'lucide-react';
 
 export default function TestAdminPanel() {
-  const { userData, token } = useAuth();
+  const { userData, token, loading: authLoading, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -19,13 +19,42 @@ export default function TestAdminPanel() {
   const [selectedProductFile, setSelectedProductFile] = useState<File | null>(null);
   const [productUploadResult, setProductUploadResult] = useState<any>(null);
 
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return (
+      <div className="p-8">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-600">🔄 Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show sign-in prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="p-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-yellow-700">⚠️ Please sign in to access the admin panel.</p>
+          <p className="text-sm text-yellow-600 mt-1">
+            <a href="/sign-in" className="underline">Click here to sign in</a>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show admin access required if user is not admin
   if (!userData || userData.role !== 'admin') {
     return (
       <div className="p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">You need admin access to view this panel.</p>
+          <p className="text-red-600">🚫 You need admin access to view this panel.</p>
           <p className="text-sm text-red-500 mt-1">
-            Sign up first, then manually change your role to 'admin' in Firestore Console.
+            Current user: {user?.email} (Role: {userData?.role || 'none'})
+          </p>
+          <p className="text-sm text-red-500">
+            To get admin access, manually change your role to 'admin' in Firebase Console → Firestore → users → your document.
           </p>
         </div>
       </div>

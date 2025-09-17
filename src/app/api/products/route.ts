@@ -20,8 +20,10 @@ export async function GET(request: NextRequest) {
     if (cachedProducts) {
       console.log(`✅ [REDIS] Products list served from cache (${cachedProducts.length} products)`);
       return NextResponse.json({
+        success: true,
         products: cachedProducts,
-        total: cachedProducts.length,
+        hasMore: false,
+        totalFound: cachedProducts.length,
         source: 'redis_cache',
         cached: true
       });

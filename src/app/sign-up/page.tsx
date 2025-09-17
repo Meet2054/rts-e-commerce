@@ -3,29 +3,30 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { signUp } from '@/lib/firebase-auth';
+import { signUp, updateUserProfile } from '@/lib/firebase-auth';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff, Phone } from 'lucide-react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 
 export default function SignUpForm() {
   const [step, setStep] = useState<'userinfo' | 'company' | 'preferences' | 'agreements' | 'created'>('userinfo');
+  const [currentUser, setCurrentUser] = useState<any>(null); // Store created user
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     displayName: '',
-    companyName: '',
     phoneNumber: '',
+    companyName: '',
     businessType: '',
     industry: '',
     website: '',
     gst: '',
     address: '',
-    role: '',
+    roleInCompany: '', // Updated field name
     currency: '',
     language: '',
-    agreed: false,
+    agreedToTerms: false, // Updated field name
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,22 +70,25 @@ export default function SignUpForm() {
     return true;
   };
 
-  // Step 1: User Info
+  // Step 1: User Info - Create the user account
   const handleUserInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!validateForm()) return;
     setLoading(true);
     try {
+      // Create user with basic info only initially
       const { user, error } = await signUp(formData.email, formData.password, {
         displayName: formData.displayName,
-        companyName: formData.companyName,
+        phoneNumber: formData.phoneNumber,
         role: 'client',
       });
       if (error) {
         setError(error);
       } else if (user) {
+        setCurrentUser(user); // Store user for later updates
         setStep('company');
+        console.log('✅ [SignUp] User created, moving to company info');
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -94,26 +98,113 @@ export default function SignUpForm() {
     }
   };
 
-  // Step 2: Company Info
-  const handleCompanySubmit = (e: React.FormEvent) => {
+  // Step 2: Company Info - Update user profile with company data
+  const handleCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep('preferences');
+    if (!currentUser) {
+      setError('User session lost. Please try again.');
+      setStep('userinfo');
+      return;
+    }
+    
+    setLoading(true);
+    setError(''); // Clear any previous errors
+    try {
+      // Only include fields that have values
+      const companyData: any = {};
+      
+      if (formData.companyName.trim()) companyData.companyName = formData.companyName.trim();
+      if (formData.businessType) companyData.businessType = formData.businessType;
+      if (formData.industry) companyData.industry = formData.industry;
+      if (formData.website.trim()) companyData.website = formData.website.trim();
+      if (formData.gst.trim()) companyData.gst = formData.gst.trim();
+      if (formData.address.trim()) companyData.address = formData.address.trim();
+      
+      const { error } = await updateUserProfile(currentUser.uid, companyData);
+      
+      if (error) {
+        setError(error);
+      } else {
+        setStep('preferences');
+        console.log('✅ [SignUp] Company info updated');
+      }
+    } catch (err) {
+      setError('Failed to save company information');
+      console.error('Company info error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Step 3: Preferences
-  const handlePreferencesSubmit = (e: React.FormEvent) => {
+  // Step 3: Preferences - Update user profile with preference data
+  const handlePreferencesSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep('agreements');
+    if (!currentUser) {
+      setError('User session lost. Please try again.');
+      setStep('userinfo');
+      return;
+    }
+    
+    setLoading(true);
+    setError(''); // Clear any previous errors
+    try {
+      // Only include fields that have values
+      const preferencesData: any = {};
+      
+      if (formData.roleInCompany) preferencesData.roleInCompany = formData.roleInCompany;
+      if (formData.currency) preferencesData.currency = formData.currency;
+      if (formData.language) preferencesData.language = formData.language;
+      
+      const { error } = await updateUserProfile(currentUser.uid, preferencesData);
+      
+      if (error) {
+        setError(error);
+      } else {
+        setStep('agreements');
+        console.log('✅ [SignUp] Preferences updated');
+      }
+    } catch (err) {
+      setError('Failed to save preferences');
+      console.error('Preferences error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Step 4: Agreements
-  const handleAgreementsSubmit = (e: React.FormEvent) => {
+  // Step 4: Agreements - Final profile completion
+  const handleAgreementsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.agreed) {
+    if (!formData.agreedToTerms) {
       setError('You must agree to all Terms & Conditions');
       return;
     }
-    setStep('created');
+    
+    if (!currentUser) {
+      setError('User session lost. Please try again.');
+      setStep('userinfo');
+      return;
+    }
+    
+    setLoading(true);
+    setError(''); // Clear any previous errors
+    try {
+      const { error } = await updateUserProfile(currentUser.uid, {
+        agreedToTerms: true,
+        // agreementDate will be set automatically in the updateUserProfile function
+      });
+      
+      if (error) {
+        setError(error);
+      } else {
+        setStep('created');
+        console.log('✅ [SignUp] Profile completed successfully');
+      }
+    } catch (err) {
+      setError('Failed to complete registration');
+      console.error('Agreements error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Step 5: Account Created
@@ -276,6 +367,12 @@ export default function SignUpForm() {
                 </div>
 
                 <form className="space-y-4" onSubmit={handleCompanySubmit}>
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                      <span className="text-red-600 text-sm">{error}</span>
+                    </div>
+                  )}
                   <input
                     type="text"
                     name="companyName"
@@ -341,9 +438,10 @@ export default function SignUpForm() {
 
                   <button
                     type="submit"
-                    className="w-full bg-black text-white py-3 rounded-lg"
+                    disabled={loading}
+                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
                   >
-                    Preferences
+                    {loading ? 'Saving...' : 'Continue to Preferences'}
                   </button>
                 </form>
               </motion.div>
@@ -366,10 +464,16 @@ export default function SignUpForm() {
                 </div>
                 
                 <form className="space-y-4" onSubmit={handlePreferencesSubmit}>
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                      <span className="text-red-600 text-sm">{error}</span>
+                    </div>
+                  )}
 
                   <select
-                    name="role"
-                    value={formData.role}
+                    name="roleInCompany"
+                    value={formData.roleInCompany}
                     onChange={handleChange}
                     required
                     className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
@@ -407,9 +511,10 @@ export default function SignUpForm() {
 
                   <button
                     type="submit"
-                    className="w-full bg-black text-white py-3 rounded-lg"
+                    disabled={loading}
+                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
                   >
-                    Confirm
+                    {loading ? 'Saving...' : 'Continue to Agreements'}
                   </button>
 
                 </form>
@@ -436,12 +541,12 @@ export default function SignUpForm() {
                   <div className="flex items-center">
                     <input
                       type="checkbox"
-                      name="agreed"
-                      checked={formData.agreed}
+                      name="agreedToTerms"
+                      checked={formData.agreedToTerms}
                       onChange={handleChange}
                       className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <label htmlFor="agreed" className="ml-2 text-sm text-gray-600">Agree all Terms & Conditions</label>
+                    <label htmlFor="agreedToTerms" className="ml-2 text-sm text-gray-600">Agree all Terms & Conditions</label>
                   </div>
 
                   {error && (
@@ -453,9 +558,10 @@ export default function SignUpForm() {
 
                   <button
                     type="submit"
-                    className="w-full bg-black text-white py-3 rounded-lg"
+                    disabled={loading}
+                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
                   >
-                    Create Account
+                    {loading ? 'Creating Account...' : 'Create Account'}
                   </button>
 
                 </form>

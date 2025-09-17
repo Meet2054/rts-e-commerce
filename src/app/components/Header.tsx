@@ -207,7 +207,7 @@ const Header = () => {
               </div>
               {/* Admin Link */}
               {userData?.role === 'admin' && (
-                <Link href="/test-admin" className="p-2 rounded-lg hover:bg-purple-50">
+                <Link href="/admin" className="p-2 rounded-lg hover:bg-purple-50">
                   <Settings className="h-6 w-6 text-purple-700" />
                 </Link>
               )}

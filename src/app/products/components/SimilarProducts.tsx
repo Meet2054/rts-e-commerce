@@ -1,6 +1,7 @@
 'use client';
 import React from 'react';
 import Image from 'next/image';
+import ProductImage from "../../../../public/product.png"
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
 
@@ -48,7 +49,7 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                                     <ArrowRight size={20} />
                                 </Link>
                                 <Image 
-                                    src={item.image} 
+                                    src={ProductImage} 
                                     alt={item.name} 
                                     width={300} 
                                     height={200} 

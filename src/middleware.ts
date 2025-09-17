@@ -2,11 +2,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  // Protect admin routes
-  if (request.nextUrl.pathname.startsWith('/admin')) {
+  // Only protect API admin routes, not page routes
+  // Let client-side auth handle page protection
+  if (request.nextUrl.pathname.startsWith('/api/admin')) {
     const token = request.headers.get('authorization');
     if (!token) {
-      return NextResponse.redirect(new URL('/sign-in', request.url));
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
     }
   }
 
@@ -14,5 +18,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/api/admin/:path*']
+  matcher: ['/api/admin/:path*']
 };

@@ -57,7 +57,8 @@ async function testCacheFlow(productId: string) {
   let startTime: number;
   
   // Step 1: Check if data exists in Redis
-  console.log(`🔍 Step 1: Checking Redis cache for product ${productId}`);
+  console.log(`🔍 [TEST] Step 1: Checking Redis cache for product ${productId}`);
+  console.log(`🔑 [TEST] Cache key: products:${cacheKey}`);
   startTime = Date.now();
   let cachedProduct = await RedisCache.get(cacheKey, 'products');
   const cacheCheckTime = Date.now() - startTime;
@@ -71,7 +72,8 @@ async function testCacheFlow(productId: string) {
   });
   
   if (cachedProduct) {
-    console.log(`✅ Found in Redis cache! Retrieved in ${cacheCheckTime}ms`);
+    console.log(`✅ [REDIS] DATA FOUND IN CACHE! Retrieved in ${cacheCheckTime}ms`);
+    console.log(`📊 [REDIS] Product name: ${cachedProduct.name || 'Unknown'}`);
     return NextResponse.json({
       status: 'cache-hit',
       message: 'Data retrieved from Redis cache',
@@ -84,7 +86,8 @@ async function testCacheFlow(productId: string) {
   }
   
   // Step 2: Data not in Redis, fetch from Firestore
-  console.log(`❌ Not in Redis cache. Fetching from Firestore database...`);
+  console.log(`❌ [REDIS] DATA NOT IN CACHE - Fetching from Firebase database...`);
+  console.log(`🔍 [FIREBASE] Querying Firestore for product: ${productId}`);
   startTime = Date.now();
   
   const productDoc = await adminDb.collection('products').doc(productId).get();
@@ -122,10 +125,13 @@ async function testCacheFlow(productId: string) {
     source: 'Firestore Database'
   });
   
-  console.log(`✅ Fetched from Firestore in ${dbFetchTime}ms`);
+  console.log(`✅ [FIREBASE] DATA FETCHED FROM DATABASE in ${dbFetchTime}ms`);
+  console.log(`📊 [FIREBASE] Product name: ${(productData as any).name || 'Unknown'}`);
+  console.log(`📊 [FIREBASE] Product SKU: ${(productData as any).sku || 'Unknown'}`);
   
   // Step 3: Store in Redis for future requests
-  console.log(`💾 Step 3: Caching in Redis for future requests`);
+  console.log(`💾 [CACHE UPDATE] Step 3: Caching data from Firebase to Redis`);
+  console.log(`🔑 [CACHE UPDATE] Cache key: products:${cacheKey}`);
   startTime = Date.now();
   
   await RedisCache.set(cacheKey, productData, { 
@@ -144,7 +150,8 @@ async function testCacheFlow(productId: string) {
     ttl: '5 minutes'
   });
   
-  console.log(`✅ Cached in Redis in ${cacheSetTime}ms`);
+  console.log(`✅ [CACHE UPDATE] REDIS DATABASE UPDATED! Data cached in ${cacheSetTime}ms`);
+  console.log(`🎯 [SUMMARY] Product fetched from Firebase and cached to Redis successfully`);
   
   const totalTime = cacheCheckTime + dbFetchTime + cacheSetTime;
   

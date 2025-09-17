@@ -48,7 +48,44 @@ export class ProductService {
   // Use cached version for single product
   static async getProduct(productId: string): Promise<Product | null> {
     try {
-      return await CachedFirebaseService.getProduct(productId);
+      console.log(`🔍 [FIREBASE] Looking for product: ${productId}`);
+      
+      // First check Redis cache
+      const cacheKey = `product:${productId}`;
+      const cachedProduct = await RedisCache.get<Product>(cacheKey, 'products');
+      
+      if (cachedProduct) {
+        console.log(`✅ [REDIS] Product found in cache: ${productId}`);
+        return cachedProduct;
+      }
+      
+      console.log(`❌ [REDIS] Product not in cache, fetching from Firebase: ${productId}`);
+      
+      // Fetch from Firebase if not in cache
+      const productDoc = await getDoc(doc(db, 'products', productId));
+      
+      if (!productDoc.exists()) {
+        console.log(`❌ [FIREBASE] Product not found in database: ${productId}`);
+        return null;
+      }
+      
+      const productData = {
+        id: productDoc.id,
+        ...productDoc.data()
+      } as Product;
+      
+      console.log(`✅ [FIREBASE] Product fetched from database: ${productId}`);
+      console.log(`📊 [FIREBASE] Product data: ${productData.name || 'Unknown Name'}`);
+      
+      // Cache the product for future requests
+      await RedisCache.set(cacheKey, productData, { 
+        ttl: 300, // 5 minutes
+        prefix: 'products' 
+      });
+      
+      console.log(`💾 [CACHE UPDATE] Product cached from Firebase to Redis: ${productId}`);
+      
+      return productData;
     } catch (error) {
       console.error('Error fetching product:', error);
       throw error;

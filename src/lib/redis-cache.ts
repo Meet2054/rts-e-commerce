@@ -16,15 +16,21 @@ export class RedisCache {
   static async get<T = any>(key: string, prefix?: string): Promise<T | null> {
     try {
       const fullKey = prefix ? `${prefix}:${key}` : key;
+      console.log(`🔍 [REDIS] Attempting to fetch from cache: ${fullKey}`);
+      
       const value = await this.redis.get(fullKey);
       
       if (!value) {
+        console.log(`❌ [REDIS] Cache MISS - Key not found: ${fullKey}`);
         return null;
       }
 
+      console.log(`✅ [REDIS] Cache HIT - Data found in Redis: ${fullKey}`);
+      console.log(`📊 [REDIS] Data size: ${value.length} characters`);
+      
       return JSON.parse(value);
     } catch (error) {
-      console.error('Redis GET error:', error);
+      console.error('❌ [REDIS] GET error:', error);
       return null;
     }
   }
@@ -42,13 +48,18 @@ export class RedisCache {
       const fullKey = prefix ? `${prefix}:${key}` : key;
       const serializedValue = JSON.stringify(value);
 
+      console.log(`💾 [REDIS] Caching data to Redis: ${fullKey}`);
+      console.log(`📊 [REDIS] Data size: ${serializedValue.length} characters, TTL: ${ttl}s`);
+
       if (ttl > 0) {
         await this.redis.setex(fullKey, ttl, serializedValue);
+        console.log(`✅ [REDIS] Successfully cached with TTL: ${fullKey} (expires in ${ttl}s)`);
       } else {
         await this.redis.set(fullKey, serializedValue);
+        console.log(`✅ [REDIS] Successfully cached (no expiration): ${fullKey}`);
       }
     } catch (error) {
-      console.error('Redis SET error:', error);
+      console.error('❌ [REDIS] SET error:', error);
     }
   }
 

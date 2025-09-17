@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useState, useContext, useEffect } from 'react';
-import { CartContext } from "../../../context/CartContext";
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
-// import { Product } from '@/lib/firebase-types';
-// import { products as staticProducts } from '../../components/data';
+import { useCartActions } from '@/hooks/use-cart';
 import { Package, ArrowRight, Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
 
 interface Product {
-  id: number;
+  id: string;
   sku: string;
   name: string;
   price: number;
@@ -18,9 +16,7 @@ interface Product {
 }
 
 function ProductList() {
-  const cartCtx = useContext(CartContext);
-  const { addToCart } = cartCtx ?? {};
-
+  const { addToCart } = useCartActions();
   const { token } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +24,7 @@ function ProductList() {
   const [sortOption, setSortOption] = useState('featured');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState('');
+  const [addingToCart, setAddingToCart] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetchProducts();
@@ -50,23 +47,57 @@ function ProductList() {
       const response = await fetch(`/api/products?${params}`, { headers });
       const data = await response.json();
 
-      if (data.success) {
+      console.log('🔍 [Frontend] API Response:', data);
+
+      // Check if response is successful (handle both formats)
+      if (response.ok && (data.success !== false) && Array.isArray(data.products)) {
         setProducts(data.products);
         
-        // Initialize quantities for all products
+        // Initialize quantities for all products using SKU
         const initial: Record<string, number> = {};
-        data.products.forEach((p: Product) => { initial[p.id] = 1; });
+        data.products.forEach((p: Product) => { initial[p.sku] = 1; });
         setQuantities(initial);
         
         setError('');
+        
+        // Log cache source information
+        if (data.source) {
+          console.log(`📊 [Frontend] Data source: ${data.source}${data.cached ? ' (cached)' : ' (fresh)'}`);
+        }
       } else {
-        setError(data.error || 'Failed to fetch products');
+        const errorMessage = data.error || data.message || 'Failed to fetch products';
+        setError(errorMessage);
+        console.error('❌ [Frontend] API Error:', errorMessage);
       }
     } catch (err) {
-      setError('Failed to fetch products');
-      console.error('Error fetching products:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Network error occurred';
+      setError(`Failed to fetch products: ${errorMessage}`);
+      console.error('❌ [Frontend] Error fetching products:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle add to cart with loading state
+  const handleAddToCart = async (product: Product, quantity: number) => {
+    try {
+      setAddingToCart(prev => ({ ...prev, [product.sku]: true }));
+      
+      await addToCart({
+        id: product.sku, // Use SKU as the product ID
+        sku: product.sku,
+        name: product.name,
+        image: product.image || '/product.png',
+        price: product.price
+      }, quantity);
+      
+      // Reset quantity after successful add
+      setQuantities(prev => ({ ...prev, [product.sku]: 1 }));
+      
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    } finally {
+      setAddingToCart(prev => ({ ...prev, [product.sku]: false }));
     }
   };
 
@@ -232,26 +263,20 @@ function ProductList() {
                   </div>
                   <div className='flex flex-col w-[35%] gap-1'>
                     <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
-                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: Math.max(1, (q[order.id] || 1) - 1) })); }}><Minus size={16} /></button>
-                      <span className="px-2 text-base">{quantities[order.id] || 1}</span>
-                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.id]: (q[order.id] || 1) + 1 })); }}><Plus size={16} /></button>
+                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: Math.max(1, (q[order.sku] || 1) - 1) })); }}><Minus size={16} /></button>
+                      <span className="px-2 text-base">{quantities[order.sku] || 1}</span>
+                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: (q[order.sku] || 1) + 1 })); }}><Plus size={16} /></button>
                     </div>
                     <button
-                      className="mt-2 bg-black cursor-pointer text-white px-4 py-1.5 rounded-md text-base"
+                      className="mt-2 bg-black cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
+                      disabled={addingToCart[order.sku]}
                       onClick={e => {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (addToCart) {
-                          addToCart({ 
-                            id: order.id, 
-                            name: order.name, 
-                            image: order.image || '/product.png', 
-                            price: order.price 
-                          }, quantities[order.id] || 1);
-                        }
+                        handleAddToCart(order, quantities[order.sku] || 1);
                       }}
                     >
-                      Add Cart
+                      {addingToCart[order.sku] ? 'Adding...' : 'Add Cart'}
                     </button>
                   </div>
                 </div>

@@ -12,9 +12,25 @@ export interface BaseDocument {
 export interface User extends BaseDocument {
   email: string;
   role: 'admin' | 'client' | 'support';
+  displayName: string;
+  phoneNumber?: string;
+  
+  // Company Information
   companyName?: string;
-  displayName?: string;
-  phone?: string;
+  businessType?: 'manufacturer' | 'distributor' | 'retailer';
+  industry?: 'office' | 'it' | 'other';
+  website?: string;
+  gst?: string;
+  address?: string;
+  
+  // Business Preferences
+  roleInCompany?: 'owner' | 'manager' | 'employee';
+  currency?: 'INR' | 'USD' | 'EUR';
+  language?: 'en' | 'hi';
+  
+  // Agreements
+  agreedToTerms?: boolean;
+  agreementDate?: Timestamp;
 }
 
 // Client/Customer types

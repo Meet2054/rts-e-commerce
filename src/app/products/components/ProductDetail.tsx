@@ -2,8 +2,11 @@
 "use client";
 
 import Image from "next/image";
+import ProductImage from "../../../../public/product.png"
 import Link from "next/link";
 import React, { useState } from "react";
+import { useCartActions } from "@/hooks/use-cart";
+import { Loader2 } from 'lucide-react';
 
 const COLORS = ["#2D9CDB", "#27AE60", "#F2994A", "#EB5757", "#4F4F4F"];
 
@@ -37,9 +40,38 @@ export default function ProductDetail({ product, related }: { product: Product, 
   const [selectedImg, setSelectedImg] = useState(0);
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [tab, setTab] = useState("description");
+  const [quantity, setQuantity] = useState(1);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  
+  const { addToCart } = useCartActions();
+
+  // Handle add to cart
+  const handleAddToCart = async () => {
+    try {
+      setIsAddingToCart(true);
+      
+      await addToCart({
+        id: product.sku, // Use SKU as ID for consistency
+        sku: product.sku,
+        name: product.name,
+        image: ProductImage.src,
+        price: product.price,
+        brand: product.brand,
+        category: product.category
+      }, quantity);
+      
+      // Reset quantity after successful add
+      setQuantity(1);
+      
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
   // Gallery images (mock: repeat main image)
-  const gallery = [product.image, product.image, product.image, product.image];
+  const gallery = [ProductImage , ProductImage, ProductImage, ProductImage];
 
   return (
     <div className="max-w-[1550px] mx-auto px-4 sm:px-12 lg:px-16 py-2">
@@ -62,7 +94,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
                     onClick={() => setSelectedImg(i)}
                     className={`border bg-white rounded-md p-1 ${selectedImg === i ? "border-black" : ""}`}
                 >
-                    <Image src={img} alt={product.name} width={100} height={50} className="object-contain" />
+                    <Image src={ProductImage} alt={product.name} width={100} height={50} className="object-contain" />
                 </button>
                 ))}
             </div>
@@ -111,6 +143,26 @@ export default function ProductDetail({ product, related }: { product: Product, 
             </ul>
           </div>
           <div className="mb-2">
+            <div className="font-semibold mb-1">Quantity:</div>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+                className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50"
+              >
+                -
+              </button>
+              <span className="px-4 py-1 border rounded-md min-w-[3rem] text-center">{quantity}</span>
+              <button 
+                onClick={() => setQuantity(Math.min(100, quantity + 1))}
+                disabled={quantity >= 100}
+                className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50"
+              >
+                +
+              </button>
+            </div>
+          </div>
+          <div className="mb-2">
             <div className="font-semibold mb-1">Colors:</div>
             <div className="flex gap-2">
               {COLORS.map((c) => (
@@ -119,8 +171,23 @@ export default function ProductDetail({ product, related }: { product: Product, 
             </div>
           </div>
           <div className="flex flex-col w-full gap-3 mt-4">
-            <button className="bg-white text-black px-6 py-2 rounded-md text-base">Add to cart</button>
-            <button className="bg-black text-white px-6 py-2 rounded-md text-base">Buy Now</button>
+            <button 
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
+              className="bg-white text-black px-6 py-2 rounded-md text-base border hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isAddingToCart ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Adding to Cart...
+                </>
+              ) : (
+                `Add ${quantity} to Cart`
+              )}
+            </button>
+            <button className="bg-black text-white px-6 py-2 rounded-md text-base hover:bg-gray-800">
+              Buy Now
+            </button>
           </div>
         </div>
         </div>
@@ -192,12 +259,14 @@ export default function ProductDetail({ product, related }: { product: Product, 
         </div>
         {/* Related Products */}
         <div className="w-full lg:w-2/5">
-          <div className="text-xl font-bold text-black">Related Products</div>
+          <div className="text-xl font-bold text-black mb-4">
+            Related Products ({Math.min(related.length, 2)})
+          </div>
           <div className="grid grid-cols-1 gap-5">
-            {related.map((rp) => (
+            {related.slice(0, 2).map((rp) => (
               <div key={rp.sku} className="bg-white rounded-lg shadow-sm p-4 flex flex-col">
                 <div className="flex gap-4 items-center">
-                  <Image src={rp.image} alt={rp.name} width={300} height={80} className="object-contain rounded" />
+                  <Image src={ProductImage} alt={rp.name} width={300} height={80} className="object-contain rounded" />
                   <div>
                     <div className="flex items-center gap-2 text-yellow-500 text-base font-semibold">
                       {"★".repeat(Math.floor(rp.rating))}

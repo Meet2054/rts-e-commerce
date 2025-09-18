@@ -1,4 +1,4 @@
-import TestAdminPanel from '@/components/admin/admin-panel';
+import TestAdminPanel from '@/app/admin/components/admin-panel';
 
 export default function TestAdminPage() {
   return <TestAdminPanel />;

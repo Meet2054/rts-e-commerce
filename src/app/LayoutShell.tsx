@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import Header from "@/app/components/Header";
-import ProductHeader from "@/app/components/ProductHeader";
-import SubFooter from "@/app/components/SubFooter";
-import Footer from "@/app/components/Footer";
+import Header from "@/components/common/Header";
+import ProductHeader from "@/components/common/ProductHeader";
+import SubFooter from "@/components/common/SubFooter";
+import Footer from "@/components/common/Footer";
 
 function HydrateClient({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Search, LogOut, Settings, CircleUserRound, EllipsisVertical, } from 'lucide-react';
-import SearchDropdown from './SearchDropdown';
+import SearchDropdown from '../common/SearchDropdown';
 import { useAuth } from '@/components/auth/auth-provider';
 import { signOut } from '@/lib/firebase-auth';
 import Image from 'next/image';

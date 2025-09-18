@@ -1,5 +1,5 @@
-import TestAdminPanel from '@/app/admin/components/admin-panel';
+import Dashboard from './components/Dashboard';
 
-export default function TestAdminPage() {
-  return <TestAdminPanel />;
+export default function AdminPage() {
+  return <Dashboard />;
 }

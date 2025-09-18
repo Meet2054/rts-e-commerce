@@ -11,8 +11,6 @@ interface Product {
     sku: string;
     name: string;
     image?: string;
-    rating?: number;
-    reviews?: number;
     price: number;
     category?: string;
     brand?: string;
@@ -63,7 +61,7 @@ const RecommendedProducts: React.FC = () => {
                 id: product.sku, // Use SKU as the product ID
                 sku: product.sku,
                 name: product.name,
-                image: product.image || '/product.png',
+                image: '/product.png',
                 price: product.price
             }, quantity);
             
@@ -121,7 +119,7 @@ const RecommendedProducts: React.FC = () => {
                                     <ArrowRight size={20} />
                                 </Link>
                                 <Image 
-                                    src={item.image || '/product.png'} 
+                                    src={'/product.png'} 
                                     alt={item.name} 
                                     width={300} 
                                     height={200} 
@@ -132,16 +130,6 @@ const RecommendedProducts: React.FC = () => {
                                 <div className='flex w-[60%] flex-col gap-1'>
                                     <div className="font-semibold text-base text-black">{item.name}</div>
                                     <div className="text-lg font-bold text-black">${item.price.toFixed(2)}</div>
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <span className="flex items-center gap-1">
-                                            {[...Array(5)].map((_, i) => (
-                                                <svg key={i} width="16" height="16" fill={i < Math.floor(item.rating || 0) ? '#FFA500' : '#E5E7EB'} stroke="none" className="inline">
-                                                    <polygon points="8,2 10,6 14,6.5 11,9.5 12,14 8,11.5 4,14 5,9.5 2,6.5 6,6" />
-                                                </svg>
-                                            ))}
-                                        </span>
-                                        <span>{item.reviews || 0}</span>
-                                    </div>
                                 </div>
                                 <div>
                                     <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
@@ -160,7 +148,7 @@ const RecommendedProducts: React.FC = () => {
                                         </button>
                                     </div>
                                     <button
-                                        className="mt-2 bg-black cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
+                                        className="mt-2 bg-[#2E318E] cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
                                         disabled={addingToCart[item.sku]}
                                         onClick={e => {
                                             e.preventDefault();

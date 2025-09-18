@@ -1,7 +1,4 @@
-import Footer from "@/app/components/Footer";
-import Header from "@/app/components/Header";
-import ProductHeader from "@/app/components/ProductHeader";
-import SubFooter from "@/app/components/SubFooter";
+
 import ProductDetails from "../components/ProductDetail";
 import SimilarProducts from "../components/SimilarProducts";
 import { notFound } from 'next/navigation';
@@ -111,12 +108,8 @@ export default async function ProductDescriptionPage({ params }: { params: { slu
 
   return (
     <div className="space-y-3 bg-[#F1F2F4]">
-      <Header />
-      <ProductHeader />
       <ProductDetails product={product} related={related} />
       <SimilarProducts product={product} products={related} />
-      <SubFooter />
-      <Footer />
     </div>
   );
 }

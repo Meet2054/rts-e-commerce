@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/components/auth/auth-provider';
 // import ChatWidget from '@/components/ui/chat-widget';
 import { CartProvider } from '@/context/CartContext';
+import LayoutShell from './LayoutShell';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -19,9 +20,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-[#F1F2F4]`}>
         <AuthProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <LayoutShell>{children}</LayoutShell>
+          </CartProvider>
           {/* <ChatWidget /> */}
         </AuthProvider>
       </body>

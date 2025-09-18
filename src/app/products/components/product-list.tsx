@@ -268,7 +268,7 @@ function ProductList() {
                       <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: (q[order.sku] || 1) + 1 })); }}><Plus size={16} /></button>
                     </div>
                     <button
-                      className="mt-2 bg-black cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
+                      className="mt-2 bg-[#2E318E] cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
                       disabled={addingToCart[order.sku]}
                       onClick={e => {
                         e.preventDefault();

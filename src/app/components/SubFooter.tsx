@@ -17,8 +17,6 @@ const SubFooter = () => {
                     <button className="bg-white text-black font-semibold px-10 py-3 rounded">Request a Partner Account</button>
                 </div>
             </div>
-            {/* Placeholder for additional content */}
-            <Image src="/logo.svg" alt="Partner" width={1500} height={300} className="mt-16" />
         </div>
     );
 };

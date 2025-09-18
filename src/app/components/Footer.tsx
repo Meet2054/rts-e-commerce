@@ -1,57 +1,86 @@
-
 'use client';
 import React from 'react';
-import Link from 'next/link';
-import { Instagram, Facebook, Twitter, Youtube, Linkedin } from 'lucide-react';
+import Image from 'next/image';
 
-const socialLinks = [
-	{ href: 'https://instagram.com', icon: <Instagram size={22} /> },
-	{ href: 'https://facebook.com', icon: <Facebook size={22} /> },
-	{ href: 'https://twitter.com', icon: <Twitter size={22} /> },
-	{ href: 'https://youtube.com', icon: <Youtube size={22} /> },
-	{ href: 'https://linkedin.com', icon: <Linkedin size={22} /> },
+const companyLinks = [
+    { name: 'About', href: '/about' },
+    { name: 'Features', href: '/features' },
+    { name: 'Products', href: '/products' },
+    { name: 'Career', href: '/career' },
 ];
 
-const navLinks = [
-	{ href: '/download', label: 'Download App' },
-	{ href: '/about', label: 'About' },
-	{ href: '/products', label: 'Product' },
-	{ href: '/partner', label: 'Partner' },
-	{ href: '/safety', label: 'Safety' },
-	{ href: '/jobs', label: 'Jobs' },
-	{ href: '/help', label: 'Get help' },
+const helpLinks = [
+    { name: 'Customer Support', href: '/support' },
+    { name: 'Delivery Details', href: '/delivery' },
+    { name: 'Terms & Conditions', href: '/terms-conditions' },
+    { name: 'Privacy Policy', href: '/privacy-policy' },
+];
+
+const popularLinks = [
+    { name: 'HP Ink Cartridges', href: '/products?brand=HP' },
+    { name: 'Epson Ink Cartridges', href: '/products?brand=Epson' },
+    { name: 'Label Makers & Printers', href: '/products?category=Label%20Makers' },
+    { name: 'Warehouse Supplies', href: '/products?category=Warehouse' },
 ];
 
 const Footer = () => {
-	return (
-        <div className="max-w-[1550px] mx-auto pb-3 px-4 sm:px-16 flex flex-col items-center justify-between">
-            <div className='h-0.5 bg-black/40 w-full'></div>
-            
-            <div className='flex flex-col md:flex-row w-full items-center justify-between py-5 gap-6'>
-                {/* Left: Social Icons */}
-                <div className="flex items-center gap-5">
-                    {socialLinks.map((item, idx) => (
-                        <a key={idx} href={item.href} target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-black">
-                            {item.icon}
-                        </a>
-                    ))}
+    return (
+        <div className="max-w-[1550px] mx-auto px-4 sm:px-16 pt-10 pb-3 flex flex-col gap-6">
+            <div className="flex flex-col md:flex-row w-full justify-between py-16 gap-10">
+                {/* Logo & Description */}
+                <div className="flex flex-col gap-5 max-w-sm">
+                    <Image 
+                        src="/logo.svg" 
+                        alt="RTS Imaging" 
+                        width={200} 
+                        height={100} 
+                    />
+                    <div className="text-base text-gray-700">
+                        RTS Imaging B2B Marketplace<br />
+                        Your trusted partner for printers, inks, and toners.<br />
+                        Supplying businesses with reliable products and seamless order support.
+                    </div>
                 </div>
-                {/* Center: Navigation Links */}
-                <div className="flex items-center gap-6 text-sm font-medium text-gray-700">
-                    {navLinks.map((item) => (
-                        <Link key={item.href} href={item.href} className="hover:text-black">
-                            {item.label}
-                        </Link>
-                    ))}
+                {/* Company */}
+                <div>
+                    <div className="text-sm font-bold text-gray-400 mb-3 tracking-widest">COMPANY</div>
+                    <ul className="space-y-2">
+                        {companyLinks.map(link => (
+                            <li key={link.name}>
+                                <a href={link.href} className="text-sm text-gray-700 hover:text-[#2E318E] font-medium transition-colors">{link.name}</a>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
-                {/* Right: Copyright */}
-                <div className="text-right text-xs text-gray-700 leading-tight">
-                    <div>Proudly created in India.</div>
-                    <div>All Right Reserved, All Wrong Reversed.</div>
+                {/* Help */}
+                <div>
+                    <div className="text-sm font-bold text-gray-400 mb-3 tracking-widest">HELP</div>
+                    <ul className="space-y-2">
+                        {helpLinks.map(link => (
+                            <li key={link.name}>
+                                <a href={link.href} className="text-sm text-gray-700 hover:text-[#2E318E] font-medium transition-colors">{link.name}</a>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                {/* Popular Products */}
+                <div>
+                    <div className="text-sm font-bold text-gray-400 mb-3 tracking-widest">POPULAR PRODUCTS</div>
+                    <ul className="space-y-2">
+                        {popularLinks.map(link => (
+                            <li key={link.name}>
+                                <a href={link.href} className="text-sm text-gray-700 hover:text-[#2E318E] font-medium transition-colors">{link.name}</a>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             </div>
+            <div className="h-0.5 bg-black/50 w-full"></div>
+            <div className="flex justify-center items-center text-sm text-gray-700 py-2">
+                <span>© 2025 RTS Imaging. All Rights Reserved.</span>
+            </div>
         </div>
-	);
+    );
 };
 
 export default Footer;

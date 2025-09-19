@@ -7,7 +7,6 @@ import {
   FileText,
   Users,
   Bell,
-  Folder,
   LogOut
 } from 'lucide-react';
 
@@ -16,9 +15,8 @@ const navLinks = [
   { name: 'Products', href: '/admin/products', icon: <BarChart2 size={20} /> },
   { name: 'Orders', href: '/admin/orders', icon: <BarChart2 size={20} /> },
   { name: 'Reports List', href: '/admin/report-list', icon: <FileText size={20} /> },
-  { name: 'User/Client', href: '/admin/users', icon: <Users size={20} /> },
+  { name: 'User/Client', href: '/admin/client', icon: <Users size={20} /> },
   { name: 'Notification', href: '/admin/notification', icon: <Bell size={20} /> },
-  { name: 'Customers', href: '/admin/customers', icon: <Folder size={20} /> },
 ];
 
 export default function SideNavbar() {

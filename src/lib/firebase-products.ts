@@ -9,18 +9,13 @@ import {
   updateDoc, 
   deleteDoc, 
   setDoc,
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  startAfter,
   serverTimestamp,
   DocumentSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { Product, ProductVariant, Category, ClientPriceOverride } from './firebase-types';
 import CachedFirebaseService from './firebase-cache';
-import { RedisCache, CacheKeys } from './redis-cache';
+import { RedisCache} from './redis-cache';
 
 // Product CRUD operations
 export class ProductService {

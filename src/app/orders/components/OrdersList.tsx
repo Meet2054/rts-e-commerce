@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Order } from '@/lib/firebase-types';
-import { Loader2, Package, Calendar, CreditCard, Truck, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, Package, Truck, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 interface OrdersListState {
   orders: Order[];
@@ -210,7 +210,7 @@ export default function OrdersList() {
                   <div className="relative w-16 h-16 bg-gray-100 rounded-md overflow-hidden">
                     {item.imageSnap ? (
                       <Image
-                        src={item.imageSnap}
+                        src={"/product.png"}
                         alt={item.nameSnap}
                         fill
                         className="object-contain p-1"

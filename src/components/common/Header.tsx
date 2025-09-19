@@ -167,7 +167,7 @@ const Header = () => {
                       {isAdmin && (
                         <>
                           <Link 
-                            href="/admin/client"
+                            href="/admin"
                             className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-purple-700 hover:text-purple-800 hover:bg-purple-50"
                             onClick={() => setShowDropdown(false)}
                           >
@@ -223,7 +223,7 @@ const Header = () => {
               </div>
               {/* Admin Link */}
               {isAdmin && (
-                <Link href="/admin/client" className="p-2 rounded-lg hover:bg-purple-50" title="Admin Dashboard">
+                <Link href="/admin" className="p-2 rounded-lg hover:bg-purple-50" title="Admin Dashboard">
                   <Settings className="h-6 w-6 text-purple-700" />
                 </Link>
               )}

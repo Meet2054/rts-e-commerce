@@ -50,7 +50,7 @@ export default function AuthForms() {
         
         if (userData?.role === 'admin') {
           // Admin users go to admin panel
-          router.push('/admin/client');
+          router.push('/');
         } else {
           // Check if regular user is approved
           const { approved, status } = await checkUserApproval(user.uid);

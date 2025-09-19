@@ -3,18 +3,13 @@ import {
   collection, 
   doc, 
   getDocs, 
-  addDoc, 
   updateDoc, 
-  query, 
-  where, 
-  orderBy,
   serverTimestamp,
   writeBatch
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { Order, OrderItem, CartItem } from './firebase-types';
 import CachedFirebaseService from './firebase-cache';
-import { RedisCache, CacheKeys } from './redis-cache';
 
 export class OrderService {
   static async createOrder(orderData: {
@@ -104,15 +99,15 @@ export class OrderService {
       return snapshot.docs.map(doc => {
         const data = doc.data();
         return {
-          id: doc.id,
           productId: data.productId,
+          sku: data.sku,
+          variantId: data.variantId,
           nameSnap: data.nameSnap,
           brandSnap: data.brandSnap,
+          imageSnap: data.imageSnap,
           qty: data.qty,
           unitPrice: data.unitPrice,
           lineTotal: data.lineTotal,
-          imageSnap: data.imageSnap,
-          variantId: data.variantId,
         } as OrderItem;
       });
     } catch (error) {

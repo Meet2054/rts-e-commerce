@@ -8,8 +8,6 @@ import {
   limit as firestoreLimit,
   query as firestoreQuery,
   where as firestoreWhere,
-  startAfter,
-  DocumentSnapshot
 } from 'firebase/firestore';
 import { db } from './firebase-config';
 import { RedisCache, CacheKeys } from './redis-cache';

@@ -600,10 +600,10 @@ export default function SignUpForm() {
                   </p>
                 </div>
                 <button
-                  onClick={() => router.push('/sign-in')}
+                  onClick={() => router.push('/')}
                   className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-900 transition-colors"
                 >
-                  Go to Sign In
+                  Go to Website
                 </button>
               </motion.div>
             )}

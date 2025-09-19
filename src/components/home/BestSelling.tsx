@@ -32,20 +32,24 @@ const BestSelling = () => {
 				const response = await fetch('/api/products?limit=4&sortBy=popularity');
 				if (response.ok) {
 					const data = await response.json();
-					const productsWithQuantity = data.products.map((product: Product) => ({
-						...product,
-						quantity: 1
-					}));
+					const productsWithQuantity = data.products
+						.slice(0, 4)
+						.map((product: Product) => ({
+							...product,
+							quantity: 1
+						}));
 					setBestSellingProducts(productsWithQuantity);
 				} else {
 					// Fallback to regular products if popularity sorting isn't available
 					const fallbackResponse = await fetch('/api/products?limit=4');
 					if (fallbackResponse.ok) {
 						const fallbackData = await fallbackResponse.json();
-						const productsWithQuantity = fallbackData.products.map((product: Product) => ({
-							...product,
-							quantity: 1
-						}));
+						const productsWithQuantity = fallbackData.products
+							.slice(0, 4)
+							.map((product: Product) => ({
+								...product,
+								quantity: 1
+							}));
 						setBestSellingProducts(productsWithQuantity);
 					}
 				}
@@ -96,7 +100,7 @@ const BestSelling = () => {
 									<ArrowRight size={20} />
 								</button>
 								<Image 
-									src={product.image || product.imageUrl || '/product-placeholder.png'} 
+									src={'/product.png'} 
 									alt={product.name} 
 									width={300} 
 									height={200} 
@@ -123,7 +127,7 @@ const BestSelling = () => {
 										href={`/products/${product.sku}`}
 										className="mt-2 bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base block text-center hover:bg-blue-700 transition-colors"
 									>
-										View Details
+										Add Cart
 									</Link>
 								</div>
 							</div>

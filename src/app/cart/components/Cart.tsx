@@ -30,11 +30,12 @@ export default function ShoppingCart() {
 	const [submitError, setSubmitError] = useState<string | null>(null);
 	const [shippingAddress, setShippingAddress] = useState<ShippingAddress>(DEFAULT_SHIPPING_ADDRESS);
 	const [orderNotes, setOrderNotes] = useState("");
+	const [orderDetails, setOrderDetails] = useState<{orderId: string, orderDocumentId: string} | null>(null);
 
 	// Handle quantity update with optimistic UI
 	const handleQuantityChange = async (itemId: string, newQuantity: number) => {
-		if (newQuantity < 1 || newQuantity > 100) return;
-		
+		if (newQuantity < 1) return;
+
 		try {
 			await updateQuantity(itemId, newQuantity);
 		} catch (error) {
@@ -53,7 +54,11 @@ export default function ShoppingCart() {
 		}
 	};
 
-	// Handle order submission
+	// Reset success state
+	const resetSuccessState = () => {
+		setSubmitSuccess(false);
+		setOrderDetails(null);
+	};	// Handle order submission
 	const handleSubmitOrder = async () => {
 		if (isEmpty) return;
 
@@ -68,9 +73,14 @@ export default function ShoppingCart() {
 				shipping,
 				total,
 				currency,
-				shippingAddress,
+				shippingAddress: {
+					...shippingAddress,
+					// Use user email if available
+					email: user?.email || 'customer@example.com'
+				},
 				notes: orderNotes,
 				userId: user?.uid,
+				userEmail: user?.email || 'customer@example.com'
 			};
 
 			const response = await fetch('/api/orders', {
@@ -82,11 +92,15 @@ export default function ShoppingCart() {
 			const result = await response.json();
 
 			if (result.success) {
+				setOrderDetails({
+					orderId: result.orderId,
+					orderDocumentId: result.orderDocumentId
+				});
 				setSubmitSuccess(true);
+				// Clear cart after showing success for 5 seconds
 				setTimeout(async () => {
 					await clearCart();
-					setSubmitSuccess(false);
-				}, 2000);
+				}, 5000);
 			} else {
 				throw new Error(result.error || 'Failed to submit order');
 			}
@@ -146,20 +160,63 @@ export default function ShoppingCart() {
 		);
 	}
 
-	// Success state
+	// Success state - Thank You Page
 	if (submitSuccess) {
 		return (
-			<div className="bg-green-50 border border-green-200 rounded-lg p-8 mx-auto max-w-md text-center">
-				<div className="text-green-800 text-xl font-semibold mb-2">Order Submitted Successfully!</div>
-				<div className="text-green-600 mb-4">
-					Thank you for your order. Our team will contact you soon to confirm details and arrange payment & delivery.
+			<div className="max-w-[1550px] px-4 md:px-12 lg:px-16 mx-auto py-10">
+				<div className="max-w-2xl mx-auto">
+					<div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-12 text-center shadow-lg">
+						<div className="mb-6">
+							<div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+								<svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+								</svg>
+							</div>
+							<h1 className="text-3xl font-bold text-green-800 mb-2">Order Placed Successfully!</h1>
+							<p className="text-green-700 text-lg">Thank you for your order. We'll be in touch soon!</p>
+						</div>
+
+						{orderDetails && (
+							<div className="bg-white rounded-lg p-6 mb-6 text-left">
+								<h3 className="font-semibold text-gray-800 mb-3">Order Details:</h3>
+								<div className="space-y-2 text-sm">
+									<div className="flex justify-between">
+										<span className="text-gray-600">Order ID:</span>
+										<span className="font-mono font-medium">{orderDetails.orderId}</span>
+									</div>
+									<div className="flex justify-between">
+										<span className="text-gray-600">Reference:</span>
+										<span className="font-mono text-xs text-gray-500">{orderDetails.orderDocumentId}</span>
+									</div>
+								</div>
+							</div>
+						)}
+
+						<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+							<p className="text-blue-800 text-sm">
+								<strong>What's next?</strong> Our team will contact you within 24 hours to confirm your order details, 
+								arrange payment, and schedule delivery. Keep your order ID handy for reference.
+							</p>
+						</div>
+
+						<div className="flex gap-4 justify-center">
+							<Link
+								href="/products"
+								className="bg-green-600 text-white px-8 py-3 rounded-md hover:bg-green-700 font-medium transition-colors"
+								onClick={resetSuccessState}
+							>
+								Continue Shopping
+							</Link>
+							<Link
+								href="/orders"
+								className="bg-gray-100 text-gray-700 px-8 py-3 rounded-md hover:bg-gray-200 font-medium transition-colors"
+								onClick={resetSuccessState}
+							>
+								View Orders
+							</Link>
+						</div>
+					</div>
 				</div>
-				<Link
-					href="/products"
-					className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 inline-block"
-				>
-					Continue Shopping
-				</Link>
 			</div>
 		);
 	}

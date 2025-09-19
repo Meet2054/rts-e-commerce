@@ -62,7 +62,7 @@ export default function ProductHeader() {
   }, []);
 
   return (
-    <div className="bg-white shadow-sm">
+    <div className="bg-white shadow-sm mt-3 mb-2">
       <div className="max-w-[1550px] mx-auto px-4 sm:px-16">
         <div className="flex items-center h-14 gap-16">
           {categories.map((cat, idx) => (

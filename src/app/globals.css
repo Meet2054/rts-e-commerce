@@ -120,3 +120,18 @@
     @apply bg-background text-foreground;
   }
 }
+
+.admin-button {
+  background-color: #fff;
+  border: 1px solid #d1d5db;
+  color: #000;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  font-weight: 500;
+}
+.admin-button:hover {
+  background-color: #000;
+  color: #fff;
+}

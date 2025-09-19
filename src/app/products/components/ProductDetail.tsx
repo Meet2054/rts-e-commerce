@@ -6,7 +6,7 @@ import ProductImage from "../../../../public/product.png"
 import Link from "next/link";
 import React, { useState } from "react";
 import { useCartActions } from "@/hooks/use-cart";
-import { Loader2 } from 'lucide-react';
+import { Loader2, Plus, Minus } from 'lucide-react';
 
 const COLORS = ["#2D9CDB", "#27AE60", "#F2994A", "#EB5757", "#4F4F4F"];
 
@@ -122,12 +122,8 @@ export default function ProductDetail({ product, related }: { product: Product, 
 
         {/* Product Info */}
         <div className="w-full lg:w-2/5">
-        <div className="w-full max-w-sm flex flex-col gap-3">
-          <div className="flex items-center gap-2 text-yellow-500 text-base font-semibold">
-            {"★".repeat(Math.floor(product.rating))}
-            <span className="text-gray-600 font-normal">{product.reviews} Reviews</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2">{product.name}</h1>
+        <div className="w-full max-w-sm flex flex-col gap-3">     
+          <h1 className="text-2xl sm:text-3xl font-bold text-black mt-4 mb-2">{product.name}</h1>
           <div className="flex items-center gap-3 mb-2">
             <span className="text-2xl font-bold text-black">${product.price}</span>
             <span className="text-lg line-through text-gray-400">${(product.price * 1.33).toFixed(0)}</span>
@@ -148,17 +144,17 @@ export default function ProductDetail({ product, related }: { product: Product, 
               <button 
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
                 disabled={quantity <= 1}
-                className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50"
+                className="px-3 py-2 cursor-pointer border rounded-md bg-white hover:bg-[#F7941F] disabled:opacity-50"
               >
-                -
+                <Minus size={16} />
               </button>
-              <span className="px-4 py-1 border rounded-md min-w-[3rem] text-center">{quantity}</span>
+              <span className="px-4 py-1 bg-white border rounded-md min-w-[3rem] text-center">{quantity}</span>
               <button 
                 onClick={() => setQuantity(Math.min(100, quantity + 1))}
                 disabled={quantity >= 100}
-                className="px-3 py-1 border rounded-md hover:bg-gray-100 disabled:opacity-50"
+                className="px-3 py-2 cursor-pointer border rounded-md bg-white hover:bg-[#F7941F] disabled:opacity-50"
               >
-                +
+                <Plus size={16} />
               </button>
             </div>
           </div>
@@ -174,7 +170,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
             <button 
               onClick={handleAddToCart}
               disabled={isAddingToCart}
-              className="bg-white text-black px-6 py-2 rounded-md text-base border hover:bg-gray-50 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="bg-white text-black px-6 py-2 rounded-md text-base border hover:bg-[#F7941F] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isAddingToCart ? (
                 <>
@@ -182,7 +178,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
                   Adding to Cart...
                 </>
               ) : (
-                `Add ${quantity} to Cart`
+                `Add to Cart`
               )}
             </button>
             <button className="bg-black text-white px-6 py-2 rounded-md text-base hover:bg-gray-800">
@@ -198,7 +194,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
         {/* Tabs */}
         <div className="w-full lg:w-3/5">
           <div className="flex gap-6 border-b mb-4">
-            {["Description", "Specifications", "Support"].map((t) => (
+            {["Description", "Support"].map((t) => (
               <button key={t} className={`py-2 px-4 font-semibold text-base border-b-2 ${tab === t.toLowerCase() ? "border-black text-black" : "border-transparent text-gray-500"}`} onClick={() => setTab(t.toLowerCase())}>{t}</button>
             ))}
           </div>
@@ -211,45 +207,6 @@ export default function ProductDetail({ product, related }: { product: Product, 
               <div className="text-sm text-gray-500">For Use In: {product.forUseIn}</div>
             </div>
           )}
-            {tab === "specifications" && (
-              <div>
-                <div className="font-semibold mb-2">General</div>
-                <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
-                  <li>Printer Type: Monochrome Laser Printer</li>
-                  <li>Function: Print only</li>
-                  <li>Ideal For: Small to medium businesses, workgroups</li>
-                </ul>
-                <div className="font-semibold mt-4 mb-2">Print Performance</div>
-                <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
-                  <li>Print Speed: Up to 40 ppm (A4)</li>
-                  <li>First Page Out: As fast as 6.3 seconds</li>
-                  <li>Print Resolution: 1200 x 1200 dpi</li>
-                  <li>Monthly Duty Cycle: Up to 80,000 pages</li>
-                  <li>Recommended Monthly Volume: 750 – 4,000 pages</li>
-                </ul>
-                <div className="font-semibold mt-4 mb-2">Paper Handling</div>
-                <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
-                  <li>Input Capacity: 250-sheet input tray</li>
-                  <li>100-sheet multipurpose tray</li>
-                  <li>Optional 550-sheet input tray (expandable)</li>
-                  <li>Output Capacity: 150-sheet output bin</li>
-                </ul>
-                <div className="font-semibold mt-4 mb-2">Automatic Duplex Printing: Yes</div>
-                <div className="font-semibold mt-4 mb-2">Media Sizes Supported:</div>
-                <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
-                  <li>A4, A5, A6, B5 (JIS), envelopes, custom sizes (76 × 127 mm to 216 × 356 mm)</li>
-                </ul>
-                <div className="font-semibold mt-4 mb-2">Media Types Supported:</div>
-                <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
-                  <li>Plain paper, EcoFFICIENT, light, heavy, bond, card stock, envelopes, labels</li>
-                </ul>
-                <div className="font-semibold mt-4 mb-2">Connectivity:</div>
-                <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
-                  <li>Standard: USB 2.0, Ethernet 10/100/1000Base-T network</li>
-                  <li>Optional: Wireless via external accessory (not built-in Wi-Fi)</li>
-                </ul>
-              </div>
-            )}
             {tab === "support" && (
               <div>
                 <div className="text-gray-700">For support, please contact our customer service or visit our help center.</div>
@@ -260,21 +217,17 @@ export default function ProductDetail({ product, related }: { product: Product, 
         {/* Related Products */}
         <div className="w-full lg:w-2/5">
           <div className="text-xl font-bold text-black mb-4">
-            Related Products ({Math.min(related.length, 2)})
+            Related Products
           </div>
           <div className="grid grid-cols-1 gap-5">
             {related.slice(0, 2).map((rp) => (
               <div key={rp.sku} className="bg-white rounded-lg shadow-sm p-4 flex flex-col">
                 <div className="flex gap-4 items-center">
                   <Image src={ProductImage} alt={rp.name} width={300} height={80} className="object-contain rounded" />
-                  <div>
-                    <div className="flex items-center gap-2 text-yellow-500 text-base font-semibold">
-                      {"★".repeat(Math.floor(rp.rating))}
-                      <span className="text-gray-600 text-sm font-normal">{rp.reviews} Reviews</span>
-                    </div>
+                  <div className="flex flex-col flex-1">
                     <div className="font-semibold text-base text-black">{rp.name}</div>
                     <div className="text-lg font-bold text-black mt-1">${rp.price}</div>
-                    <div className="flex flex-col gap-2 mt-4">
+                    <div className="flex flex-col w-full gap-2 mt-4">
                       <Link href={`/products/${rp.sku}`} className="bg-gray-200 text-black px-4 py-1.5 rounded-md text-base text-center">Add to cart</Link>
                       <Link href={`/products/${rp.sku}`} className="bg-black text-white px-4 py-1.5 rounded-md text-base text-center">Buy Now</Link>
                     </div>

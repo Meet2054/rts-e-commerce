@@ -152,7 +152,7 @@ export default function ShoppingCart() {
 				</div>
 				<Link
 					href="/products"
-					className="bg-black text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-800 transition-colors"
+					className="bg-[#2E318E] text-white px-8 py-3 rounded-md font-semibold hover:bg-gray-800 transition-colors"
 				>
 					Continue Shopping
 				</Link>
@@ -226,7 +226,7 @@ export default function ShoppingCart() {
 			<div className="flex flex-col lg:flex-row gap-10">
 				{/* Cart Items */}
 				<div className="flex flex-col w-full lg:w-2/3">
-					<div className="flex flex-row justify-between items-center mb-6">
+					<div className="flex flex-row justify-between items-center mb-4">
 						<h1 className="text-2xl font-bold">Your Cart</h1>
 						<div className="flex flex-col items-end">
 							<span className="text-gray-600">
@@ -264,9 +264,9 @@ export default function ShoppingCart() {
 									<div className="flex items-center gap-4 flex-1">
 										<Link href={`/products/${item.sku}`}>
 											<Image 
-												src={item.image} 
+												src={'/product.png'} 
 												alt={item.name} 
-												width={80} 
+												width={150} 
 												height={80} 
 												className="rounded-md object-contain bg-gray-50 p-2" 
 											/>
@@ -286,14 +286,14 @@ export default function ShoppingCart() {
 													Brand: {item.brand}
 												</div>
 											)}
-											<div className="text-lg font-bold text-black mt-2">
-												{currency === 'USD' ? '$' : ''}{item.price.toFixed(2)} each
+											<div className="text-lg font-semibold text-black mt-2">
+												{currency === 'USD' ? '$' : ''}{item.price.toFixed(2)} <span className="text-sm text-gray-500">each</span>
 											</div>
 										</div>
 									</div>
 
 									{/* Quantity Controls */}
-									<div className="flex items-center gap-3">
+									<div className="flex items-center gap-5 md:gap-10">
 										<div className="flex items-center border rounded-md">
 											<button
 												onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
@@ -337,6 +337,35 @@ export default function ShoppingCart() {
 				{/* Order Summary */}
 				<div className="w-full lg:w-1/3">
 					<div className="bg-white rounded-lg shadow-sm border p-6 sticky top-4">
+						{/* Shipping Address */}
+						<div className="space-y-3 mb-6">
+							<div className="flex justify-between items-center">
+								<span className="font-semibold text-base">Full Name</span>
+								<span className="text-sm text-right">{shippingAddress.fullName}</span>
+							</div>
+							<div className="flex justify-between items-center">
+								<span className="font-semibold text-base">Phone</span>
+								<span className="text-sm text-right">{shippingAddress.phone}</span>
+							</div>
+							<div className="flex justify-between items-center">
+								<span className="font-semibold text-base">Email</span>
+								<span className="text-sm text-right">{user?.email || 'Not provided'}</span>
+							</div>
+							<div className="flex justify-between items-start">
+								<span className="font-semibold text-base">Address</span>
+								<div className="text-sm text-right max-w-[60%]">
+									{shippingAddress.addressLine1}
+									{shippingAddress.addressLine2 && (
+										<div>{shippingAddress.addressLine2}</div>
+									)}
+									<div>
+										{shippingAddress.city}, {shippingAddress.state} {shippingAddress.postalCode}
+									</div>
+									<div>{shippingAddress.country}</div>
+								</div>
+							</div>
+						</div>
+
 						<h2 className="text-xl font-bold mb-6">Order Summary</h2>
 
 						{/* Order Totals */}
@@ -362,35 +391,6 @@ export default function ShoppingCart() {
 							<div className="flex justify-between text-lg font-bold pt-3 border-t">
 								<span>Total</span>
 								<span>{currency === 'USD' ? '$' : ''}{total.toFixed(2)}</span>
-							</div>
-						</div>
-
-						{/* Shipping Address */}
-						<div className="space-y-3 mb-6">
-							<div className="flex justify-between items-center">
-								<span className="font-semibold text-sm">Full Name</span>
-								<span className="text-sm text-right">{shippingAddress.fullName}</span>
-							</div>
-							<div className="flex justify-between items-center">
-								<span className="font-semibold text-sm">Phone</span>
-								<span className="text-sm text-right">{shippingAddress.phone}</span>
-							</div>
-							<div className="flex justify-between items-center">
-								<span className="font-semibold text-sm">Email</span>
-								<span className="text-sm text-right">{user?.email || 'Not provided'}</span>
-							</div>
-							<div className="flex justify-between items-start">
-								<span className="font-semibold text-sm">Address</span>
-								<div className="text-sm text-right max-w-[60%]">
-									{shippingAddress.addressLine1}
-									{shippingAddress.addressLine2 && (
-										<div>{shippingAddress.addressLine2}</div>
-									)}
-									<div>
-										{shippingAddress.city}, {shippingAddress.state} {shippingAddress.postalCode}
-									</div>
-									<div>{shippingAddress.country}</div>
-								</div>
 							</div>
 						</div>
 
@@ -428,7 +428,7 @@ export default function ShoppingCart() {
 						<button
 							onClick={handleSubmitOrder}
 							disabled={isSubmitting || isEmpty}
-							className="w-full bg-black text-white py-3 rounded-md font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+							className="w-full bg-[#2E318E] text-white py-3 rounded-md font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
 						>
 							{isSubmitting ? (
 								<>

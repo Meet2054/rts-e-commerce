@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { FcGoogle } from "react-icons/fc";
-import { signIn } from '@/lib/firebase-auth';
+import { signIn, checkUserApproval, getUserData } from '@/lib/firebase-auth';
 
 
 
@@ -45,7 +45,32 @@ export default function AuthForms() {
       if (error) {
         setError(error);
       } else if (user) {
-        router.push('/products');
+        // Check user role and approval status
+        const userData = await getUserData(user.uid);
+        
+        if (userData?.role === 'admin') {
+          // Admin users go to admin panel
+          router.push('/admin/client');
+        } else {
+          // Check if regular user is approved
+          const { approved, status } = await checkUserApproval(user.uid);
+          
+          if (!approved) {
+            if (status === 'requested') {
+              setError('Your account is pending admin approval. Please wait for approval before signing in.');
+            } else if (status === 'inactive') {
+              setError('Your account has been deactivated. Please contact support.');
+            } else {
+              setError('Your account is not approved for access. Please contact support.');
+            }
+            // Sign out the user since they're not approved
+            const { signOut } = await import('@/lib/firebase-auth');
+            await signOut();
+          } else {
+            // Approved user - redirect to products
+            router.push('/products');
+          }
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred');

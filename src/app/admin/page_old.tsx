@@ -130,8 +130,7 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  return (
+    return (
     <div className="max-w-[1550px] mx-auto p-8">
       {/* Greeting */}
       <div className='flex flex-row justify-between items-center mb-6'>
@@ -234,4 +233,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-}
+};

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { sampleProducts, sampleCategories } from '@/lib/test-data';
-import { serverTimestamp } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       const categoryRef = adminDb.collection('categories').doc(category.id);
       batch.set(categoryRef, {
         ...category,
-        createdAt: serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       });
     });
 
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
       const productRef = adminDb.collection('products').doc(product.id);
       batch.set(productRef, {
         ...product,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
       });
     });
 
@@ -31,8 +31,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Test data created successfully',
-      categoriesCreated: sampleCategories.length,
-      productsCreated: sampleProducts.length
+      note: 'This endpoint creates sample/test data for development and testing purposes',
+      productsCreated: sampleProducts.length,
+      categoriesCreated: sampleCategories.length
     });
 
   } catch (error) {

@@ -24,13 +24,24 @@ export const signUp = async (email: string, password: string, userData: Partial<
   try {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     
+    // Determine if user should be admin (you can customize this logic)
+    const isAdmin = email.endsWith('@admin.com') || email === 'admin@yourdomain.com';
+    
     // Filter out undefined and empty values before saving to Firestore
     const userDocData: any = {
       email,
-      role: 'client' as const, // default role
+      role: isAdmin ? 'admin' as const : 'client' as const,
+      status: isAdmin ? 'active' as const : 'requested' as const, // Admins are auto-approved
+      approved: isAdmin ? true : false, // Admins are auto-approved
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+    
+    // Add approval timestamp for admins
+    if (isAdmin) {
+      userDocData.approvedAt = serverTimestamp();
+      userDocData.approvedBy = 'system'; // System auto-approval for admins
+    }
     
     // Only add fields that have actual values
     if (userData.displayName && userData.displayName.trim() !== '') {
@@ -42,7 +53,7 @@ export const signUp = async (email: string, password: string, userData: Partial<
 
     await setDoc(doc(db, 'users', result.user.uid), userDocData);
     
-    console.log('✅ [Auth] User created with profile:', result.user.uid);
+    console.log(`✅ [Auth] User created as ${isAdmin ? 'admin' : 'client'}:`, result.user.uid);
     
     return { user: result.user, error: null };
   } catch (error: any) {
@@ -100,6 +111,69 @@ export const updateUserProfile = async (uid: string, updateData: Partial<User>) 
     return { error: null };
   } catch (error: any) {
     console.error('❌ [Auth] Profile update error:', error);
+    return { error: error.message };
+  }
+};
+
+// Check if user is approved for login
+export const checkUserApproval = async (uid: string): Promise<{ approved: boolean; status: string; error?: string }> => {
+  try {
+    const userData = await getUserData(uid);
+    if (!userData) {
+      return { approved: false, status: 'user_not_found', error: 'User data not found' };
+    }
+    
+    // Admin users are always approved
+    if (userData.role === 'admin') {
+      return { approved: true, status: 'active' };
+    }
+    
+    // For regular users, check if they're approved
+    const isApproved = userData.approved === true || userData.status === 'active';
+    const status = userData.status || (isApproved ? 'active' : 'requested');
+    
+    return { approved: isApproved, status };
+  } catch (error: any) {
+    console.error('❌ [Auth] Approval check error:', error);
+    return { approved: false, status: 'error', error: error.message };
+  }
+};
+
+// Admin function to approve/reject user
+export const approveUser = async (uid: string, adminUid: string) => {
+  try {
+    const updateData = {
+      approved: true,
+      status: 'active' as const,
+      approvedAt: serverTimestamp(),
+      approvedBy: adminUid,
+      updatedAt: serverTimestamp()
+    };
+    
+    await setDoc(doc(db, 'users', uid), updateData, { merge: true });
+    console.log('✅ [Auth] User approved:', uid);
+    return { error: null };
+  } catch (error: any) {
+    console.error('❌ [Auth] Approval error:', error);
+    return { error: error.message };
+  }
+};
+
+export const rejectUser = async (uid: string, adminUid: string) => {
+  try {
+    const updateData = {
+      approved: false,
+      status: 'inactive' as const,
+      rejectedAt: serverTimestamp(),
+      rejectedBy: adminUid,
+      updatedAt: serverTimestamp()
+    };
+    
+    await setDoc(doc(db, 'users', uid), updateData, { merge: true });
+    console.log('✅ [Auth] User rejected:', uid);
+    return { error: null };
+  } catch (error: any) {
+    console.error('❌ [Auth] Rejection error:', error);
     return { error: error.message };
   }
 };

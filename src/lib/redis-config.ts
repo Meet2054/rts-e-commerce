@@ -1,48 +1,32 @@
 // src/lib/redis-config.ts
-import Redis from 'ioredis';
+import { Redis } from '@upstash/redis'
 
 let redis: Redis | null = null;
 
 export function getRedisClient(): Redis {
   if (!redis) {
-    const redisUrl = process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL;
+    const restUrl = process.env.UPSTASH_REDIS_REST_URL;
+    const restToken = process.env.UPSTASH_REDIS_REST_TOKEN;
     
-    if (redisUrl) {
-      // For Upstash or external Redis URLs
-      redis = new Redis(redisUrl, {
-        maxRetriesPerRequest: 3,
-        enableReadyCheck: false,
-        lazyConnect: true,
-      });
-    } else {
-      // Local Redis configuration
-      redis = new Redis({
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        password: process.env.REDIS_PASSWORD,
-        maxRetriesPerRequest: 3,
-        enableReadyCheck: false,
-        lazyConnect: true,
-      });
+    if (!restUrl || !restToken) {
+      throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set');
     }
 
-    redis.on('error', (error) => {
-      console.error('Redis connection error:', error);
+    redis = new Redis({
+      url: restUrl,
+      token: restToken,
     });
 
-    redis.on('connect', () => {
-      console.log('Connected to Redis');
-    });
+    console.log('✅ Upstash Redis client initialized');
   }
 
   return redis;
 }
 
+// Upstash Redis doesn't need explicit connection closing
 export async function closeRedisConnection(): Promise<void> {
-  if (redis) {
-    await redis.quit();
-    redis = null;
-  }
+  // No-op for Upstash Redis as it's serverless
+  console.log('ℹ️ Upstash Redis is serverless - no connection to close');
 }
 
 export default getRedisClient;

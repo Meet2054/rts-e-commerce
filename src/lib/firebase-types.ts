@@ -133,22 +133,40 @@ export interface CartItem {
 
 // Order types
 export interface Order extends BaseDocument {
+  orderId: string; // Unique order number
   clientId: string;
   clientEmail: string;
-  status: 'placed' | 'confirmed' | 'cancelled' | 'fulfilled';
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  items: OrderItem[];
   totals: {
-    items: number;
+    itemCount: number;
     subtotal: number;
+    tax: number;
+    shipping: number;
+    total: number;
   };
+  currency: 'USD' | 'INR';
   shippingInfo: {
-    name: string;
+    fullName: string;
     phone: string;
     address: Address;
+  };
+  notes?: string;
+  paymentInfo?: {
+    method: 'cash_on_delivery' | 'bank_transfer' | 'card';
+    status: 'pending' | 'paid' | 'failed';
+    transactionId?: string;
+  };
+  trackingInfo?: {
+    trackingNumber?: string;
+    carrier?: string;
+    estimatedDelivery?: Timestamp;
   };
 }
 
 export interface OrderItem {
-  productId: string;
+  productId: string; // Firebase document ID
+  sku: string; // Product SKU for identification
   variantId?: string;
   nameSnap: string;
   brandSnap: string;

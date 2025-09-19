@@ -18,17 +18,30 @@ export class RedisCache {
       const fullKey = prefix ? `${prefix}:${key}` : key;
       console.log(`🔍 [REDIS] Attempting to fetch from cache: ${fullKey}`);
       
-      const value = await this.redis.get(fullKey);
+      const rawValue = await this.redis.get(fullKey);
       
-      if (!value) {
+      if (rawValue === null || rawValue === undefined) {
         console.log(`❌ [REDIS] Cache MISS - Key not found: ${fullKey}`);
         return null;
       }
 
       console.log(`✅ [REDIS] Cache HIT - Data found in Redis: ${fullKey}`);
-      console.log(`📊 [REDIS] Data size: ${value.length} characters`);
+      console.log(`🔍 [REDIS] Raw value type: ${typeof rawValue}`);
       
-      return JSON.parse(value);
+      // Handle different types of responses from Upstash Redis
+      if (typeof rawValue === 'string') {
+        console.log(`📊 [REDIS] Data size: ${rawValue.length} characters (string)`);
+        try {
+          return JSON.parse(rawValue);
+        } catch (parseError) {
+          console.error('❌ [REDIS] JSON parse error:', parseError);
+          return null;
+        }
+      } else {
+        // For non-string values, Upstash might return objects directly
+        console.log(`📊 [REDIS] Data type: ${typeof rawValue}, returning as-is`);
+        return rawValue as T;
+      }
     } catch (error) {
       console.error('❌ [REDIS] GET error:', error);
       return null;
@@ -80,12 +93,12 @@ export class RedisCache {
    */
   static async deletePattern(pattern: string): Promise<void> {
     try {
-      const keys = await this.redis.keys(pattern);
-      if (keys.length > 0) {
-        await this.redis.del(...keys);
-      }
+      // Note: Upstash Redis REST API doesn't support KEYS command
+      // This is a limitation we'll need to work around by tracking keys manually
+      console.warn('⚠️ [REDIS] DELETE PATTERN not supported by Upstash REST API');
+      console.warn('⚠️ [REDIS] Consider using key tracking or prefixed deletions instead');
     } catch (error) {
-      console.error('Redis DELETE PATTERN error:', error);
+      console.error('❌ [REDIS] DELETE PATTERN error:', error);
     }
   }
 
@@ -173,13 +186,17 @@ export class RedisCache {
       return values.map(value => {
         if (!value) return null;
         try {
-          return JSON.parse(value);
+          if (typeof value === 'string') {
+            return JSON.parse(value);
+          } else {
+            return value as T;
+          }
         } catch {
           return null;
         }
       });
     } catch (error) {
-      console.error('Redis MGET error:', error);
+      console.error('❌ [REDIS] MGET error:', error);
       return keys.map(() => null);
     }
   }
@@ -193,22 +210,24 @@ export class RedisCache {
   ): Promise<void> {
     try {
       const { prefix, ttl = this.defaultTTL } = options;
-      const pipeline = this.redis.pipeline();
-
-      keyValuePairs.forEach(({ key, value }) => {
+      
+      // Upstash Redis doesn't support pipeline the same way
+      // Execute operations in parallel instead
+      const promises = keyValuePairs.map(async ({ key, value }) => {
         const fullKey = prefix ? `${prefix}:${key}` : key;
         const serializedValue = JSON.stringify(value);
         
         if (ttl > 0) {
-          pipeline.setex(fullKey, ttl, serializedValue);
+          return this.redis.setex(fullKey, ttl, serializedValue);
         } else {
-          pipeline.set(fullKey, serializedValue);
+          return this.redis.set(fullKey, serializedValue);
         }
       });
 
-      await pipeline.exec();
+      await Promise.all(promises);
+      console.log(`✅ [REDIS] Successfully set ${keyValuePairs.length} keys`);
     } catch (error) {
-      console.error('Redis MSET error:', error);
+      console.error('❌ [REDIS] MSET error:', error);
     }
   }
 }

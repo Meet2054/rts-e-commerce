@@ -1,6 +1,6 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
-import { Package } from 'lucide-react';
+import { Package, X } from 'lucide-react';
 
 interface AddExcelProps {
   open: boolean;
@@ -62,15 +62,15 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div ref={modalRef} className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-8 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+      <div ref={modalRef} className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-8 relative">
         {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-black text-xl font-bold"
           aria-label="Close"
         >
-          ×
+          <X />
         </button>
         <h2 className="text-2xl font-bold mb-6 text-black flex items-center gap-2">
           <Package className="h-6 w-6" />
@@ -89,9 +89,9 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
           <button
             onClick={handleFileUpload}
             disabled={loading || !selectedFile}
-            className="bg-[#2E318E] hover:bg-black disabled:opacity-50 text-white px-4 py-2 rounded-lg flex items-center gap-2 w-full"
+            className="bg-[#2E318E] hover:bg-black disabled:opacity-40 text-white px-4 py-2.5 rounded-md flex items-center gap-2 w-full"
           >
-            <Package className="h-4 w-4" />
+            <Package size={20} />
             {loading ? 'Uploading Products...' : 'Upload Products'}
           </button>
         </div>

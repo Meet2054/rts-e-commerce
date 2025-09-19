@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import AddProductModal from '../components/ui/addProduct';
 import AddExcelModal from '../components/ui/addExcel';
 import ProductDetailModal from '../components/ui/productDetail';
+import { Upload, Plus, ChevronDown } from 'lucide-react';
+
 
 const products = [
   { id: 'P1023', name: 'HP Toner Cartridge', category: 'Ink & Toner', price: '$3,500', stock: 12, status: 'Active' },
@@ -44,27 +46,26 @@ export default function ProductsPage() {
   return (
     <div className="max-w-[1550px] p-8 mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
         <div>
           <div className="text-xl font-bold text-black">Products -</div>
           <div className="text-gray-500 text-base">Manage all products in your catalog</div>
         </div>
         <div className="flex gap-3 relative" ref={dropdownRef}>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg shadow-sm text-sm font-semibold hover:bg-gray-50">
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export Product
+          <button className="flex items-center gap-2 admin-button">
+            <Upload size={16} /> Export Product
           </button>
           <button
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-[#2E318E] relative"
+            className="flex items-center gap-2 admin-button"
             onClick={() => setDropdownOpen((open) => !open)}
           >
-            <span className="text-lg font-bold">+</span>
+            <Plus size={16} />
             Add New Product
           </button>
           {dropdownOpen && (
-            <div className="absolute top-full right-0 mt-2 w-56 bg-white border rounded-lg shadow-lg z-50">
+            <div className="absolute top-full right-0 mt-2 w-44 bg-white border rounded-lg shadow-lg z-50">
               <button
-                className="w-full text-center py-3 px-4 hover:bg-[#F1F2F4] text-black text-base"
+                className="w-full admin-button"
                 onClick={() => {
                   setDropdownOpen(false);
                   setModalOpen(true);
@@ -73,30 +74,30 @@ export default function ProductsPage() {
                 Add Manually
               </button>
               <button
-                className="w-full text-center py-3 px-4 hover:bg-[#F1F2F4] text-black text-base"
+                className="w-full admin-button"
                 onClick={() => {
                   setDropdownOpen(false);
                   setExcelModalOpen(true);
                 }}
               >
-                Upload (Excel, CSV, etc.)
+                Upload Excel
               </button>
             </div>
           )}
         </div>
       </div>
       {/* Filter */}
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end mb-4">
         <button className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1">
           Filter by <span className="font-bold">Date Range</span>
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <ChevronDown size={20} />
         </button>
       </div>
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border p-2">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-gray-500 font-semibold border-b">
+            <tr className="text-left text-black font-semibold border-b">
               <th className="py-3 px-4">Product ID</th>
               <th className="py-3 px-4">Name</th>
               <th className="py-3 px-4">Category</th>
@@ -108,16 +109,16 @@ export default function ProductsPage() {
           </thead>
           <tbody>
             {products.map((prod) => (
-              <tr key={prod.id} className="border-b last:border-b-0">
-                <td className="py-2 px-4 font-medium">{prod.id}</td>
-                <td className="py-2 px-4">{prod.name}</td>
-                <td className="py-2 px-4">{prod.category}</td>
-                <td className="py-2 px-4">{prod.price}</td>
-                <td className="py-2 px-4">{prod.stock}</td>
-                <td className="py-2 px-4">
+              <tr key={prod.id} className=" text-[#84919A]">
+                <td className="py-2.5 px-4 font-medium">{prod.id}</td>
+                <td className="py-2.5 px-4">{prod.name}</td>
+                <td className="py-2.5 px-4">{prod.category}</td>
+                <td className="py-2.5 px-4">{prod.price}</td>
+                <td className="py-2.5 px-4">{prod.stock}</td>
+                <td className="py-2.5 px-4">
                   <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
                 </td>
-                <td className="py-2 px-4">
+                <td className="py-2.5 px-4">
                   <button
                     className="text-[#2E318E] font-semibold hover:underline"
                     onClick={() => {
@@ -134,10 +135,10 @@ export default function ProductsPage() {
         </table>
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
-          <span className="text-xs text-gray-500">Page 1 of 10</span>
+          <span className="text-sm text-black">Page 1 of 10</span>
           <div className="flex gap-2">
-            <button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Previous</button>
-            <button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Next</button>
+            <button className="px-4 py-2.5 cursor-pointer rounded border-2 border-[#F1F2F4] text-sm font-medium">Previous</button>
+            <button className="px-4 py-2.5 cursor-pointer rounded border-2 border-[#F1F2F4] text-sm font-medium">Next</button>
           </div>
         </div>
       </div>

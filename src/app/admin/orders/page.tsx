@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import { ChevronDown, Upload } from 'lucide-react';
 
 const orders = [
   { id: '#124', customer: 'Rajesh Kumar', contact: 15, value: '$3500', total: 120 },
@@ -37,8 +38,8 @@ export default function OrdersPage() {
           <div className="text-xl font-bold text-black">Orders Page -</div>
           <div className="text-gray-500 text-base">Manage and track all submitted orders</div>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-[#2E318E]">
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <button className="flex items-center gap-2 admin-button hover:bg-[#2E318E]">
+          <Upload size={16} />
           Export Orders List
         </button>
       </div>
@@ -48,7 +49,7 @@ export default function OrdersPage() {
           <button
             key={tab.label}
             onClick={() => setActiveTab(tab.label)}
-            className={`px-5 py-2 rounded-lg text-sm font-semibold ${
+            className={`admin-button ${
               activeTab === tab.label
                 ? 'bg-black text-white'
                 : 'bg-[#F1F2F4] text-black'
@@ -59,10 +60,10 @@ export default function OrdersPage() {
         ))}
       </div>
       {/* Filter */}
-      <div className="flex justify-end mb-2">
+      <div className="flex justify-end mb-4">
         <button className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1">
           Filter by <span className="font-bold">Date Range</span>
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <ChevronDown size={20} />
         </button>
       </div>
       {/* Table */}
@@ -80,13 +81,13 @@ export default function OrdersPage() {
           </thead>
           <tbody>
             {orders.map((order) => (
-              <tr key={order.id} className="border-b last:border-b-0">
-                <td className="py-2 px-4 font-medium">{order.id}</td>
-                <td className="py-2 px-4">{order.customer}</td>
-                <td className="py-2 px-4">{order.contact}</td>
-                <td className="py-2 px-4">{order.value}</td>
-                <td className="py-2 px-4">{order.total}</td>
-                <td className="py-2 px-4">
+              <tr key={order.id} className="">
+                <td className="py-2.5 px-4 font-medium">{order.id}</td>
+                <td className="py-2.5 px-4">{order.customer}</td>
+                <td className="py-2.5 px-4">{order.contact}</td>
+                <td className="py-2.5 px-4">{order.value}</td>
+                <td className="py-2.5 px-4">{order.total}</td>
+                <td className="py-2.5 px-4">
                   <button className="text-[#2E318E] font-semibold hover:underline">View</button>
                 </td>
               </tr>
@@ -95,10 +96,10 @@ export default function OrdersPage() {
         </table>
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
-          <span className="text-xs text-gray-500">Page 1 of 10</span>
+          <span className="text-base text-gray-900">Page 1 of 10</span>
           <div className="flex gap-2">
-            <button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Previous</button>
-            <button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Next</button>
+            <button className="admin-button">Previous</button>
+            <button className="admin-button">Next</button>
           </div>
         </div>
       </div>

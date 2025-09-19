@@ -4,8 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, Search, LogOut, Settings, CircleUserRound, EllipsisVertical, Package } from 'lucide-react';
-import SearchDropdown from './SearchDropdown';
+import { ShoppingCart, Search, LogOut, Settings, CircleUserRound, EllipsisVertical, } from 'lucide-react';
+import SearchDropdown from '../common/SearchDropdown';
 import { useAuth } from '@/components/auth/auth-provider';
 import { signOut } from '@/lib/firebase-auth';
 import Image from 'next/image';
@@ -173,10 +173,7 @@ const Header = () => {
                   )}
                 </AnimatePresence>
               </div>
-              <Link href="/orders" className="p-2 rounded-lg hover:bg-gray-100" title="My Orders">
-                <Package className="h-6 w-6" />
-              </Link>
-              <Link href="/cart" className="p-2 rounded-lg hover:bg-gray-100" title="Shopping Cart">
+              <Link href="/cart" className="p-2 rounded-lg hover:bg-gray-100">
                 <ShoppingCart className="h-6 w-6" />
               </Link>
               {/* Three-dot icon with dropdown */}

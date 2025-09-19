@@ -12,7 +12,7 @@ import Image from 'next/image';
 
 const Header = () => {
   const router = useRouter();
-  const { user, userData, loading } = useAuth();
+  const { user, userData, loading, isAdmin } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -162,6 +162,22 @@ const Header = () => {
                         </span>
                       )}
                       <hr className="my-2" />
+                      
+                      {/* Admin Dashboard Link */}
+                      {isAdmin && (
+                        <>
+                          <Link 
+                            href="/admin/client"
+                            className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-purple-700 hover:text-purple-800 hover:bg-purple-50"
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <Settings className="h-4 w-4" />
+                            <span>Admin Dashboard</span>
+                          </Link>
+                          <hr className="my-2" />
+                        </>
+                      )}
+                      
                       <button
                         onClick={handleSignOut}
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-gray-100"
@@ -206,8 +222,8 @@ const Header = () => {
                 </AnimatePresence>
               </div>
               {/* Admin Link */}
-              {userData?.role === 'admin' && (
-                <Link href="/admin" className="p-2 rounded-lg hover:bg-purple-50">
+              {isAdmin && (
+                <Link href="/admin/client" className="p-2 rounded-lg hover:bg-purple-50" title="Admin Dashboard">
                   <Settings className="h-6 w-6 text-purple-700" />
                 </Link>
               )}

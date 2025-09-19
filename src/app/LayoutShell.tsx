@@ -19,8 +19,8 @@ function HydrateClient({ children }: { children: React.ReactNode }) {
 export default function LayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const hideLayout =
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/signup") ||
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up") ||
     pathname.startsWith("/admin");
 
   return (

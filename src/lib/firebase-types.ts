@@ -15,6 +15,14 @@ export interface User extends BaseDocument {
   displayName: string;
   phoneNumber?: string;
   
+  // Approval Status
+  status: 'requested' | 'active' | 'inactive';
+  approved?: boolean;
+  approvedAt?: Timestamp;
+  approvedBy?: string; // Admin user ID who approved
+  rejectedAt?: Timestamp;
+  rejectedBy?: string; // Admin user ID who rejected
+  
   // Company Information
   companyName?: string;
   businessType?: 'manufacturer' | 'distributor' | 'retailer';

@@ -612,10 +612,10 @@ export default function SignUpForm() {
       </div>
       {/* Right side - Image */}
       <div className="hidden lg:flex relative w-[70%] bg-gray-100">
-        <Image src="/login.png" alt="Background" fill className="object-cover" />
-        <div className="absolute bottom-10 right-10">
+        <Image src="/login.svg" alt="Background" fill className="object-cover" />
+        {/* <div className="absolute bottom-10 right-10">
           <Image src="/katun.svg" alt="Katun Logo" width={200} height={40} className="opacity-90" />
-        </div>
+        </div> */}
       </div>
     </div>
   );

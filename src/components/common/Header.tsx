@@ -66,14 +66,14 @@ const Header = () => {
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-[1550px] mx-auto px-4 sm:px-16 py-2">
+      <div className="max-w-[1550px] mx-auto px-4 sm:px-16 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
             <Image 
              src="/logo.svg" 
              alt="RTS Logo" 
-             width={300} 
+             width={300}
              height={60} 
             />
           </Link>

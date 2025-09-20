@@ -9,10 +9,10 @@ import { ShippingAddress } from '@/lib/cart-types';
 import { Minus, Plus, Trash2, ShoppingCart as CartIcon, Loader2 } from 'lucide-react';
 
 export default function ShoppingCart() {
-	const { user, userData } = useAuth();
+	const { user, userData, token } = useAuth();
 	const { loading, error, items } = useCartState();
 	const { itemCount, subtotal, tax, shipping, total, isEmpty, currency } = useCartSummary();
-	const { removeFromCart, updateQuantity, clearCart } = useCartActions();
+	const { removeFromCart, updateQuantity, clearCart, refreshCart } = useCartActions();
 	
 	// Create default shipping address from user data
 	const getDefaultShippingAddress = (): ShippingAddress => {
@@ -66,6 +66,14 @@ export default function ShoppingCart() {
 			setShippingAddress(getDefaultShippingAddress());
 		}
 	}, [userData, user]);
+
+	// Refresh cart with user-specific pricing when authentication changes
+	useEffect(() => {
+		if (user && token) {
+			console.log('🔄 [CART] User authenticated with token, refreshing cart for user-specific pricing');
+			refreshCart();
+		}
+	}, [user, token, refreshCart]);
 
 	// Handle quantity update with optimistic UI
 	const handleQuantityChange = async (itemId: string, newQuantity: number) => {

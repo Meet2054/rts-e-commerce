@@ -25,6 +25,7 @@ function ProductList() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [error, setError] = useState('');
   const [addingToCart, setAddingToCart] = useState<Record<string, boolean>>({});
+  const [pagination, setPagination] = useState<{totalItems: number; totalPages: number} | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -35,6 +36,7 @@ function ProductList() {
       setLoading(true);
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
+      params.append('pageSize', '100'); // Request 100 products by default
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -53,12 +55,25 @@ function ProductList() {
       if (response.ok && (data.success !== false) && Array.isArray(data.products)) {
         setProducts(data.products);
         
+        // Store pagination data
+        if (data.pagination) {
+          setPagination({
+            totalItems: data.pagination.totalItems,
+            totalPages: data.pagination.totalPages
+          });
+        }
+        
         // Initialize quantities for all products using SKU
         const initial: Record<string, number> = {};
         data.products.forEach((p: Product) => { initial[p.sku] = 1; });
         setQuantities(initial);
         
         setError('');
+        
+        // Log pagination info if available
+        if (data.pagination) {
+          console.log(`📊 [Frontend] Showing ${data.products.length} of ${data.pagination.totalItems} products`);
+        }
         
         // Log cache source information
         if (data.source) {
@@ -199,6 +214,11 @@ function ProductList() {
         <div className="flex items-center justify-between mb-6">
           <div className="text-2xl font-bold text-black">
             Found <span className="text-blue-600">{filteredProducts.length}</span> results for <span className="text-blue-600">{searchTerm || 'All'}</span>
+            {pagination && pagination.totalItems > filteredProducts.length && (
+              <div className="text-sm text-gray-500 mt-1">
+                Showing {filteredProducts.length} of {pagination.totalItems} total products
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <button className="p-2 rounded hover:bg-white" title="Grid View">
@@ -214,8 +234,8 @@ function ProductList() {
                 onChange={e => setSortOption(e.target.value)}
               >
                 <option value="featured">Sort by Featured</option>
-                <option value="price-low">Sort by Price: Low to High</option>
-                <option value="price-high">Sort by Price: High to Low</option>
+                {token && <option value="price-low">Sort by Price: Low to High</option>}
+                {token && <option value="price-high">Sort by Price: High to Low</option>}
                 <option value="rating">Sort by Rating</option>
               </select>
             </div>
@@ -258,27 +278,30 @@ function ProductList() {
                     >
                       {order.name}
                     </div>
-                    <div className="text-lg font-bold text-black">{formatPrice(order.price)}</div>
+                    {token && <div className="text-lg font-bold text-black">{formatPrice(order.price)}</div>}
+                    {!token && <div className="text-sm text-gray-500">Sign in to view pricing</div>}
           
                   </div>
-                  <div className='flex flex-col w-[35%] gap-1'>
-                    <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
-                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: Math.max(1, (q[order.sku] || 1) - 1) })); }}><Minus size={16} /></button>
-                      <span className="px-2 text-base">{quantities[order.sku] || 1}</span>
-                      <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: (q[order.sku] || 1) + 1 })); }}><Plus size={16} /></button>
+                  {token && (
+                    <div className='flex flex-col w-[35%] gap-1'>
+                      <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
+                        <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: Math.max(1, (q[order.sku] || 1) - 1) })); }}><Minus size={16} /></button>
+                        <span className="px-2 text-base">{quantities[order.sku] || 1}</span>
+                        <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: (q[order.sku] || 1) + 1 })); }}><Plus size={16} /></button>
+                      </div>
+                      <button
+                        className="mt-2 bg-[#2E318E] cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
+                        disabled={addingToCart[order.sku]}
+                        onClick={e => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleAddToCart(order, quantities[order.sku] || 1);
+                        }}
+                      >
+                        {addingToCart[order.sku] ? 'Adding...' : 'Add Cart'}
+                      </button>
                     </div>
-                    <button
-                      className="mt-2 bg-[#2E318E] cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
-                      disabled={addingToCart[order.sku]}
-                      onClick={e => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleAddToCart(order, quantities[order.sku] || 1);
-                      }}
-                    >
-                      {addingToCart[order.sku] ? 'Adding...' : 'Add Cart'}
-                    </button>
-                  </div>
+                  )}
                 </div>
               </div>
             ))}

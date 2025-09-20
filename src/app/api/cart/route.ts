@@ -4,6 +4,150 @@ import { RedisCache, CacheKeys, CacheTTL } from '@/lib/redis-cache';
 import { Cart, CartItem, AddToCartRequest } from '@/lib/cart-types';
 import { CartCalculations, CartValidation, CartStorage } from '@/lib/cart-utils';
 import { adminDb } from '@/lib/firebase-admin';
+import { verifyAuthToken } from '@/lib/auth-utils';
+import { adminAuth } from '@/lib/firebase-admin';
+
+// Helper function to get user-specific price for a product
+async function getUserSpecificPrice(productSku: string, basePrice: number, authHeader: string | null): Promise<number> {
+  if (!authHeader) {
+    return basePrice;
+  }
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    
+    if (!decodedToken?.uid) {
+      return basePrice;
+    }
+
+    console.log(`🔍 [CART API] Checking custom price for user ${decodedToken.uid}, product SKU ${productSku}`);
+
+    // First, get the product document ID from the SKU
+    const productQuery = adminDb.collection('products').where('sku', '==', productSku).limit(1);
+    const productSnapshot = await productQuery.get();
+    
+    if (productSnapshot.empty) {
+      console.log(`❌ [CART API] Product not found for SKU ${productSku}`);
+      return basePrice;
+    }
+    
+    const productId = productSnapshot.docs[0].id;
+    console.log(`📋 [CART API] Product ID for SKU ${productSku}: ${productId}`);
+
+    // Now get custom pricing using the product document ID
+    const customPricingDoc = await adminDb
+      .collection('users')
+      .doc(decodedToken.uid)
+      .collection('customPricing')
+      .doc(productId)
+      .get();
+
+    if (customPricingDoc.exists) {
+      const pricingData = customPricingDoc.data();
+      const customPriceInCents = pricingData?.customPrice;
+      
+      if (typeof customPriceInCents === 'number') {
+        // Convert from cents back to decimal (divide by 100)
+        const customPrice = customPriceInCents / 100;
+        console.log(`💰 [CART API] Found custom price for ${productSku}: ${basePrice} → ${customPrice} (from ${customPriceInCents} cents)`);
+        return customPrice;
+      }
+    }
+
+    console.log(`💰 [CART API] No custom price found for ${productSku}, using base price: ${basePrice}`);
+    return basePrice;
+  } catch (error) {
+    console.warn('Error getting user-specific price:', error);
+    return basePrice;
+  }
+}
+
+// Helper function to apply user-specific pricing to cart items
+async function applyUserSpecificPricing(cart: Cart, authHeader: string | null, userId?: string, sessionId?: string): Promise<Cart> {
+  console.log(`🔐 [CART API] Auth header present: ${!!authHeader}, Cart items: ${cart.items?.length || 0}`);
+  
+  if (!authHeader || !cart.items?.length) {
+    return cart;
+  }
+
+  try {
+    const token = authHeader.replace('Bearer ', '');
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    
+    console.log(`👤 [CART API] Authenticated user: ${decodedToken.uid}`);
+    
+    if (!decodedToken?.uid) {
+      return cart;
+    }
+
+    // Get custom pricing for this user
+    const customPricingSnapshot = await adminDb
+      .collection('users')
+      .doc(decodedToken.uid)
+      .collection('customPricing')
+      .get();
+
+    const customPricing: { [sku: string]: number } = {};
+    customPricingSnapshot.forEach(doc => {
+      const data = doc.data();
+      // Convert from cents back to decimal
+      const customPriceInCents = data.customPrice;
+      if (typeof customPriceInCents === 'number') {
+        customPricing[data.sku] = customPriceInCents / 100;
+      }
+    });
+
+    console.log(`💰 [CART API] Found custom pricing for ${Object.keys(customPricing).length} SKUs:`, Object.keys(customPricing));
+    console.log(`📦 [CART API] Cart item SKUs:`, cart.items.map(item => item.sku));
+    
+    // Log specific pricing for cart items
+    cart.items.forEach(item => {
+      if (customPricing[item.sku]) {
+        console.log(`💲 [CART API] Custom price for ${item.sku}: ${customPricing[item.sku]}`);
+      }
+    });
+
+    // Apply custom pricing to cart items
+    let priceUpdated = false;
+    const updatedItems = cart.items.map(item => {
+      console.log(`🔍 [CART API] Checking item SKU: ${item.sku}, Custom price available: ${!!customPricing[item.sku]}`);
+      if (customPricing[item.sku]) {
+        priceUpdated = true;
+        console.log(`🏷️ [CART API] Applying user-specific price for ${item.sku}: ${item.price} → ${customPricing[item.sku]}`);
+        return {
+          ...item,
+          price: customPricing[item.sku]
+        };
+      }
+      return item;
+    });
+
+    if (priceUpdated) {
+      console.log(`✅ [CART API] Applied user-specific pricing to ${updatedItems.filter((_, i) => cart.items[i].price !== updatedItems[i].price).length} items`);
+      // Recalculate cart totals with updated prices
+      const updatedCart = {
+        ...cart,
+        items: updatedItems
+      };
+      const finalCart = CartCalculations.updateCartTotals(updatedCart);
+      
+      // Update the cache with the new pricing
+      const cartKey = userId ? CacheKeys.cartUser(userId) : CacheKeys.cartSession(sessionId!);
+      await RedisCache.set(cartKey, finalCart, { ttl: CacheTTL.CART, prefix: 'api' });
+      console.log(`💾 [CART API] Updated cache with user-specific pricing`);
+      
+      return finalCart;
+    } else {
+      console.log(`ℹ️ [CART API] No price updates needed - no custom pricing found for cart items`);
+    }
+
+    return cart;
+  } catch (error) {
+    console.warn('Error applying user-specific pricing to cart:', error);
+    return cart;
+  }
+}
 
 // GET /api/cart - Get user's cart
 export async function GET(request: NextRequest) {
@@ -24,10 +168,21 @@ export async function GET(request: NextRequest) {
     const cartKey = userId ? CacheKeys.cartUser(userId) : CacheKeys.cartSession(sessionId!);
     
     // Try Redis cache first
-    const cachedCart = await RedisCache.get(cartKey, 'api');
+    let cachedCart = await RedisCache.get(cartKey, 'api');
+    
+    // If we have auth headers and cached cart, clear cache to force fresh pricing lookup
+    if (cachedCart && request.headers.get('authorization')) {
+      console.log(`🗑️ [CART API] Clearing cache for authenticated user to apply fresh pricing`);
+      await RedisCache.delete(cartKey, 'api');
+      cachedCart = null;
+    }
     
     if (cachedCart) {
-      console.log(`✅ [REDIS] Cart served from cache for ${userId || sessionId}`);
+      // Apply user-specific pricing to cached cart
+      const authHeader = request.headers.get('authorization');
+      cachedCart = await applyUserSpecificPricing(cachedCart, authHeader, userId || undefined, sessionId || undefined);
+      
+      console.log(`✅ [REDIS] Cart served from cache for ${userId || sessionId} with updated pricing`);
       return NextResponse.json({
         success: true,
         cart: cachedCart,
@@ -61,6 +216,10 @@ export async function GET(request: NextRequest) {
       cart = CartCalculations.updateCartTotals(cart); // Recalculate totals
       console.log(`✅ [FIREBASE] Loaded cart with ${cart.items.length} items`);
     }
+
+    // Apply user-specific pricing to the cart
+    const authHeader = request.headers.get('authorization');
+    cart = await applyUserSpecificPricing(cart, authHeader, userId || undefined, sessionId || undefined);
 
     // Cache the cart
     await RedisCache.set(cartKey, cart, { ttl: CacheTTL.CART, prefix: 'api' }); // Optimized TTL
@@ -124,13 +283,17 @@ export async function POST(request: NextRequest) {
     const productData = productDoc.data()!;
     console.log(`✅ [API] Product found: ${productData.name} - $${productData.price}`);
     
+    // Get user-specific price if authenticated
+    const authHeader = request.headers.get('authorization');
+    const finalPrice = await getUserSpecificPrice(productData.sku, productData.price, authHeader);
+    
     // Create cart item
     const cartItem: CartItem = {
       id: productData.sku, // Use SKU as the cart item ID
       sku: productData.sku,
       name: productData.name,
       image: productData.image || productData.imageUrl || '/product-placeholder.png',
-      price: productData.price,
+      price: finalPrice,
       quantity,
       brand: productData.brand || 'Unknown Brand',
       category: productData.category || 'General',

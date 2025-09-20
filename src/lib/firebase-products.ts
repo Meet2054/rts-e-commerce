@@ -190,44 +190,51 @@ export class CategoryService {
   }
 }
 
-// Price override service
+// User-specific pricing service using subcollections
 export class PricingService {
-  static async getClientPrice(
-    clientId: string, 
-    productId: string, 
-    variantId?: string
+  static async getCustomPrice(
+    userId: string, 
+    productId: string
   ): Promise<number | null> {
     try {
-      const compositeId = variantId 
-        ? `${clientId}_${productId}_${variantId}`
-        : `${clientId}_${productId}`;
-
-      const priceDoc = await getDoc(doc(db, 'clientPriceOverrides', compositeId));
+      // Get custom price from user's customPricing subcollection
+      const customPriceDoc = await getDoc(
+        doc(db, 'users', userId, 'customPricing', productId)
+      );
       
-      if (priceDoc.exists()) {
-        const data = priceDoc.data() as ClientPriceOverride;
-        // Check if price is still valid
-        if (!data.effectiveTo || data.effectiveTo.toDate() > new Date()) {
-          return data.price;
-        }
+      if (customPriceDoc.exists()) {
+        const data = customPriceDoc.data();
+        return data.customPrice || null;
       }
       return null;
     } catch (error) {
-      console.error('Error fetching client price:', error);
+      console.error('Error fetching custom price:', error);
       return null;
     }
   }
 
-  static async setClientPrice(override: Omit<ClientPriceOverride, 'id' | 'createdAt'>) {
+  static async setCustomPrice(
+    userId: string,
+    productId: string,
+    customPrice: number,
+    sku?: string,
+    source?: string
+  ) {
     try {
-      const compositeId = override.variantId 
-        ? `${override.clientId}_${override.productId}_${override.variantId}`
-        : `${override.clientId}_${override.productId}`;
-
-      await setDoc(doc(db, 'clientPriceOverrides', compositeId), {
-        ...override,
+      const customPriceData = {
+        productId,
+        sku: sku || '',
+        customPrice,
+        currency: 'INR',
+        source: source || 'manual',
         createdAt: serverTimestamp(),
-      });
+        updatedAt: serverTimestamp()
+      };
+
+      await setDoc(
+        doc(db, 'users', userId, 'customPricing', productId), 
+        customPriceData
+      );
     } catch (error) {
       console.error('Error setting client price:', error);
       throw error;
@@ -235,13 +242,12 @@ export class PricingService {
   }
 
   static async getEffectivePrice(
-    clientId: string,
-    productId: string,
-    variantId?: string
+    userId: string,
+    productId: string
   ): Promise<number> {
     try {
-      // First try to get custom price
-      const customPrice = await this.getClientPrice(clientId, productId, variantId);
+      // First try to get custom price from user's subcollection
+      const customPrice = await this.getCustomPrice(userId, productId);
       if (customPrice !== null) {
         return customPrice;
       }
@@ -252,18 +258,7 @@ export class PricingService {
         throw new Error('Product not found');
       }
 
-      let basePrice = product.basePrice;
-
-      // Add variant price if applicable
-      if (variantId) {
-        const variants = await ProductService.getProductVariants(productId);
-        const variant = variants.find(v => v.id === variantId);
-        if (variant && variant.basePrice) {
-          basePrice = variant.basePrice;
-        }
-      }
-
-      return basePrice;
+      return product.basePrice || 0;
     } catch (error) {
       console.error('Error getting effective price:', error);
       throw error;

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
+import { useAuth } from '@/components/auth/auth-provider';
 
 interface Product {
 	id: string;
@@ -22,6 +23,7 @@ interface BestSellingProduct extends Product {
 }
 
 const BestSelling = () => {
+	const { token } = useAuth();
 	const [bestSellingProducts, setBestSellingProducts] = useState<BestSellingProduct[]>([]);
 	const [loading, setLoading] = useState(true);
 
@@ -29,7 +31,15 @@ const BestSelling = () => {
 	useEffect(() => {
 		const fetchBestSellingProducts = async () => {
 			try {
-				const response = await fetch('/api/products?limit=4&sortBy=popularity');
+				const headers: HeadersInit = {
+					'Content-Type': 'application/json',
+				};
+
+				if (token) {
+					headers.Authorization = `Bearer ${token}`;
+				}
+
+				const response = await fetch('/api/products?limit=4&sortBy=popularity', { headers });
 				if (response.ok) {
 					const data = await response.json();
 					const productsWithQuantity = data.products
@@ -41,7 +51,7 @@ const BestSelling = () => {
 					setBestSellingProducts(productsWithQuantity);
 				} else {
 					// Fallback to regular products if popularity sorting isn't available
-					const fallbackResponse = await fetch('/api/products?limit=4');
+					const fallbackResponse = await fetch('/api/products?limit=4', { headers });
 					if (fallbackResponse.ok) {
 						const fallbackData = await fallbackResponse.json();
 						const productsWithQuantity = fallbackData.products
@@ -61,7 +71,7 @@ const BestSelling = () => {
 		};
 
 		fetchBestSellingProducts();
-	}, []);
+	}, [token]);
 
 	if (loading) {
 		return (
@@ -115,21 +125,27 @@ const BestSelling = () => {
 							<div className='flex flex-row justify-between'>
 								<div className='flex flex-col w-[60%] gap-1'>
 									<div className="font-semibold text-base text-black">{product.name}</div>
-									<div className="text-lg font-bold text-black">₹{product.price.toLocaleString()}</div>
+									{token ? (
+										<div className="text-lg font-bold text-black">₹{product.price.toLocaleString()}</div>
+									) : (
+										<div className="text-sm text-gray-500">Sign in to view pricing</div>
+									)}
 								</div>
-								<div>
-									<div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
-										<button className=""><Minus size={16} /></button>
-										<span className="px-2 text-base">{product.quantity}</span>
-										<button className=""><Plus size={16} /></button>
+								{token && (
+									<div>
+										<div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
+											<button className=""><Minus size={16} /></button>
+											<span className="px-2 text-base">{product.quantity}</span>
+											<button className=""><Plus size={16} /></button>
+										</div>
+										<Link 
+											href={`/products/${product.sku}`}
+											className="mt-2 bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base block text-center hover:bg-blue-700 transition-colors"
+										>
+											Add Cart
+										</Link>
 									</div>
-									<Link 
-										href={`/products/${product.sku}`}
-										className="mt-2 bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base block text-center hover:bg-blue-700 transition-colors"
-									>
-										Add Cart
-									</Link>
-								</div>
+								)}
 							</div>
 						</div>
 					))}

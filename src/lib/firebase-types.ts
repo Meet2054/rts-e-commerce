@@ -114,6 +114,15 @@ export interface ClientPriceOverride extends BaseDocument {
   effectiveTo?: Timestamp;
 }
 
+// User custom pricing (subcollection under users/{userId}/customPricing/{productId})
+export interface CustomPricing extends BaseDocument {
+  productId: string;
+  sku?: string;
+  customPrice: number; // in cents/paise
+  currency: string;
+  source: string; // e.g., "excel:filename.xlsx" or "manual"
+}
+
 export interface PriceOverrideMeta extends BaseDocument {
   uploadedBy: string;
   filePath: string; // Storage path

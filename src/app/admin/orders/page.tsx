@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { ChevronDown, Upload } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { formatDate } from '@/lib/date-utils';
@@ -64,18 +65,21 @@ const tabs = [
   { label: 'Cancelled' },
 ];
 
+const OrderDetailsModal = dynamic(() => import('../components/ui/orderDetailsPage'), { ssr: false });
+
 export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const { user, token, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const fetchOrders = async () => {
       if (!token) return;
-      
       try {
         const response = await fetch('/api/admin/orders', {
           headers: {
@@ -83,7 +87,6 @@ export default function OrdersPage() {
             'Content-Type': 'application/json'
           }
         });
-
         if (response.ok) {
           const data = await response.json();
           setOrders(data.orders || []);
@@ -97,7 +100,6 @@ export default function OrdersPage() {
         setLoading(false);
       }
     };
-
     fetchOrders();
   }, [token]);
 
@@ -126,7 +128,6 @@ export default function OrdersPage() {
         formatDate(order.createdAt)
       ].join(','))
     ].join('\n');
-
     // Download CSV
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -169,13 +170,11 @@ export default function OrdersPage() {
           Export Orders List
         </button>
       </div>
-      
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
-      
       {/* Tabs */}
       <div className="flex gap-2 mb-4">
         {tabs.map(tab => (
@@ -198,7 +197,6 @@ export default function OrdersPage() {
           </button>
         ))}
       </div>
-      
       {/* Filter */}
       <div className="flex justify-end mb-4">
         <button className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1">
@@ -206,7 +204,6 @@ export default function OrdersPage() {
           <ChevronDown size={20} />
         </button>
       </div>
-      
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border p-2">
         <table className="w-full text-sm">
@@ -256,14 +253,18 @@ export default function OrdersPage() {
                     {formatDate(order.createdAt)}
                   </td>
                   <td className="py-2.5 px-4">
-                    <button className="text-[#2E318E] font-semibold hover:underline">View</button>
+                    <button
+                      className="text-[#2E318E] font-semibold hover:underline"
+                      onClick={() => { setSelectedOrder(order); setShowOrderModal(true); }}
+                    >
+                      View
+                    </button>
                   </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-        
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
           <span className="text-base text-gray-900">
@@ -275,6 +276,12 @@ export default function OrdersPage() {
           </div>
         </div>
       </div>
+      {/* Order Details Modal */}
+      <OrderDetailsModal
+        open={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        order={selectedOrder}
+      />
     </div>
   );
 }

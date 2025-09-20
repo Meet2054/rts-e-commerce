@@ -4,6 +4,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { AdminGuard } from '@/components/auth/admin-guard';
 import UserDetailsModal from '@/app/admin/components/ui/userDetails';
 import PricingUploadModal from '@/app/admin/components/ui/PricingUploadModal';
+import UserRequestedDetailsModal from '@/app/admin/components/ui/userRequestDetails';
 
 interface Client {
   id: string;
@@ -154,6 +155,11 @@ export default function ClientPage() {
     setShowUserModal(true);
   };
 
+  const handleRequestedViewUser = (client: Client) => {
+    setSelectedUser(client);
+    setShowUserModal(true);
+  };
+
   const handleCloseModal = () => {
     setSelectedUser(null);
     setShowUserModal(false);
@@ -298,7 +304,7 @@ export default function ClientPage() {
       <div className="bg-white rounded-xl shadow-sm border p-2">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-gray-500 font-semibold border-b">
+            <tr className="text-center text-gray-500 font-semibold border-b">
               <th className="py-3 px-4">Client ID</th>
               <th className="py-3 px-4">Client Name</th>
               <th className="py-3 px-4">Company Name</th>
@@ -317,7 +323,7 @@ export default function ClientPage() {
               </tr>
             ) : (
               clients.map((client, idx) => (
-                <tr key={idx} className="border-b last:border-b-0">
+                <tr key={idx} className="text-center">
                   <td className="py-2 px-4 font-medium">#{client.id.slice(-6)}</td>
                   <td className="py-2 px-4">{client.name}</td>
                   <td className="py-2 px-4">{client.companyName}</td>
@@ -326,21 +332,27 @@ export default function ClientPage() {
                   <td className="py-2 px-4">{client.totalOrders}</td>
                   <td className="py-2 px-4">
                     {client.status === 'requested' ? (
-                      <div className="flex gap-2">
+                      <div className="flex gap-1 justify-end">
                         <button 
                           onClick={() => handleUserAction(client.id, 'approve')}
                           disabled={actionLoading === client.id}
-                          className="text-green-600 font-semibold hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="text-green-600 px-4 py-2.5 rounded-lg border-2 border-gray-300 font-semibold hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {actionLoading === client.id ? 'Processing...' : 'Approve'}
                         </button>
                         <button 
                           onClick={() => handleUserAction(client.id, 'reject')}
                           disabled={actionLoading === client.id}
-                          className="text-red-600 font-semibold hover:underline text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="text-red-600 px-4 py-2.5 rounded-lg border-2 border-gray-300 font-semibold hover:underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {actionLoading === client.id ? 'Processing...' : 'Reject'}
                         </button>
+                        <button 
+                          onClick={() => handleRequestedViewUser(client)}
+                        className="text-[#2E318E] px-4 py-2.5 rounded-lg border-2 border-gray-300 text-sm font-semibold hover:underline"
+                      >
+                        View
+                      </button>
                       </div>
                     ) : (
                       <button 
@@ -366,9 +378,19 @@ export default function ClientPage() {
         </div>
       </div>
       
-      {/* User Details Modal */}
-      {selectedUser && (
+      {/* User Details Modal (active clients) */}
+      {selectedUser && selectedUser.status !== 'requested' && (
         <UserDetailsModal
+          open={showUserModal}
+          onClose={handleCloseModal}
+          userData={convertClientToUserData(selectedUser)}
+          onAddNewPricing={handleAddNewPricing}
+        />
+      )}
+
+      {/* User Requested Details Modal (requested clients) */}
+      {selectedUser && selectedUser.status === 'requested' && (
+        <UserRequestedDetailsModal
           open={showUserModal}
           onClose={handleCloseModal}
           userData={convertClientToUserData(selectedUser)}

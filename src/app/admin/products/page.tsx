@@ -3,32 +3,107 @@ import React, { useState, useRef, useEffect } from 'react';
 import AddProductModal from '../components/ui/addProduct';
 import AddExcelModal from '../components/ui/addExcel';
 import ProductDetailModal from '../components/ui/productDetail';
-import { Upload, Plus, ChevronDown } from 'lucide-react';
+import { Upload, Plus, ChevronDown, Search, Filter, Loader2 } from 'lucide-react';
 
+interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  description: string;
+  brand: string;
+  price: number;
+  image: string;
+  oem: string;
+  oemPN: string;
+  katunPN: string;
+  isActive: boolean;
+  category?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
 
-const products = [
-  { id: 'P1023', name: 'HP Toner Cartridge', category: 'Ink & Toner', price: '$3,500', stock: 12, status: 'Active' },
-  { id: 'P1024', name: 'Canon Ink Cartridge', category: 'Ink & Toner', price: '$2,200', stock: 8, status: 'Active' },
-  { id: 'P1025', name: 'Brother Drum Unit', category: 'Ink & Toner', price: '$1,800', stock: 15, status: 'Active' },
-  { id: 'P1026', name: 'Epson Ink Pack', category: 'Ink & Toner', price: '$1,000', stock: 20, status: 'Active' },
-  { id: 'P1027', name: 'Lexmark Toner Cartridge', category: 'Ink & Toner', price: '$3,100', stock: 10, status: 'Active' },
-  { id: 'P1028', name: 'Xerox Ink Cartridge', category: 'Ink & Toner', price: '$2,500', stock: 5, status: 'Active' },
-  { id: 'P1029', name: 'Samsung Toner Cartridge', category: 'Ink & Toner', price: '$2,700', stock: 9, status: 'Active' },
-  { id: 'P1030', name: 'Dell Ink Cartridge', category: 'Ink & Toner', price: '$1,600', stock: 12, status: 'Active' },
-  { id: 'P1031', name: 'Ricoh Toner Cartridge', category: 'Ink & Toner', price: '$3,200', stock: 4, status: 'Active' },
-  { id: 'P1032', name: 'OKI Toner Cartridge', category: 'Ink & Toner', price: '$2,900', stock: 7, status: 'Active' },
-  { id: 'P1033', name: 'Kyocera Toner Cartridge', category: 'Ink & Toner', price: '$1,900', stock: 11, status: 'Active' },
-  { id: 'P1034', name: 'Panasonic Toner Cartridge', category: 'Ink & Toner', price: '$2,400', stock: 6, status: 'Active' },
-  { id: 'P1035', name: 'Sharp Ink Cartridge', category: 'Ink & Toner', price: '$3,600', stock: 3, status: 'Active' },
-];
+interface ModalProduct {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: string;
+  stock: number;
+  status: string;
+  images?: string[];
+}
+
+interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  startIndex: number;
+  endIndex: number;
+}
 
 export default function ProductsPage() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [excelModalOpen, setExcelModalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ModalProduct | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20); // Products per page
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        console.log(`🔍 Fetching products page ${currentPage} from API...`);
+        
+        const searchParams = new URLSearchParams({
+          page: currentPage.toString(),
+          pageSize: pageSize.toString(),
+          ...(searchTerm && { search: searchTerm })
+        });
+        
+        const response = await fetch(`/api/products?${searchParams.toString()}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          console.log(`✅ Loaded ${data.products.length} products from ${data.source}`);
+          setProducts(data.products);
+          setFilteredProducts(data.products); // Not needed for pagination, but keeping for compatibility
+          setPagination(data.pagination);
+          setError('');
+        } else {
+          console.error('❌ Failed to fetch products:', data.error);
+          setError(data.error || 'Failed to fetch products');
+        }
+      } catch (error) {
+        console.error('❌ Error fetching products:', error);
+        setError('Network error while fetching products');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [currentPage, pageSize, searchTerm]); // Refetch when page or search changes
+
+  // Handle search with debouncing to avoid too many API calls
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setCurrentPage(1); // Reset to first page when searching
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -43,13 +118,56 @@ export default function ProductsPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [dropdownOpen]);
 
+  const openDetailModal = (product: Product) => {
+    // Convert the API product structure to the format expected by ProductDetailModal
+    const modalProduct = {
+      id: product.sku,
+      name: product.name,
+      description: product.description,
+      category: product.category || 'Ink & Toner',
+      price: `$${product.price.toLocaleString()}`,
+      stock: 0, // API doesn't provide stock info
+      status: product.isActive ? 'Active' : 'Inactive',
+      images: product.image ? [product.image] : []
+    };
+    
+    setSelectedProduct(modalProduct);
+    setDetailOpen(true);
+  };
+
+  // Pagination functions
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= (pagination?.totalPages || 1)) {
+      setCurrentPage(page);
+    }
+  };
+
+  const nextPage = () => {
+    if (pagination?.hasNextPage) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (pagination?.hasPrevPage) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
   return (
     <div className="max-w-[1550px] p-8 mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
         <div>
           <div className="text-xl font-bold text-black">Products -</div>
-          <div className="text-gray-500 text-base">Manage all products in your catalog</div>
+          <div className="text-gray-500 text-base">
+            {loading ? 'Loading products...' : (
+              pagination ? 
+                `Showing ${pagination.startIndex}-${pagination.endIndex} of ${pagination.totalItems} products` :
+                `Manage ${products.length} products in your catalog`
+            )}
+            {searchTerm && !loading && ` (search: "${searchTerm}")`}
+          </div>
         </div>
         <div className="flex gap-3 relative" ref={dropdownRef}>
           <button className="flex items-center gap-2 admin-button">
@@ -86,59 +204,160 @@ export default function ProductsPage() {
           )}
         </div>
       </div>
-      {/* Filter */}
-      <div className="flex justify-end mb-4">
+      
+      {/* Search Bar */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search products by name, SKU, brand, OEM..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
         <button className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1">
           Filter by <span className="font-bold">Date Range</span>
           <ChevronDown size={20} />
         </button>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800">{error}</p>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border p-2">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-black font-semibold border-b">
-              <th className="py-3 px-4">Product ID</th>
+              <th className="py-3 px-4">SKU</th>
               <th className="py-3 px-4">Name</th>
-              <th className="py-3 px-4">Category</th>
+              <th className="py-3 px-4">Brand</th>
+              <th className="py-3 px-4">OEM</th>
               <th className="py-3 px-4">Price</th>
-              <th className="py-3 px-4">Stock</th>
               <th className="py-3 px-4">Status</th>
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((prod) => (
-              <tr key={prod.id} className=" text-[#84919A]">
-                <td className="py-2.5 px-4 font-medium">{prod.id}</td>
-                <td className="py-2.5 px-4">{prod.name}</td>
-                <td className="py-2.5 px-4">{prod.category}</td>
-                <td className="py-2.5 px-4">{prod.price}</td>
-                <td className="py-2.5 px-4">{prod.stock}</td>
-                <td className="py-2.5 px-4">
-                  <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-xs font-semibold">Active</span>
-                </td>
-                <td className="py-2.5 px-4">
-                  <button
-                    className="text-[#2E318E] font-semibold hover:underline"
-                    onClick={() => {
-                      setSelectedProduct(prod);
-                      setDetailOpen(true);
-                    }}
-                  >
-                    View
-                  </button>
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                    <span className="text-gray-500">Loading products...</span>
+                  </div>
                 </td>
               </tr>
-            ))}
+            ) : products.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-8 text-center">
+                  <p className="text-gray-500">
+                    {searchTerm ? 'No products found matching your search.' : 'No products available.'}
+                  </p>
+                </td>
+              </tr>
+            ) : (
+              products.map((prod) => (
+                <tr key={prod.id} className=" text-[#84919A]">
+                  <td className="py-2.5 px-4 font-medium">{prod.sku}</td>
+                  <td className="py-2.5 px-4 max-w-xs truncate" title={prod.name}>{prod.name}</td>
+                  <td className="py-2.5 px-4">{prod.brand}</td>
+                  <td className="py-2.5 px-4">{prod.oem}</td>
+                  <td className="py-2.5 px-4 font-semibold">${prod.price.toLocaleString()}</td>
+                  <td className="py-2.5 px-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      prod.isActive 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-red-100 text-red-600'
+                    }`}>
+                      {prod.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <button
+                      className="text-[#2E318E] font-semibold hover:underline"
+                      onClick={() => openDetailModal(prod)}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
-          <span className="text-sm text-black">Page 1 of 10</span>
+          <span className="text-sm text-black">
+            {loading ? 'Loading...' : (
+              pagination ? 
+                `Showing ${pagination.startIndex}-${pagination.endIndex} of ${pagination.totalItems} products` :
+                'No pagination data'
+            )}
+          </span>
           <div className="flex gap-2">
-            <button className="px-4 py-2.5 cursor-pointer rounded border-2 border-[#F1F2F4] text-sm font-medium">Previous</button>
-            <button className="px-4 py-2.5 cursor-pointer rounded border-2 border-[#F1F2F4] text-sm font-medium">Next</button>
+            <button 
+              onClick={prevPage}
+              disabled={!pagination?.hasPrevPage || loading}
+              className={`px-4 py-2.5 rounded border-2 text-sm font-medium transition-colors ${
+                pagination?.hasPrevPage && !loading
+                  ? 'border-[#F1F2F4] hover:bg-gray-50 cursor-pointer' 
+                  : 'border-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Previous
+            </button>
+            
+            {/* Page Numbers */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="flex gap-1">
+                {/* Show page numbers around current page */}
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (pagination.totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else {
+                    const start = Math.max(1, pagination.currentPage - 2);
+                    const end = Math.min(pagination.totalPages, start + 4);
+                    pageNumber = start + i;
+                    if (pageNumber > end) return null;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => goToPage(pageNumber)}
+                      disabled={loading}
+                      className={`px-3 py-2.5 rounded border-2 text-sm font-medium transition-colors ${
+                        pageNumber === pagination.currentPage
+                          ? 'border-blue-500 bg-blue-50 text-blue-600'
+                          : 'border-[#F1F2F4] hover:bg-gray-50 cursor-pointer'
+                      } ${loading ? 'cursor-not-allowed' : ''}`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            
+            <button 
+              onClick={nextPage}
+              disabled={!pagination?.hasNextPage || loading}
+              className={`px-4 py-2.5 rounded border-2 text-sm font-medium transition-colors ${
+                pagination?.hasNextPage && !loading
+                  ? 'border-[#F1F2F4] hover:bg-gray-50 cursor-pointer' 
+                  : 'border-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 // src/app/api/cart/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { RedisCache } from '@/lib/redis-cache';
+import { RedisCache, CacheKeys, CacheTTL } from '@/lib/redis-cache';
 import { Cart, CartItem, AddToCartRequest } from '@/lib/cart-types';
 import { CartCalculations, CartValidation, CartStorage } from '@/lib/cart-utils';
 import { adminDb } from '@/lib/firebase-admin';
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const cartKey = `cart:${userId || sessionId}`;
+    const cartKey = userId ? CacheKeys.cartUser(userId) : CacheKeys.cartSession(sessionId!);
     
     // Try Redis cache first
     const cachedCart = await RedisCache.get(cartKey, 'api');
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Cache the cart
-    await RedisCache.set(cartKey, cart, { ttl: 1800, prefix: 'api' }); // 30 minutes
+    await RedisCache.set(cartKey, cart, { ttl: CacheTTL.CART, prefix: 'api' }); // Optimized TTL
     console.log(`💾 [CACHE UPDATE] Cart cached from Firebase to Redis`);
 
     return NextResponse.json({

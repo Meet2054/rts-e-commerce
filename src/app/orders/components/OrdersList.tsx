@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/components/auth/auth-provider';
 import { Order } from '@/lib/firebase-types';
 import { Loader2, Package, Truck, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { formatDateTime } from '@/lib/date-utils';
 
 interface OrdersListState {
   orders: Order[];
@@ -99,28 +100,6 @@ export default function OrdersList() {
     }
   };
 
-  const formatDate = (date: any) => {
-    if (!date) return '';
-    
-    // Handle both Firestore Timestamp and regular Date
-    let dateObj: Date;
-    if (date.seconds) {
-      dateObj = new Date(date.seconds * 1000);
-    } else if (date.toDate) {
-      dateObj = date.toDate();
-    } else {
-      dateObj = new Date(date);
-    }
-    
-    return dateObj.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   // Loading state
   if (state.loading) {
     return (
@@ -180,7 +159,7 @@ export default function OrdersList() {
                 <div>
                   <h3 className="font-semibold text-lg">Order {order.orderId}</h3>
                   <p className="text-sm text-gray-600">
-                    Placed on {formatDate(order.createdAt)}
+                    Placed on {formatDateTime(order.createdAt)}
                   </p>
                 </div>
               </div>
@@ -304,7 +283,7 @@ export default function OrdersList() {
                 </div>
                 {order.trackingInfo.estimatedDelivery && (
                   <div className="text-xs text-green-700 mt-1">
-                    Estimated delivery: {formatDate(order.trackingInfo.estimatedDelivery)}
+                    Estimated delivery: {formatDateTime(order.trackingInfo.estimatedDelivery)}
                   </div>
                 )}
               </div>

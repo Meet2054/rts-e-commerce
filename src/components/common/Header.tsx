@@ -8,11 +8,13 @@ import { ShoppingCart, Search, LogOut, Settings, CircleUserRound, EllipsisVertic
 import SearchDropdown from '../common/SearchDropdown';
 import { useAuth } from '@/components/auth/auth-provider';
 import { signOut } from '@/lib/firebase-auth';
+import { useCartSummary } from '@/hooks/use-cart';
 import Image from 'next/image';
 
 const Header = () => {
   const router = useRouter();
   const { user, userData, loading, isAdmin } = useAuth();
+  const { itemCount } = useCartSummary();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMenuDropdown, setShowMenuDropdown] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -196,8 +198,13 @@ const Header = () => {
                   )}
                 </AnimatePresence>
               </div>
-              <Link href="/cart" className="p-2 rounded-lg hover:bg-gray-100">
+              <Link href="/cart" className="p-2 rounded-lg hover:bg-gray-100 relative">
                 <ShoppingCart className="h-6 w-6" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                    {itemCount > 99 ? '99+' : itemCount}
+                  </span>
+                )}
               </Link>
               {/* Three-dot icon with dropdown */}
               <div className="relative" ref={menuDropdownRef}>

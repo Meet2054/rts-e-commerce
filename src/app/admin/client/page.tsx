@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { AdminGuard } from '@/components/auth/admin-guard';
+import UserDetailsModal from '@/app/admin/components/ui/userDetails';
 
 interface Client {
   id: string;
@@ -20,6 +21,8 @@ export default function ClientPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<Client | null>(null);
+  const [showUserModal, setShowUserModal] = useState(false);
   const { token } = useAuth();
 
   useEffect(() => {
@@ -142,6 +145,40 @@ export default function ClientPage() {
       setActionLoading(null);
     }
   };
+
+  const handleViewUser = (client: Client) => {
+    setSelectedUser(client);
+    setShowUserModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedUser(null);
+    setShowUserModal(false);
+  };
+
+  // Convert Client data to UserData format for the modal
+  const convertClientToUserData = (client: Client) => ({
+    id: client.id,
+    clientId: client.id,
+    displayName: client.name,
+    email: client.email,
+    phoneNumber: client.phoneNumber,
+    companyName: client.companyName,
+    status: client.status,
+    createdAt: client.createdAt,
+    totalOrders: client.totalOrders,
+    // Set defaults for optional fields
+    businessType: undefined,
+    industry: undefined,
+    website: undefined,
+    gst: undefined,
+    address: undefined,
+    roleInCompany: undefined,
+    currency: 'USD',
+    language: 'English',
+    lastOrderDate: undefined,
+    orders: []
+  });
 
   const exportClients = () => {
     // Create CSV content
@@ -284,7 +321,12 @@ export default function ClientPage() {
                         </button>
                       </div>
                     ) : (
-                      <button className="text-[#2E318E] font-semibold hover:underline">View</button>
+                      <button 
+                        onClick={() => handleViewUser(client)}
+                        className="text-[#2E318E] font-semibold hover:underline"
+                      >
+                        View
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -301,6 +343,15 @@ export default function ClientPage() {
           </div>
         </div>
       </div>
+      
+      {/* User Details Modal */}
+      {selectedUser && (
+        <UserDetailsModal
+          open={showUserModal}
+          onClose={handleCloseModal}
+          userData={convertClientToUserData(selectedUser)}
+        />
+      )}
     </div>
     </AdminGuard>
   );

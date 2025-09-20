@@ -1,46 +1,39 @@
-// src/app/api/products/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { RedisCache } from '@/lib/redis-cache';
+import { RedisCache, CacheKeys, CacheTTL } from '@/lib/redis-cache';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const searchTerm = searchParams.get('search');
-    const pageSize = parseInt(searchParams.get('pageSize') || '200');
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '20');
     
-    console.log(`🔍 [API] Products request - Search: "${searchTerm || 'none'}", PageSize: ${pageSize}`);
+    const offset = (page - 1) * pageSize;
     
-    // Create cache key based on search parameters
-    const cacheKey = `products-list:${searchTerm || 'all'}:${pageSize}`;
+    console.log(`Products request - Search: "${searchTerm || 'none'}", Page: ${page}, PageSize: ${pageSize}`);
     
-    // Try to get from Redis cache first
-    const cachedProducts = await RedisCache.get(cacheKey, 'api');
+    const cacheKey = CacheKeys.productsList(searchTerm || '', pageSize, page);
+    const cachedData = await RedisCache.get(cacheKey, 'api');
     
-    if (cachedProducts) {
-      console.log(`✅ [REDIS] Products list served from cache (${cachedProducts.length} products)`);
+    if (cachedData) {
+      console.log(`Products page ${page} served from cache`);
       return NextResponse.json({
         success: true,
-        products: cachedProducts,
-        hasMore: false,
-        totalFound: cachedProducts.length,
+        products: cachedData.products,
+        pagination: cachedData.pagination,
         source: 'redis_cache',
         cached: true
       });
     }
     
-    console.log(`❌ [REDIS] Products not in cache, fetching from Firebase...`);
-    console.log('📊 [FIREBASE] Querying Firestore database...');
+    console.log(`Products not in cache, fetching from Firebase...`);
     
-    // Simplified query - just get all active products
-    const query = adminDb.collection('products')
-      .where('isActive', '==', true)
-      .limit(pageSize);
-
+    const query = adminDb.collection('products').where('isActive', '==', true);
     const snapshot = await query.get();
-    console.log(`✅ [FIREBASE] Found ${snapshot.docs.length} products in database`);
+    console.log(`Found ${snapshot.docs.length} products in database`);
 
-    const products = snapshot.docs.map(doc => {
+    const allProducts = snapshot.docs.map(doc => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -51,8 +44,6 @@ export async function GET(request: NextRequest) {
         price: data.price || 0,
         image: data.image || data.imageUrl || '/product-placeholder.png',
         imageUrl: data.imageUrl || data.image || '/product-placeholder.png',
-        rating: data.rating || 0,
-        reviews: data.reviews || 0,
         oem: data.oem || '',
         oemPN: data.oemPN || '',
         katunPN: data.katunPN || '',
@@ -65,34 +56,50 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Apply search filter in memory (since we have limited data)
-    let filteredProducts = products;
+    let filteredProducts = allProducts;
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      filteredProducts = products.filter(product => 
+      filteredProducts = allProducts.filter(product => 
         product.name.toLowerCase().includes(search) ||
         product.sku.toLowerCase().includes(search) ||
         product.brand.toLowerCase().includes(search) ||
         product.description.toLowerCase().includes(search) ||
         product.oem.toLowerCase().includes(search)
       );
+      console.log(`Found ${filteredProducts.length} products matching "${searchTerm}"`);
     }
 
-    console.log(`📊 [FIREBASE] Returning ${filteredProducts.length} products after search filter`);
+    const totalCount = filteredProducts.length;
+    const paginatedProducts = filteredProducts.slice(offset, offset + pageSize);
+    const totalPages = Math.ceil(totalCount / pageSize);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
+    const paginationData = {
+      pagination: {
+        currentPage: page,
+        pageSize: pageSize,
+        totalItems: totalCount,
+        totalPages: totalPages,
+        hasNextPage: hasNextPage,
+        hasPrevPage: hasPrevPage,
+        startIndex: offset + 1,
+        endIndex: Math.min(offset + pageSize, totalCount)
+      },
+      products: paginatedProducts
+    };
+
+    console.log(`Returning page ${page}/${totalPages} (${paginatedProducts.length} products, ${totalCount} total)`);
     
-    // Cache the filtered results for future requests
-    await RedisCache.set(cacheKey, filteredProducts, { 
-      ttl: 180, // 3 minutes for product lists
+    await RedisCache.set(cacheKey, paginationData, { 
+      ttl: CacheTTL.PRODUCTS_LIST,
       prefix: 'api' 
     });
-    
-    console.log(`💾 [CACHE UPDATE] Products list cached from Firebase to Redis: ${filteredProducts.length} products`);
 
     return NextResponse.json({
       success: true,
-      products: filteredProducts,
-      hasMore: false,
-      totalFound: filteredProducts.length,
+      products: paginatedProducts,
+      pagination: paginationData.pagination,
       source: 'firebase_database',
       cached: false
     });

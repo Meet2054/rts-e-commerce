@@ -64,8 +64,6 @@ export async function GET(
       price: data.price || 0,
       image: data.image || data.imageUrl || '/product-placeholder.png',
       imageUrl: data.imageUrl || data.image || '/product-placeholder.png',
-      rating: data.rating || 4.5,
-      reviews: data.reviews || 0,
       oem: data.oem || '',
       oemPN: data.oemPN || '',
       katunPN: data.katunPN || '',

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCart, useCartSummary, useCartActions, useCartState } from "@/hooks/use-cart";
@@ -8,29 +8,64 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { ShippingAddress } from '@/lib/cart-types';
 import { Minus, Plus, Trash2, ShoppingCart as CartIcon, Loader2 } from 'lucide-react';
 
-const DEFAULT_SHIPPING_ADDRESS: ShippingAddress = {
-  fullName: "Abhishek Guleria",
-  addressLine1: "1234 Elm Street",
-  addressLine2: "",
-  city: "Springfield",
-  state: "CA",
-  postalCode: "12345",
-  country: "USA",
-  phone: "+91 00000-00000"
-};
-
 export default function ShoppingCart() {
-	const { user } = useAuth();
+	const { user, userData } = useAuth();
 	const { loading, error, items } = useCartState();
 	const { itemCount, subtotal, tax, shipping, total, isEmpty, currency } = useCartSummary();
 	const { removeFromCart, updateQuantity, clearCart } = useCartActions();
 	
+	// Create default shipping address from user data
+	const getDefaultShippingAddress = (): ShippingAddress => {
+		// Parse user address if it's available (it might be a single string)
+		let parsedAddress = {
+			line1: '',
+			city: '',
+			state: '',
+			postalCode: ''
+		};
+
+		if (userData?.address) {
+			// Try to parse if it's a comma-separated address
+			const addressParts = userData.address.split(',').map(part => part.trim());
+			if (addressParts.length > 0) {
+				parsedAddress.line1 = addressParts[0];
+				if (addressParts.length > 1) {
+					parsedAddress.city = addressParts[1];
+				}
+				if (addressParts.length > 2) {
+					parsedAddress.state = addressParts[2];
+				}
+				if (addressParts.length > 3) {
+					parsedAddress.postalCode = addressParts[3];
+				}
+			}
+		}
+
+		return {
+			fullName: userData?.displayName || user?.displayName || user?.email?.split('@')[0] || '',
+			addressLine1: parsedAddress.line1,
+			addressLine2: '',
+			city: parsedAddress.city,
+			state: parsedAddress.state,
+			postalCode: parsedAddress.postalCode,
+			country: userData?.currency === 'USD' ? 'USA' : 'India',
+			phone: userData?.phoneNumber || ''
+		};
+	};
+	
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [submitSuccess, setSubmitSuccess] = useState(false);
 	const [submitError, setSubmitError] = useState<string | null>(null);
-	const [shippingAddress, setShippingAddress] = useState<ShippingAddress>(DEFAULT_SHIPPING_ADDRESS);
+	const [shippingAddress, setShippingAddress] = useState<ShippingAddress>(getDefaultShippingAddress());
 	const [orderNotes, setOrderNotes] = useState("");
 	const [orderDetails, setOrderDetails] = useState<{orderId: string, orderDocumentId: string} | null>(null);
+
+	// Update shipping address when user data changes
+	useEffect(() => {
+		if (userData || user) {
+			setShippingAddress(getDefaultShippingAddress());
+		}
+	}, [userData, user]);
 
 	// Handle quantity update with optimistic UI
 	const handleQuantityChange = async (itemId: string, newQuantity: number) => {
@@ -354,14 +389,24 @@ export default function ShoppingCart() {
 							<div className="flex justify-between items-start">
 								<span className="font-semibold text-base">Address</span>
 								<div className="text-sm text-right max-w-[60%]">
-									{shippingAddress.addressLine1}
-									{shippingAddress.addressLine2 && (
-										<div>{shippingAddress.addressLine2}</div>
+									{shippingAddress.addressLine1 ? (
+										<>
+											{shippingAddress.addressLine1}
+											{shippingAddress.addressLine2 && (
+												<div>{shippingAddress.addressLine2}</div>
+											)}
+											<div>
+												{shippingAddress.city && `${shippingAddress.city}, `}
+												{shippingAddress.state && `${shippingAddress.state} `}
+												{shippingAddress.postalCode}
+											</div>
+											<div>{shippingAddress.country}</div>
+										</>
+									) : (
+										<div className="text-gray-500 text-xs">
+											Please add your address below
+										</div>
 									)}
-									<div>
-										{shippingAddress.city}, {shippingAddress.state} {shippingAddress.postalCode}
-									</div>
-									<div>{shippingAddress.country}</div>
 								</div>
 							</div>
 						</div>
@@ -391,6 +436,101 @@ export default function ShoppingCart() {
 							<div className="flex justify-between text-lg font-bold pt-3 border-t">
 								<span>Total</span>
 								<span>{currency === 'USD' ? '$' : ''}{total.toFixed(2)}</span>
+							</div>
+						</div>
+
+						{/* Shipping Address Form */}
+						<div className="mb-6 p-4 bg-gray-50 rounded-md">
+							<h3 className="text-sm font-semibold mb-3">Shipping Information</h3>
+							<div className="grid grid-cols-1 gap-3">
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">Full Name</label>
+									<input
+										type="text"
+										value={shippingAddress.fullName}
+										onChange={(e) => setShippingAddress(prev => ({...prev, fullName: e.target.value}))}
+										className="w-full px-3 py-2 border rounded-md text-sm"
+										placeholder="Your full name"
+									/>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+									<input
+										type="tel"
+										value={shippingAddress.phone}
+										onChange={(e) => setShippingAddress(prev => ({...prev, phone: e.target.value}))}
+										className="w-full px-3 py-2 border rounded-md text-sm"
+										placeholder="Your phone number"
+									/>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">Address Line 1</label>
+									<input
+										type="text"
+										value={shippingAddress.addressLine1}
+										onChange={(e) => setShippingAddress(prev => ({...prev, addressLine1: e.target.value}))}
+										className="w-full px-3 py-2 border rounded-md text-sm"
+										placeholder="Street address, apartment, suite, etc."
+									/>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">Address Line 2 (Optional)</label>
+									<input
+										type="text"
+										value={shippingAddress.addressLine2}
+										onChange={(e) => setShippingAddress(prev => ({...prev, addressLine2: e.target.value}))}
+										className="w-full px-3 py-2 border rounded-md text-sm"
+										placeholder="Building, company, etc."
+									/>
+								</div>
+								<div className="grid grid-cols-2 gap-2">
+									<div>
+										<label className="block text-xs font-medium text-gray-700 mb-1">City</label>
+										<input
+											type="text"
+											value={shippingAddress.city}
+											onChange={(e) => setShippingAddress(prev => ({...prev, city: e.target.value}))}
+											className="w-full px-3 py-2 border rounded-md text-sm"
+											placeholder="City"
+										/>
+									</div>
+									<div>
+										<label className="block text-xs font-medium text-gray-700 mb-1">State</label>
+										<input
+											type="text"
+											value={shippingAddress.state}
+											onChange={(e) => setShippingAddress(prev => ({...prev, state: e.target.value}))}
+											className="w-full px-3 py-2 border rounded-md text-sm"
+											placeholder="State"
+										/>
+									</div>
+								</div>
+								<div className="grid grid-cols-2 gap-2">
+									<div>
+										<label className="block text-xs font-medium text-gray-700 mb-1">Postal Code</label>
+										<input
+											type="text"
+											value={shippingAddress.postalCode}
+											onChange={(e) => setShippingAddress(prev => ({...prev, postalCode: e.target.value}))}
+											className="w-full px-3 py-2 border rounded-md text-sm"
+											placeholder="ZIP/Postal Code"
+										/>
+									</div>
+									<div>
+										<label className="block text-xs font-medium text-gray-700 mb-1">Country</label>
+										<select
+											value={shippingAddress.country}
+											onChange={(e) => setShippingAddress(prev => ({...prev, country: e.target.value}))}
+											className="w-full px-3 py-2 border rounded-md text-sm"
+										>
+											<option value="India">India</option>
+											<option value="USA">USA</option>
+											<option value="Canada">Canada</option>
+											<option value="UK">UK</option>
+											<option value="Other">Other</option>
+										</select>
+									</div>
+								</div>
 							</div>
 						</div>
 

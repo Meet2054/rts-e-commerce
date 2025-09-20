@@ -2,17 +2,59 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, Upload } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
+import { formatDate } from '@/lib/date-utils';
+
+interface OrderItem {
+  productId: string;
+  sku: string;
+  nameSnap: string;
+  brandSnap: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+}
 
 interface Order {
   id: string;
-  orderNumber: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone?: string;
-  totalAmount: number;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
-  createdAt: Date;
-  itemCount?: number;
+  orderId: string;
+  clientId: string;
+  clientEmail: string;
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  items: OrderItem[];
+  totals: {
+    itemCount: number;
+    subtotal: number;
+    tax: number;
+    shipping: number;
+    total: number;
+  };
+  currency: string;
+  shippingInfo: {
+    fullName: string;
+    phone: string;
+    address: {
+      street: string;
+      city: string;
+      state: string;
+      zipCode: string;
+      country: string;
+    };
+  };
+  notes?: string;
+  paymentInfo?: {
+    method: string;
+    status: string;
+  };
+  createdAt: any;
+  updatedAt?: any;
+  user?: {
+    email: string;
+    displayName: string;
+    phoneNumber?: string;
+    role: string;
+    status: string;
+    companyName?: string;
+  };
 }
 
 const tabs = [
@@ -27,7 +69,8 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const { user, token } = useAuth();
+
+  const { user, token, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -60,22 +103,27 @@ export default function OrdersPage() {
 
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'All') return true;
-    return order.status.toLowerCase() === activeTab.toLowerCase().replace('complete', 'completed');
+    if (activeTab === 'Complete') return order.status === 'delivered';
+    if (activeTab === 'Pending') return order.status === 'pending';
+    if (activeTab === 'Cancelled') return order.status === 'cancelled';
+    return order.status.toLowerCase() === activeTab.toLowerCase();
   });
 
   const exportOrders = () => {
     // Create CSV content
-    const headers = ['Order ID', 'Customer Name', 'Email', 'Phone', 'Status', 'Amount', 'Date'];
+    const headers = ['Order ID', 'Customer Name', 'Email', 'Phone', 'Company', 'Status', 'Amount', 'Items', 'Date'];
     const csvContent = [
       headers.join(','),
       ...filteredOrders.map(order => [
-        order.orderNumber,
-        order.customerName,
-        order.customerEmail,
-        order.customerPhone || '',
+        order.orderId || order.id,
+        order.user?.displayName || order.shippingInfo?.fullName || 'Unknown',
+        order.user?.email || order.clientEmail || '',
+        order.user?.phoneNumber || order.shippingInfo?.phone || '',
+        order.user?.companyName || '',
         order.status,
-        order.totalAmount,
-        new Date(order.createdAt).toLocaleDateString()
+        order.totals?.total || 0,
+        order.items?.length || 0,
+        formatDate(order.createdAt)
       ].join(','))
     ].join('\n');
 
@@ -140,10 +188,13 @@ export default function OrdersPage() {
                 : 'bg-[#F1F2F4] text-black'
             }`}
           >
-            {tab.label} ({orders.filter(order => 
-              tab.label === 'All' ? true : 
-              order.status.toLowerCase() === tab.label.toLowerCase().replace('complete', 'completed')
-            ).length})
+            {tab.label} ({orders.filter(order => {
+              if (tab.label === 'All') return true;
+              if (tab.label === 'Complete') return order.status === 'delivered';
+              if (tab.label === 'Pending') return order.status === 'pending';
+              if (tab.label === 'Cancelled') return order.status === 'cancelled';
+              return false;
+            }).length})
           </button>
         ))}
       </div>
@@ -164,8 +215,10 @@ export default function OrdersPage() {
               <th className="py-3 px-4">Order ID</th>
               <th className="py-3 px-4">Customer Name</th>
               <th className="py-3 px-4">Email</th>
+              <th className="py-3 px-4">Company</th>
               <th className="py-3 px-4">Status</th>
               <th className="py-3 px-4">Total Amount</th>
+              <th className="py-3 px-4">Items</th>
               <th className="py-3 px-4">Date</th>
               <th className="py-3 px-4">Actions</th>
             </tr>
@@ -173,28 +226,35 @@ export default function OrdersPage() {
           <tbody>
             {filteredOrders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 px-4 text-center text-gray-500">
+                <td colSpan={9} className="py-8 px-4 text-center text-gray-500">
                   No orders found
                 </td>
               </tr>
             ) : (
               filteredOrders.map((order) => (
                 <tr key={order.id} className="">
-                  <td className="py-2.5 px-4 font-medium">{order.orderNumber}</td>
-                  <td className="py-2.5 px-4">{order.customerName}</td>
-                  <td className="py-2.5 px-4">{order.customerEmail}</td>
+                  <td className="py-2.5 px-4 font-medium">{order.orderId || order.id}</td>
+                  <td className="py-2.5 px-4">
+                    {order.user?.displayName || order.shippingInfo?.fullName || 'Unknown'}
+                  </td>
+                  <td className="py-2.5 px-4">{order.user?.email || order.clientEmail}</td>
+                  <td className="py-2.5 px-4">{order.user?.companyName || '-'}</td>
                   <td className="py-2.5 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
                       order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'processing' || order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'shipped' ? 'bg-purple-100 text-purple-800' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
                   </td>
-                  <td className="py-2.5 px-4">₹{order.totalAmount.toLocaleString()}</td>
-                  <td className="py-2.5 px-4">{new Date(order.createdAt).toLocaleDateString()}</td>
+                  <td className="py-2.5 px-4">₹{(order.totals?.total || 0).toLocaleString()}</td>
+                  <td className="py-2.5 px-4">{order.items?.length || 0} items</td>
+                  <td className="py-2.5 px-4">
+                    {formatDate(order.createdAt)}
+                  </td>
                   <td className="py-2.5 px-4">
                     <button className="text-[#2E318E] font-semibold hover:underline">View</button>
                   </td>

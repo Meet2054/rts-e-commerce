@@ -9,12 +9,33 @@ export interface CacheOptions {
 export class RedisCache {
   private static redis = getRedisClient();
   private static defaultTTL = 3600; // 1 hour default
+  private static isEnabled = true;
+
+  /**
+   * Check if Redis is available and enabled
+   */
+  private static async checkHealth(): Promise<boolean> {
+    if (!this.isEnabled) return false;
+    
+    try {
+      // Quick health check
+      await this.redis.ping();
+      return true;
+    } catch (error) {
+      console.warn('⚠️ [REDIS] Health check failed, disabling cache:', 
+        error instanceof Error ? error.message : 'Unknown error');
+      this.isEnabled = false;
+      return false;
+    }
+  }
 
   /**
    * Get a value from cache
    */
   static async get<T = any>(key: string, prefix?: string): Promise<T | null> {
     try {
+      if (!await this.checkHealth()) return null;
+      
       const fullKey = prefix ? `${prefix}:${key}` : key;
       console.log(`🔍 [REDIS] Attempting to fetch from cache: ${fullKey}`);
       
@@ -26,24 +47,26 @@ export class RedisCache {
       }
 
       console.log(`✅ [REDIS] Cache HIT - Data found in Redis: ${fullKey}`);
-      console.log(`🔍 [REDIS] Raw value type: ${typeof rawValue}`);
       
       // Handle different types of responses from Upstash Redis
       if (typeof rawValue === 'string') {
-        console.log(`📊 [REDIS] Data size: ${rawValue.length} characters (string)`);
         try {
-          return JSON.parse(rawValue);
+          const parsed = JSON.parse(rawValue);
+          console.log(`📊 [REDIS] Parsed JSON data (${rawValue.length} chars)`);
+          return parsed;
         } catch (parseError) {
-          console.error('❌ [REDIS] JSON parse error:', parseError);
+          console.error('❌ [REDIS] JSON parse error:', 
+            parseError instanceof Error ? parseError.message : 'Parse failed');
           return null;
         }
       } else {
         // For non-string values, Upstash might return objects directly
-        console.log(`📊 [REDIS] Data type: ${typeof rawValue}, returning as-is`);
+        console.log(`📊 [REDIS] Direct object return (${typeof rawValue})`);
         return rawValue as T;
       }
     } catch (error) {
-      console.error('❌ [REDIS] GET error:', error);
+      console.error('❌ [REDIS] GET error:', 
+        error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   }
@@ -55,8 +78,10 @@ export class RedisCache {
     key: string, 
     value: any, 
     options: CacheOptions = {}
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
+      if (!await this.checkHealth()) return false;
+      
       const { ttl = this.defaultTTL, prefix } = options;
       const fullKey = prefix ? `${prefix}:${key}` : key;
       const serializedValue = JSON.stringify(value);
@@ -71,8 +96,12 @@ export class RedisCache {
         await this.redis.set(fullKey, serializedValue);
         console.log(`✅ [REDIS] Successfully cached (no expiration): ${fullKey}`);
       }
+      
+      return true;
     } catch (error) {
-      console.error('❌ [REDIS] SET error:', error);
+      console.error('❌ [REDIS] SET error:', 
+        error instanceof Error ? error.message : 'Unknown error');
+      return false;
     }
   }
 
@@ -232,20 +261,73 @@ export class RedisCache {
   }
 }
 
-// Cache key generators
+// Cache key generators with optimized patterns
 export const CacheKeys = {
+  // Products cache - shorter TTL for frequent updates
   product: (id: string) => `product:${id}`,
   products: (filters: string) => `products:${filters}`,
+  productsList: (searchTerm: string, limit: number, page?: number) => 
+    `products-list:${searchTerm || 'all'}:${limit}${page ? `:page:${page}` : ''}`,
+  
+  // Categories cache - longer TTL as they change less frequently
   category: (id: string) => `category:${id}`,
   categories: () => 'categories:all',
+  
+  // User-specific caches - medium TTL
   userOrders: (userId: string) => `orders:user:${userId}`,
-  order: (id: string) => `order:${id}`,
-  customerPricing: (email: string, productId: string) => `pricing:${email}:${productId}`,
-  productSearch: (query: string) => `search:products:${query}`,
-  cartSession: (sessionId: string) => `cart:${sessionId}`,
+  userProfile: (userId: string) => `profile:${userId}`,
   userSession: (userId: string) => `session:${userId}`,
+  
+  // Order caches - medium TTL
+  order: (id: string) => `order:${id}`,
+  ordersList: (filters?: string) => `orders:list${filters ? `:${filters}` : ''}`,
+  
+  // Cart caches - shorter TTL as they change frequently
+  cartSession: (sessionId: string) => `cart:${sessionId}`,
+  cartUser: (userId: string) => `cart:user:${userId}`,
+  
+  // Pricing caches - medium TTL
+  customerPricing: (email: string, productId: string) => `pricing:${email}:${productId}`,
+  pricingSheet: (sheetId: string) => `pricing:sheet:${sheetId}`,
+  
+  // Search caches - shorter TTL
+  productSearch: (query: string) => `search:products:${query}`,
+  searchSuggestions: (partial: string) => `search:suggestions:${partial}`,
+  
+  // Support and chat caches - medium TTL
   supportTicket: (id: string) => `ticket:${id}`,
   chatSession: (sessionId: string) => `chat:${sessionId}`,
+  chatHistory: (userId: string) => `chat:history:${userId}`,
+  
+  // Analytics and stats - longer TTL
+  analyticsDaily: (date: string) => `analytics:daily:${date}`,
+  salesStats: (period: string) => `sales:stats:${period}`,
+  popularProducts: (period: string) => `popular:products:${period}`
+};
+
+// Optimized TTL settings (in seconds)
+export const CacheTTL = {
+  // Very short - for frequently changing data
+  VERY_SHORT: 60,      // 1 minute
+  SHORT: 180,          // 3 minutes
+  
+  // Medium - for moderate changes
+  MEDIUM: 900,         // 15 minutes
+  STANDARD: 1800,      // 30 minutes
+  
+  // Long - for stable data
+  LONG: 3600,          // 1 hour
+  VERY_LONG: 7200,     // 2 hours
+  
+  // Specific use cases
+  PRODUCTS_LIST: 300,   // 5 minutes - products change occasionally
+  CATEGORIES: 1800,     // 30 minutes - categories rarely change
+  CART: 1800,          // 30 minutes - cart session timeout
+  USER_SESSION: 3600,   // 1 hour - user session
+  PRICING: 900,        // 15 minutes - pricing might change
+  SEARCH: 300,         // 5 minutes - search results
+  ORDERS: 1800,        // 30 minutes - orders don't change often once created
+  ANALYTICS: 3600      // 1 hour - analytics can be slightly stale
 };
 
 export default RedisCache;

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
 import { useCartActions } from '@/hooks/use-cart';
+import { useAuth } from '@/components/auth/auth-provider';
 
 // Updated Product interface to match API
 interface Product {
@@ -18,6 +19,7 @@ interface Product {
 
 const RecommendedProducts: React.FC = () => {
     const { addToCart } = useCartActions();
+    const { token } = useAuth();
     const [products, setProducts] = useState<Product[]>([]);
     const [quantities, setQuantities] = useState<Record<string, number>>({});
     const [addingToCart, setAddingToCart] = useState<Record<string, boolean>>({});
@@ -27,7 +29,15 @@ const RecommendedProducts: React.FC = () => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await fetch('/api/products');
+                const headers: HeadersInit = {
+                    'Content-Type': 'application/json',
+                };
+
+                if (token) {
+                    headers.Authorization = `Bearer ${token}`;
+                }
+
+                const response = await fetch('/api/products', { headers });
                 const data = await response.json();
                 
                 if (data.success && Array.isArray(data.products)) {
@@ -50,7 +60,7 @@ const RecommendedProducts: React.FC = () => {
         };
 
         fetchProducts();
-    }, []);
+    }, [token]);
 
     // Handle add to cart
     const handleAddToCart = async (product: Product, quantity: number) => {

@@ -206,7 +206,10 @@ export async function GET(request: NextRequest) {
         
         // Filter by user and sort by creation date
         orders = allOrders
-          .filter(order => order.clientId === userId)
+          .filter(order => 
+            order.clientId === userId || 
+            order.clientEmail === userId
+          )
           .sort((a, b) => {
             // Handle different timestamp formats from Firestore
             const aTime = a.createdAt && typeof a.createdAt === 'object' && 'seconds' in a.createdAt 

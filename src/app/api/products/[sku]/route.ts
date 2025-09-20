@@ -1,6 +1,6 @@
 // src/app/api/products/[sku]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { RedisCache } from '@/lib/redis-cache';
 
 export async function GET(
@@ -12,14 +12,32 @@ export async function GET(
     
     console.log(`🔍 [API] Single product request - SKU: "${sku}"`);
     
-    // Create cache key for single product
-    const cacheKey = `product:${sku}`;
+    // Get user information from auth token
+    let userId: string | null = null;
+    const authHeader = request.headers.get('authorization');
+    
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        if (token !== 'dummy-token') { // Skip validation for dummy tokens
+          const decodedToken = await adminAuth.verifyIdToken(token);
+          userId = decodedToken.uid;
+        }
+      } catch (error) {
+        console.log('Token verification failed, continuing without user context:', error);
+      }
+    }
+    
+    // Include user ID in cache key for personalized pricing
+    const cacheKey = userId 
+      ? `product:${sku}_user_${userId}`
+      : `product:${sku}`;
     
     // Try to get from Redis cache first
     const cachedProduct = await RedisCache.get(cacheKey, 'api');
     
     if (cachedProduct) {
-      console.log(`✅ [REDIS] Product "${sku}" served from cache`);
+      console.log(`✅ [REDIS] Product "${sku}" served from cache for user ${userId || 'anonymous'}`);
       return NextResponse.json({
         success: true,
         product: cachedProduct,
@@ -52,8 +70,38 @@ export async function GET(
     
     const doc = snapshot.docs[0];
     const data = doc.data();
+    const productId = doc.id;
     
     console.log(`✅ [FIREBASE] Found product "${sku}" in database`);
+    
+    // Fetch user-specific custom pricing if user is authenticated
+    let customPrice: number | null = null;
+    if (userId) {
+      console.log(`Fetching custom pricing for user: ${userId}, product: ${productId}`);
+      
+      try {
+        const customPricingDoc = await adminDb.collection('users')
+          .doc(userId)
+          .collection('customPricing')
+          .doc(productId)
+          .get();
+        
+        if (customPricingDoc.exists) {
+          const pricingData = customPricingDoc.data();
+          const customPriceInCents = pricingData?.customPrice;
+          if (typeof customPriceInCents === 'number') {
+            // Convert from cents to decimal
+            customPrice = customPriceInCents / 100;
+            console.log(`Found custom price for user ${userId}: ${customPrice} (from ${customPriceInCents} cents)`);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching custom pricing:', error);
+      }
+    }
+    
+    // Use custom price if available, otherwise use base price
+    const effectivePrice = customPrice || data.price || 0;
     
     const product = {
       id: doc.id,
@@ -61,7 +109,9 @@ export async function GET(
       name: data.name,
       description: data.description || '',
       brand: data.brand || '',
-      price: data.price || 0,
+      price: effectivePrice, // This will be the user-specific price or base price
+      basePrice: data.price || 0, // Always include base price for reference
+      hasCustomPrice: !!customPrice, // Flag to indicate if custom pricing is applied
       image: data.image || data.imageUrl || '/product-placeholder.png',
       imageUrl: data.imageUrl || data.image || '/product-placeholder.png',
       oem: data.oem || '',

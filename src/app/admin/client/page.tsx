@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { AdminGuard } from '@/components/auth/admin-guard';
 import UserDetailsModal from '@/app/admin/components/ui/userDetails';
+import PricingUploadModal from '@/app/admin/components/ui/PricingUploadModal';
 
 interface Client {
   id: string;
@@ -23,6 +24,8 @@ export default function ClientPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<Client | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingUser, setPricingUser] = useState<Client | null>(null);
   const { token } = useAuth();
 
   useEffect(() => {
@@ -154,6 +157,25 @@ export default function ClientPage() {
   const handleCloseModal = () => {
     setSelectedUser(null);
     setShowUserModal(false);
+  };
+
+  const handleAddNewPricing = (userId: string) => {
+    console.log('Adding new pricing for user:', userId);
+    
+    // Find the user by ID
+    const user = clients.find(client => client.id === userId);
+    if (user) {
+      setPricingUser(user);
+      setShowPricingModal(true);
+      setShowUserModal(false); // Close user details modal
+    } else {
+      alert(`Could not find user with ID: ${userId}`);
+    }
+  };
+
+  const handleClosePricingModal = () => {
+    setShowPricingModal(false);
+    setPricingUser(null);
   };
 
   // Convert Client data to UserData format for the modal
@@ -350,6 +372,18 @@ export default function ClientPage() {
           open={showUserModal}
           onClose={handleCloseModal}
           userData={convertClientToUserData(selectedUser)}
+          onAddNewPricing={handleAddNewPricing}
+        />
+      )}
+
+      {/* Pricing Upload Modal */}
+      {pricingUser && (
+        <PricingUploadModal
+          open={showPricingModal}
+          onClose={handleClosePricingModal}
+          userEmail={pricingUser.email}
+          userId={pricingUser.id}
+          userName={pricingUser.name}
         />
       )}
     </div>

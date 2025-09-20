@@ -12,7 +12,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+
+  // Helper function to build headers with authentication
+  const buildHeaders = useCallback((additionalHeaders: Record<string, string> = {}): HeadersInit => {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...additionalHeaders
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+  }, [token]);
 
   // Get user ID or session ID for API calls
   const getUserIdentifier = useCallback(() => {
@@ -30,6 +44,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const { userId, sessionId } = getUserIdentifier();
       
+      console.log(`🔄 [CART CONTEXT] Refreshing cart - User: ${userId || 'none'}, Token: ${token ? 'present' : 'missing'}`);
+      
       if (!userId && !sessionId) {
         console.log('🛒 [Context] No user/session ID, creating empty cart');
         setCart(CartStorage.createEmptyCart());
@@ -42,7 +58,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       console.log(`🛒 [Context] Fetching cart for ${userId ? `user ${userId}` : `session ${sessionId}`}`);
 
-      const response = await fetch(`/api/cart?${params}`);
+      const response = await fetch(`/api/cart?${params}`, {
+        headers: buildHeaders()
+      });
       const data: CartResponse = await response.json();
 
       if (data.success && data.cart) {
@@ -63,7 +81,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [getUserIdentifier]);
+  }, [getUserIdentifier, buildHeaders]);
 
   // Add item to cart
   const addToCart = useCallback(async (
@@ -78,7 +96,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const response = await fetch('/api/cart', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildHeaders(),
         body: JSON.stringify({
           productId: product.id,
           quantity,
@@ -137,7 +155,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (sessionId) params.set('sessionId', sessionId);
 
       const response = await fetch(`/api/cart/items?${params}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: buildHeaders()
       });
 
       const data: CartResponse = await response.json();
@@ -175,7 +194,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       const response = await fetch('/api/cart/items', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildHeaders(),
         body: JSON.stringify({
           itemId,
           quantity,
@@ -225,7 +244,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (sessionId) params.set('sessionId', sessionId);
 
       const response = await fetch(`/api/cart?${params}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: buildHeaders()
       });
 
       const data: CartResponse = await response.json();

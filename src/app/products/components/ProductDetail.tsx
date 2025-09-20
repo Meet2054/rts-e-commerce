@@ -6,6 +6,7 @@ import ProductImage from "../../../../public/product.png"
 import Link from "next/link";
 import React, { useState } from "react";
 import { useCartActions } from "@/hooks/use-cart";
+import { useAuth } from '@/components/auth/auth-provider';
 import { Loader2, Plus, Minus } from 'lucide-react';
 
 const COLORS = ["#2D9CDB", "#27AE60", "#F2994A", "#EB5757", "#4F4F4F"];
@@ -43,6 +44,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   
+  const { token } = useAuth();
   const { addToCart } = useCartActions();
 
   // Handle add to cart
@@ -124,11 +126,15 @@ export default function ProductDetail({ product, related }: { product: Product, 
         <div className="w-full lg:w-2/5">
         <div className="w-full max-w-sm flex flex-col gap-3">     
           <h1 className="text-2xl sm:text-3xl font-bold text-black mt-4 mb-2">{product.name}</h1>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-2xl font-bold text-black">${product.price}</span>
-            <span className="text-lg line-through text-gray-400">${(product.price * 1.33).toFixed(0)}</span>
-          </div>
-          <div className="text-green-600 text-sm mb-2">You save an extra 25% for being our valued existing customer.</div>
+          {token ? (
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl font-bold text-black">${product.price}</span>
+              <span className="text-lg line-through text-gray-400">${(product.price * 1.33).toFixed(0)}</span>
+            </div>
+          ) : (
+            <div className="text-lg text-gray-600 mb-2">Sign in to view pricing</div>
+          )}
+          {token && <div className="text-green-600 text-sm mb-2">You save an extra 25% for being our valued existing customer.</div>}
           <div className="mb-2">
             <div className="font-semibold mb-1">Features:</div>
             <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
@@ -138,53 +144,65 @@ export default function ProductDetail({ product, related }: { product: Product, 
               <li>Quality assured by RTS Imaging</li>
             </ul>
           </div>
-          <div className="mb-2">
-            <div className="font-semibold mb-1">Quantity:</div>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={quantity <= 1}
-                className="px-3 py-2 cursor-pointer border rounded-md bg-white hover:bg-[#F7941F] disabled:opacity-50"
-              >
-                <Minus size={16} />
-              </button>
-              <span className="px-4 py-1 bg-white border rounded-md min-w-[3rem] text-center">{quantity}</span>
-              <button 
-                onClick={() => setQuantity(Math.min(100, quantity + 1))}
-                disabled={quantity >= 100}
-                className="px-3 py-2 cursor-pointer border rounded-md bg-white hover:bg-[#F7941F] disabled:opacity-50"
-              >
-                <Plus size={16} />
-              </button>
+          {token && (
+            <>
+              <div className="mb-2">
+                <div className="font-semibold mb-1">Quantity:</div>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    disabled={quantity <= 1}
+                    className="px-3 py-2 cursor-pointer border rounded-md bg-white hover:bg-[#F7941F] disabled:opacity-50"
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <span className="px-4 py-1 bg-white border rounded-md min-w-[3rem] text-center">{quantity}</span>
+                  <button 
+                    onClick={() => setQuantity(Math.min(100, quantity + 1))}
+                    disabled={quantity >= 100}
+                    className="px-3 py-2 cursor-pointer border rounded-md bg-white hover:bg-[#F7941F] disabled:opacity-50"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+              </div>
+              <div className="mb-2">
+                <div className="font-semibold mb-1">Colors:</div>
+                <div className="flex gap-2">
+                  {COLORS.map((c) => (
+                    <button key={c} className={`w-6 h-6 rounded border-2 ${selectedColor === c ? "border-blue-600" : "border-gray-300"}`} style={{ background: c }} onClick={() => setSelectedColor(c)} />
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-col w-full gap-3 mt-4">
+                <button 
+                  onClick={handleAddToCart}
+                  disabled={isAddingToCart}
+                  className="bg-white text-black px-6 py-2 rounded-md text-base border hover:bg-[#F7941F] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isAddingToCart ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Adding to Cart...
+                    </>
+                  ) : (
+                    `Add to Cart`
+                  )}
+                </button>
+                <button className="bg-black text-white px-6 py-2 rounded-md text-base hover:bg-gray-800">
+                  Buy Now
+                </button>
+              </div>
+            </>
+          )}
+          {!token && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-md text-center">
+              <p className="text-gray-600 mb-3">Please sign in to view pricing and make purchases</p>
+              <Link href="/sign-in" className="bg-[#2E318E] text-white px-6 py-2 rounded-md text-base hover:bg-opacity-90">
+                Sign In
+              </Link>
             </div>
-          </div>
-          <div className="mb-2">
-            <div className="font-semibold mb-1">Colors:</div>
-            <div className="flex gap-2">
-              {COLORS.map((c) => (
-                <button key={c} className={`w-6 h-6 rounded border-2 ${selectedColor === c ? "border-blue-600" : "border-gray-300"}`} style={{ background: c }} onClick={() => setSelectedColor(c)} />
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-col w-full gap-3 mt-4">
-            <button 
-              onClick={handleAddToCart}
-              disabled={isAddingToCart}
-              className="bg-white text-black px-6 py-2 rounded-md text-base border hover:bg-[#F7941F] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isAddingToCart ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Adding to Cart...
-                </>
-              ) : (
-                `Add to Cart`
-              )}
-            </button>
-            <button className="bg-black text-white px-6 py-2 rounded-md text-base hover:bg-gray-800">
-              Buy Now
-            </button>
-          </div>
+          )}
         </div>
         </div>
       </div>
@@ -226,11 +244,22 @@ export default function ProductDetail({ product, related }: { product: Product, 
                   <Image src={ProductImage} alt={rp.name} width={300} height={80} className="object-contain rounded" />
                   <div className="flex flex-col flex-1">
                     <div className="font-semibold text-base text-black">{rp.name}</div>
-                    <div className="text-lg font-bold text-black mt-1">${rp.price}</div>
-                    <div className="flex flex-col w-full gap-2 mt-4">
-                      <Link href={`/products/${rp.sku}`} className="bg-gray-200 text-black px-4 py-1.5 rounded-md text-base text-center">Add to cart</Link>
-                      <Link href={`/products/${rp.sku}`} className="bg-black text-white px-4 py-1.5 rounded-md text-base text-center">Buy Now</Link>
-                    </div>
+                    {token ? (
+                      <>
+                        <div className="text-lg font-bold text-black mt-1">${rp.price}</div>
+                        <div className="flex flex-col w-full gap-2 mt-4">
+                          <Link href={`/products/${rp.sku}`} className="bg-gray-200 text-black px-4 py-1.5 rounded-md text-base text-center">Add to cart</Link>
+                          <Link href={`/products/${rp.sku}`} className="bg-black text-white px-4 py-1.5 rounded-md text-base text-center">Buy Now</Link>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-sm text-gray-500 mt-1">Sign in to view pricing</div>
+                        <div className="mt-4">
+                          <Link href={`/products/${rp.sku}`} className="bg-gray-200 text-black px-4 py-1.5 rounded-md text-base text-center block">View Details</Link>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

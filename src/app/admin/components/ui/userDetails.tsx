@@ -6,9 +6,11 @@ import { formatDate } from '@/lib/date-utils';
 interface UserOrder {
   id: string;
   orderId: string;
-  date: any;
-  status: 'pending' | 'complete' | 'cancelled';
-  amount: number;
+  createdAt: any;
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  totals: {
+    total: number;
+  };
 }
 
 interface UserData {
@@ -48,6 +50,8 @@ export default function UserDetailsModal({
 }: UserDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [suspendedAccount, setSuspendedAccount] = useState(false);
+  const [userOrders, setUserOrders] = useState<UserOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   // Close modal on outside click
   useEffect(() => {
@@ -75,9 +79,65 @@ export default function UserDetailsModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
+  // Fetch user orders when modal opens
+  useEffect(() => {
+    if (open && userData) {
+      fetchUserOrders();
+    }
+  }, [open, userData]);
+
+  const fetchUserOrders = async () => {
+    if (!userData) return;
+    
+    setLoadingOrders(true);
+    try {
+      // Try different identifiers to match orders
+      const identifiers = [
+        userData.clientId,
+        userData.id, 
+        userData.email
+      ].filter(Boolean); // Remove any undefined/null values
+      
+      console.log('Trying to fetch orders for identifiers:', identifiers, 'userData:', userData);
+      
+      let foundOrders: any[] = [];
+      
+      // Try each identifier until we find orders
+      for (const identifier of identifiers) {
+        const response = await fetch(`/api/orders?userId=${identifier}`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`Orders API response for ${identifier}:`, result);
+          
+          if (result.success && result.orders && result.orders.length > 0) {
+            foundOrders = result.orders;
+            console.log(`Found ${foundOrders.length} orders for identifier: ${identifier}`);
+            break; // Stop trying once we find orders
+          }
+        } else {
+          console.error(`Orders API failed for ${identifier} with status:`, response.status);
+        }
+      }
+      
+      setUserOrders(foundOrders.slice(0, 3)); // Show only recent 3 orders
+      
+      if (foundOrders.length === 0) {
+        console.log('No orders found for any identifier');
+      }
+    } catch (error) {
+      console.error('Error fetching user orders:', error);
+      setUserOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   const handleSuspendAccount = () => {
     setSuspendedAccount(!suspendedAccount);
     // Here you would typically make an API call to suspend/unsuspend the account
+    if (userData) {
+      console.log(`Account ${!suspendedAccount ? 'suspended' : 'activated'} for user:`, userData.id);
+    }
   };
 
   const handleExportClientData = () => {
@@ -128,24 +188,24 @@ export default function UserDetailsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div 
         ref={modalRef} 
-        className="bg-white rounded-lg max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+        <div className="flex items-center justify-between p-4 border-b bg-white">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {userData.displayName} ({userData.companyName || 'RTS Imaging Pvt. Ltd.'})
+            <h2 className="text-lg font-semibold text-gray-900">
+              {userData.displayName} ({userData.companyName || 'N/A'})
             </h2>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-sm text-gray-600">Status:</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(userData.status)}`}>
+              <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${getStatusColor(userData.status)}`}>
                 {userData.status}
               </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 p-2"
+            className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -153,71 +213,71 @@ export default function UserDetailsModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="grid grid-cols-2 gap-6">
             
             {/* Account Information */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
-              <div className="space-y-3">
+              <h3 className="text-base font-medium text-gray-900 mb-3">Account Information</h3>
+              <div className="space-y-2">
                 <div>
-                  <span className="text-sm text-gray-500">Full Name:</span>
-                  <p className="text-sm font-medium text-gray-900">{userData.displayName}</p>
+                  <span className="text-sm text-gray-600">Full Name:</span>
+                  <p className="text-sm text-gray-900">{userData.displayName}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Email Address:</span>
-                  <p className="text-sm font-medium text-gray-900">{userData.email}</p>
+                  <span className="text-sm text-gray-600">Email Address:</span>
+                  <p className="text-sm text-gray-900">{userData.email}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Phone Number:</span>
-                  <p className="text-sm font-medium text-gray-900">{userData.phoneNumber || 'Not provided'}</p>
+                  <span className="text-sm text-gray-600">Phone Number:</span>
+                  <p className="text-sm text-gray-900">{userData.phoneNumber || 'Not provided'}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Password:</span>
-                  <p className="text-sm font-medium text-gray-900">[hidden for security]</p>
+                  <span className="text-sm text-gray-600">Password:</span>
+                  <p className="text-sm text-gray-900">[hidden for security]</p>
                 </div>
               </div>
             </div>
 
             {/* Business Information */}
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Business Information</h3>
-              <div className="space-y-3">
+              <h3 className="text-base font-medium text-gray-900 mb-3">Business Information</h3>
+              <div className="space-y-2">
                 <div>
-                  <span className="text-sm text-gray-500">Company Name:</span>
-                  <p className="text-sm font-medium text-gray-900">{userData.companyName || 'Not provided'}</p>
+                  <span className="text-sm text-gray-600">Company Name:</span>
+                  <p className="text-sm text-gray-900">{userData.companyName || 'N/A'}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Company Address:</span>
-                  <p className="text-sm font-medium text-gray-900">{userData.address || 'Not provided'}</p>
+                  <span className="text-sm text-gray-600">Company Address:</span>
+                  <p className="text-sm text-gray-900">{userData.address || 'Not provided'}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">GST Number:</span>
-                  <p className="text-sm font-medium text-gray-900">{userData.gst || 'Not provided'}</p>
+                  <span className="text-sm text-gray-600">GST Number:</span>
+                  <p className="text-sm text-gray-900">{userData.gst || 'Not provided'}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Company Registration ID:</span>
-                  <p className="text-sm font-medium text-gray-900">DT90/2025</p>
+                  <span className="text-sm text-gray-600">Company Registration ID:</span>
+                  <p className="text-sm text-gray-900">{userData.businessType || 'DT90/2025'}</p>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-500">Website:</span>
-                  <p className="text-sm font-medium text-gray-900">{userData.website || 'Not provided'}</p>
+                  <span className="text-sm text-gray-600">Website:</span>
+                  <p className="text-sm text-gray-900">{userData.website || 'Not provided'}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Order Information */}
-          <div className="mt-8">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Order Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="mt-6">
+            <h3 className="text-base font-medium text-gray-900 mb-3">Order Information</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <span className="text-sm text-gray-500">Total Orders:</span>
-                <p className="text-sm font-medium text-gray-900">{userData.totalOrders}</p>
+                <span className="text-sm text-gray-600">Total Orders:</span>
+                <p className="text-sm text-gray-900">{userData.totalOrders}</p>
               </div>
               <div>
-                <span className="text-sm text-gray-500">Last Order Date:</span>
-                <p className="text-sm font-medium text-gray-900">
+                <span className="text-sm text-gray-600">Last Order Date:</span>
+                <p className="text-sm text-gray-900">
                   {userData.lastOrderDate ? formatDate(userData.lastOrderDate) : 'No orders yet'}
                 </p>
               </div>
@@ -225,42 +285,58 @@ export default function UserDetailsModal({
 
             {/* Recent Orders Table */}
             <div>
-              <h4 className="text-md font-medium text-gray-900 mb-3">Recent Orders</h4>
-              <div className="border rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Recent Orders</h4>
+              <div className="border rounded overflow-hidden">
+                <table className="min-w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                         Order ID
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                         Date
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                         Status
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                         Amount
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {userData.orders && userData.orders.length > 0 ? (
-                      userData.orders.slice(0, 3).map((order) => (
+                    {loadingOrders ? (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-2 text-sm text-gray-500 text-center">
+                          Loading orders...
+                        </td>
+                      </tr>
+                    ) : userOrders.length > 0 ? (
+                      userOrders.map((order) => (
                         <tr key={order.id}>
-                          <td className="px-4 py-3 text-sm text-gray-900">#{order.orderId}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{formatDate(order.date)}</td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(order.status)}`}>
+                          <td className="px-3 py-2 text-sm text-gray-900">#{order.orderId}</td>
+                          <td className="px-3 py-2 text-sm text-gray-900">{formatDate(order.createdAt)}</td>
+                          <td className="px-3 py-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                              order.status === 'delivered' 
+                                ? 'bg-green-100 text-green-800' 
+                                : order.status === 'shipped'
+                                ? 'bg-blue-100 text-blue-800'
+                                : order.status === 'processing'
+                                ? 'bg-orange-100 text-orange-800'
+                                : order.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
                               {order.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">₹{order.amount.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-sm text-gray-900">₹{order.totals.total.toLocaleString()}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="px-4 py-3 text-sm text-gray-500 text-center">
+                        <td colSpan={4} className="px-3 py-2 text-sm text-gray-500 text-center">
                           No orders found
                         </td>
                       </tr>
@@ -273,37 +349,34 @@ export default function UserDetailsModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-between p-6 border-t bg-gray-50">
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={suspendedAccount}
-                onChange={handleSuspendAccount}
-                className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-              />
-              <span className="text-gray-700">Suspended Account</span>
-            </label>
-          </div>
+        <div className="flex items-center justify-center gap-3 p-4 border-t bg-gray-50">
+          <button
+            onClick={handleSuspendAccount}
+            className={`px-4 py-2 text-sm font-medium rounded border ${
+              suspendedAccount
+                ? 'bg-red-600 text-white border-red-600 hover:bg-red-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {suspendedAccount ? 'Account Suspended' : 'Suspend Account'}
+          </button>
           
-          <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportClientData}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+          >
+            <Download className="h-4 w-4" />
+            Export Client Data
+          </button>
+          
+          {onAddNewPricing && (
             <button
-              onClick={handleExportClientData}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              onClick={() => onAddNewPricing(userData.id)}
+              className="px-4 py-2 text-sm font-medium text-white bg-black rounded hover:bg-gray-800"
             >
-              <Download className="h-4 w-4" />
-              Export Client Data
+              Add New Pricing
             </button>
-            
-            {onAddNewPricing && (
-              <button
-                onClick={() => onAddNewPricing(userData.id)}
-                className="px-4 py-2 text-sm font-medium text-white bg-black rounded-md hover:bg-gray-800"
-              >
-                Add New Pricing
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

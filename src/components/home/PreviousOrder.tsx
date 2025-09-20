@@ -3,6 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
+import { useAuth } from '@/components/auth/auth-provider';
 
 const previousOrders = [
 	{
@@ -36,7 +37,14 @@ const previousOrders = [
 ];
 
 const PreviousOrders = () => {
-		return (
+	const { token } = useAuth();
+
+	// Only show previous orders if user is authenticated
+	if (!token) {
+		return null;
+	}
+
+	return (
 			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-16 py-6 gap-10">
                 <div className='flex flex-col w-full'>
                     <div className="flex items-center justify-between mb-4">

@@ -1,6 +1,6 @@
 // src/app/api/products/related/[brand]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { RedisCache } from '@/lib/redis-cache';
 
 export async function GET(
@@ -13,10 +13,28 @@ export async function GET(
     const excludeSku = searchParams.get('exclude');
     const limit = parseInt(searchParams.get('limit') || '4');
     
-    console.log(`🔍 [API] Related products request - Brand: "${brand}", Exclude: "${excludeSku}", Limit: ${limit}`);
+    // Get user information from auth token
+    let userId: string | null = null;
+    const authHeader = request.headers.get('authorization');
     
-    // Create cache key for related products
-    const cacheKey = `related-products:${brand}:${excludeSku || 'none'}:${limit}`;
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        if (token !== 'dummy-token') { // Skip validation for dummy tokens
+          const decodedToken = await adminAuth.verifyIdToken(token);
+          userId = decodedToken.uid;
+        }
+      } catch (error) {
+        console.log('Token verification failed, continuing without user context:', error);
+      }
+    }
+    
+    console.log(`🔍 [API] Related products request - Brand: "${brand}", Exclude: "${excludeSku}", Limit: ${limit}, User: ${userId || 'anonymous'}`);
+    
+    // Include user ID in cache key for personalized pricing
+    const cacheKey = userId 
+      ? `related-products:${brand}:${excludeSku || 'none'}:${limit}_user_${userId}`
+      : `related-products:${brand}:${excludeSku || 'none'}:${limit}`;
     
     // Try to get from Redis cache first
     const cachedProducts = await RedisCache.get(cacheKey, 'api');
@@ -43,14 +61,43 @@ export async function GET(
     const snapshot = await query.get();
     console.log(`✅ [FIREBASE] Found ${snapshot.docs.length} related products for "${brand}"`);
 
+    // Fetch user-specific custom pricing if user is authenticated
+    let customPricing: Record<string, number> = {};
+    if (userId) {
+      console.log(`Fetching custom pricing for user: ${userId}`);
+      
+      try {
+        const customPricingQuery = await adminDb.collection('users')
+          .doc(userId)
+          .collection('customPricing')
+          .get();
+        
+        customPricingQuery.forEach(doc => {
+          const data = doc.data();
+          customPricing[doc.id] = data.customPrice;
+        });
+        
+        console.log(`Found ${Object.keys(customPricing).length} custom prices for user ${userId}`);
+      } catch (error) {
+        console.error('Error fetching custom pricing:', error);
+      }
+    }
+
     let products = snapshot.docs.map(doc => {
       const data = doc.data();
+      const productId = doc.id;
+      
+      // Use custom price if available, otherwise use base price
+      const effectivePrice = customPricing[productId] || data.price || 0;
+      
       return {
-        id: doc.id,
+        id: productId,
         sku: data.sku,
         name: data.name,
         brand: data.brand || '',
-        price: data.price || 0,
+        price: effectivePrice, // This will be the user-specific price or base price
+        basePrice: data.price || 0, // Always include base price for reference
+        hasCustomPrice: !!customPricing[productId], // Flag to indicate if custom pricing is applied
         image: data.image || data.imageUrl || '/product-placeholder.png',
         rating: data.rating || 4.5,
         reviews: data.reviews || 0,

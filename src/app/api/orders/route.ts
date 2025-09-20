@@ -1,4 +1,3 @@
-// src/app/api/orders/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { Order, OrderItem } from '@/lib/firebase-types';

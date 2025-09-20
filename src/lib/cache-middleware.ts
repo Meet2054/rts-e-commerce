@@ -1,5 +1,5 @@
 // src/lib/cache-middleware.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { RedisCache, CacheKeys } from './redis-cache';
 import CachedFirebaseService from './firebase-cache';
 

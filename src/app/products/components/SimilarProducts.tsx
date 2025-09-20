@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCartActions } from '@/hooks/use-cart';
 import Image from 'next/image';
 import ProductImage from "../../../../public/product.png"
@@ -27,34 +27,38 @@ interface SimilarProductsProps {
 
 const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) => {
     // Find 4 similar products by category or brand, excluding the selected product
-    const [quantity, setQuantity] = useState(1);
-    const [isAddingToCart, setIsAddingToCart] = useState(false);
+    const [quantities, setQuantities] = useState<{ [sku: string]: number }>({});
+    const [isAddingToCart, setIsAddingToCart] = useState<string | null>(null);
       
     const { addToCart } = useCartActions();
 
-    const handleAddToCart = async () => {
+    const handleAddToCart = async (item: Product) => {
         try {
-        setIsAddingToCart(true);
-        
-        await addToCart({
-            id: product.sku, // Use SKU as ID for consistency
-            sku: product.sku,
-            name: product.name,
-            image: ProductImage.src,
-            price: product.price,
-            brand: product.brand,
-            category: product.category
-        }, quantity);
-        
-        // Reset quantity after successful add
-        setQuantity(1);
-        
+            setIsAddingToCart(item.sku);
+            await addToCart({
+                id: item.sku,
+                sku: item.sku,
+                name: item.name,
+                image: ProductImage.src,
+                price: item.price,
+                brand: item.brand,
+                category: item.category
+            }, quantities[item.sku] || 1);
+            // Reset only this item's quantity
+            setQuantities(q => ({ ...q, [item.sku]: 1 }));
         } catch (error) {
-        console.error('Failed to add to cart:', error);
+            console.error('Failed to add to cart:', error);
         } finally {
-        setIsAddingToCart(false);
+            setIsAddingToCart(null);
         }
     };
+
+    // Initialize quantities for similar products
+    useEffect(() => {
+        const initial: { [sku: string]: number } = {};
+        similar.forEach(item => { initial[item.sku] = 1; });
+        setQuantities(initial);
+    }, [products, product]);
 
     const similar = products
         .filter(p => (p.category === product.category || p.brand === product.brand) && p.sku !== product.sku)
@@ -95,30 +99,36 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                                 <div>
                                     <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
                                         <button
-                                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                          disabled={quantity <= 1}
-                                          className=" cursor-pointer"
+                                            onClick={() => setQuantities(q => ({
+                                                ...q,
+                                                [item.sku]: Math.max(1, (q[item.sku] || 1) - 1)
+                                            }))}
+                                            disabled={(quantities[item.sku] || 1) <= 1}
+                                            className="cursor-pointer"
                                         >
                                             <Minus size={16} />
                                         </button>
-                                        <span className="px-2 text-base">{quantity}</span>
-                                        <button 
-                                          onClick={() => setQuantity(Math.min(100, quantity + 1))}
-                                          disabled={quantity >= 100}
-                                          className=" cursor-pointer"
+                                        <span className="px-2 text-base">{quantities[item.sku] || 1}</span>
+                                        <button
+                                            onClick={() => setQuantities(q => ({
+                                                ...q,
+                                                [item.sku]: Math.min(100, (q[item.sku] || 1) + 1)
+                                            }))}
+                                            disabled={(quantities[item.sku] || 1) >= 100}
+                                            className="cursor-pointer"
                                         >
                                             <Plus size={16} />
                                         </button>
                                     </div>
-                                    <button 
-                                      onClick={handleAddToCart}
-                                      disabled={isAddingToCart}
-                                      className="mt-2 cursor-pointer bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base"
+                                    <button
+                                        onClick={() => handleAddToCart(item)}
+                                        disabled={isAddingToCart === item.sku}
+                                        className="mt-2 cursor-pointer bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base"
                                     >
-                                        {isAddingToCart ? (
+                                        {isAddingToCart === item.sku ? (
                                             <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                            Adding...
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                Adding...
                                             </>
                                         ) : (
                                             `Add Cart`

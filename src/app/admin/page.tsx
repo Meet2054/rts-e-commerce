@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Download, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 
 interface DashboardStats {

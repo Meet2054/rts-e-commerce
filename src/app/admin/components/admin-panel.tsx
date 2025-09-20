@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
-import { Upload, Database, Trash2, CheckCircle, Package, DollarSign } from 'lucide-react';
+import { Database, Trash2, CheckCircle, Package, DollarSign } from 'lucide-react';
 
 export default function TestAdminPanel() {
   const { userData, token, loading: authLoading, user } = useAuth();

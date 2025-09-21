@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -14,7 +14,11 @@ interface OrdersListState {
   error: string | null;
 }
 
-export default function OrdersList() {
+export interface OrdersListRef {
+  refreshOrders: () => Promise<void>;
+}
+
+const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
   const { user, userData } = useAuth();
   const [state, setState] = useState<OrdersListState>({
     orders: [],
@@ -61,6 +65,11 @@ export default function OrdersList() {
       }));
     }
   };
+
+  // Expose fetchOrders function to parent component via ref
+  useImperativeHandle(ref, () => ({
+    refreshOrders: fetchOrders
+  }));
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -315,4 +324,8 @@ export default function OrdersList() {
       )}
     </div>
   );
-}
+});
+
+OrdersList.displayName = 'OrdersList';
+
+export default OrdersList;

@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
             // Try to get orders for this user
             const ordersSnapshot = await adminDb
               .collection('orders')
-              .where('customerEmail', '==', user.email)
+              .where('clientEmail', '==', user.email)
               .get();
             
             totalOrders = ordersSnapshot.size;

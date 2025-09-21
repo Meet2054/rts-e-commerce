@@ -194,7 +194,7 @@ export async function GET(request: NextRequest) {
       let orders = await RedisCache.get<Order[]>(cacheKey);
 
       if (!orders) {
-        console.log('❌ [REDIS] User orders not in cache, fetching from Firebase...');
+        console.log(`❌ [REDIS] User orders not in cache for userId: ${userId}, fetching from Firebase...`);
         
         // For now, get all orders and filter by clientId to avoid index requirements
         // In production, you should create the proper Firestore indexes
@@ -223,6 +223,7 @@ export async function GET(request: NextRequest) {
           .slice(0, limit);
 
         await RedisCache.set(cacheKey, orders, { ttl: 600 });
+        console.log(`✅ [REDIS] Cached ${orders.length} orders for userId: ${userId}`);
       }
 
       return NextResponse.json({

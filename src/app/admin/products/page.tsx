@@ -97,6 +97,41 @@ export default function ProductsPage() {
     fetchProducts();
   }, [currentPage, pageSize, searchTerm]); // Refetch when page or search changes
 
+  // Refresh function that can be called from child components
+  const refreshProducts = async () => {
+    try {
+      setLoading(true);
+      console.log(`🔄 Refreshing products page ${currentPage} from API...`);
+      
+      const searchParams = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        // Add cache-busting parameter to force fresh data
+        t: Date.now().toString(),
+        ...(searchTerm && { search: searchTerm })
+      });
+      
+      const response = await fetch(`/api/products?${searchParams.toString()}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        console.log(`✅ Refreshed ${data.products.length} products from ${data.source}`);
+        setProducts(data.products);
+        setFilteredProducts(data.products);
+        setPagination(data.pagination);
+        setError('');
+      } else {
+        console.error('❌ Failed to refresh products:', data.error);
+        setError(data.error || 'Failed to refresh products');
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing products:', error);
+      setError('Network error while refreshing products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle search with debouncing to avoid too many API calls
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -121,7 +156,7 @@ export default function ProductsPage() {
   const openDetailModal = (product: Product) => {
     // Convert the API product structure to the format expected by ProductDetailModal
     const modalProduct = {
-      id: product.sku,
+      id: product.sku, // Use SKU for the API endpoint
       name: product.name,
       description: product.description,
       category: product.category || 'Ink & Toner',
@@ -366,6 +401,7 @@ export default function ProductsPage() {
       <ProductDetailModal
         open={detailOpen}
         onClose={() => setDetailOpen(false)}
+        onUpdate={refreshProducts}
         product={
           selectedProduct
             ? {

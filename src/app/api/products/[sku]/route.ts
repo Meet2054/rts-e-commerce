@@ -153,3 +153,137 @@ export async function GET(
     );
   }
 }
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { sku: string } }
+) {
+  try {
+    const { sku } = await params;
+    const body = await request.json();
+    
+    console.log(`🔄 [API] Product update request - SKU: "${sku}"`);
+    
+    // Validate auth token (admin only)
+    let userId: string | null = null;
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Authorization header required' },
+        { status: 401 }
+      );
+    }
+
+    try {
+      const token = authHeader.substring(7);
+      const decodedToken = await adminAuth.verifyIdToken(token);
+      userId = decodedToken.uid;
+      console.log(`🔐 [AUTH] Product update authorized for user: ${userId}`);
+    } catch (error) {
+      console.error('❌ [AUTH] Invalid token for product update:', error);
+      return NextResponse.json(
+        { success: false, error: 'Invalid authorization token' },
+        { status: 401 }
+      );
+    }
+
+    // Validate required fields
+    const { name, description, brand, price, isActive } = body;
+    
+    if (!name || !description || !brand || typeof price !== 'number' || typeof isActive !== 'boolean') {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields: name, description, brand, price, isActive' },
+        { status: 400 }
+      );
+    }
+
+    // Get the product first to ensure it exists (search by SKU like the GET method)
+    const query = adminDb.collection('products').where('sku', '==', sku).limit(1);
+    const snapshot = await query.get();
+    
+    if (snapshot.empty) {
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    const doc = snapshot.docs[0];
+    const productRef = doc.ref;
+
+    // Prepare update data
+    const updateData = {
+      name: name.trim(),
+      description: description.trim(),
+      brand: brand.trim(),
+      price: Number(price),
+      isActive: Boolean(isActive),
+      updatedAt: new Date(),
+      // Keep existing fields that are not being updated
+      ...Object.fromEntries(
+        Object.entries(body).filter(([key]) => 
+          !['name', 'description', 'brand', 'price', 'isActive'].includes(key)
+        )
+      )
+    };
+
+    // Update the product in Firebase
+    await productRef.update(updateData);
+    console.log(`✅ [FIREBASE] Product "${sku}" updated successfully`);
+
+    // Get the actual document ID for cache clearing
+    const productId = doc.id;
+
+    // Clear relevant caches (since deletePattern doesn't work with Upstash, we'll use cache busting)
+    try {
+      // Clear individual product cache by SKU (both with and without user context)
+      await RedisCache.delete(`product:${sku}`);
+      
+      // Clear some common product list cache keys manually
+      // This is not perfect but covers most common cases
+      const commonCacheKeys = [
+        'products-list:all:20:page:1',
+        'products-list:all:50:page:1',
+        'products-list:all:100:page:1',
+        'products-list::20:page:1',
+        'products-list::50:page:1',
+        'products-list::100:page:1'
+      ];
+      
+      for (const key of commonCacheKeys) {
+        await RedisCache.delete(key);
+        await RedisCache.delete(`${key}_user_${userId}`);
+      }
+      
+      // Set a cache invalidation timestamp that the frontend can use
+      await RedisCache.set('products-list:last-update', Date.now(), { ttl: 3600 });
+      
+      console.log(`🗑️ [REDIS] Cleared product caches for SKU: ${sku}, ID: ${productId}`);
+      console.log(`🗑️ [REDIS] Cleared common product list cache keys`);
+    } catch (cacheError) {
+      console.error('⚠️ [REDIS] Failed to clear cache:', cacheError);
+      // Don't fail the request if cache clearing fails
+    }
+
+    // Get the updated product data
+    const updatedDoc = await productRef.get();
+    const updatedProduct = { id: updatedDoc.id, ...updatedDoc.data() };
+
+    return NextResponse.json({
+      success: true,
+      message: 'Product updated successfully',
+      product: updatedProduct
+    });
+
+  } catch (error) {
+    console.error(`❌ [API] Error updating product with SKU "${(await params).sku}":`, error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to update product',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}

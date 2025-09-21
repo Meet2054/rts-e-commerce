@@ -42,15 +42,27 @@ export default function RequestedUserDetailsModal({
   const handleApprove = async () => {
     if (!userData || !onApprove) return;
     setActionLoading('approve');
-    await onApprove(userData.id);
-    setActionLoading(null);
+    try {
+      await onApprove(userData.id);
+      onClose(); // Close modal after successful approval
+    } catch (error) {
+      console.error('Error approving user:', error);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   const handleReject = async () => {
     if (!userData || !onReject) return;
     setActionLoading('reject');
-    await onReject(userData.id, rejectionReason);
-    setActionLoading(null);
+    try {
+      await onReject(userData.id, rejectionReason);
+      onClose(); // Close modal after successful rejection
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Close modal on outside click

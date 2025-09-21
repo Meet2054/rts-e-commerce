@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const searchTerm = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '100');
+    const cacheBust = searchParams.get('t'); // Cache-busting parameter
     
     // Get user information from auth token
     let userId: string | null = null;
@@ -27,14 +28,15 @@ export async function GET(request: NextRequest) {
     
     const offset = (page - 1) * pageSize;
     
-    console.log(`Products request - User: ${userId || 'anonymous'}, Search: "${searchTerm || 'none'}", Page: ${page}, PageSize: ${pageSize}`);
+    console.log(`Products request - User: ${userId || 'anonymous'}, Search: "${searchTerm || 'none'}", Page: ${page}, PageSize: ${pageSize}, CacheBust: ${cacheBust || 'none'}`);
     
     // Include user ID in cache key for personalized pricing
     const cacheKey = userId 
       ? `${CacheKeys.productsList(searchTerm || '', pageSize, page)}_user_${userId}`
       : CacheKeys.productsList(searchTerm || '', pageSize, page);
     
-    const cachedData = await RedisCache.get(cacheKey, 'api');
+    // Skip cache if cache-busting parameter is present
+    const cachedData = cacheBust ? null : await RedisCache.get(cacheKey, 'api');
     
     if (cachedData) {
       console.log(`Products page ${page} served from cache for user ${userId || 'anonymous'}`);
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    console.log(`Products not in cache, fetching from Firebase...`);
+    console.log(`Products not in cache${cacheBust ? ' (cache-bust requested)' : ''}, fetching from Firebase...`);
     
     const query = adminDb.collection('products').where('isActive', '==', true);
     const snapshot = await query.get();

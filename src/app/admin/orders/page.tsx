@@ -103,6 +103,24 @@ export default function OrdersPage() {
     fetchOrders();
   }, [token]);
 
+  const refreshOrders = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch('/api/admin/orders', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.orders || []);
+      }
+    } catch (err) {
+      console.error('Error refreshing orders:', err);
+    }
+  };
+
   const filteredOrders = orders.filter(order => {
     if (activeTab === 'All') return true;
     if (activeTab === 'Complete') return order.status === 'delivered';
@@ -281,6 +299,7 @@ export default function OrdersPage() {
         open={showOrderModal}
         onClose={() => setShowOrderModal(false)}
         order={selectedOrder}
+        onOrderUpdate={refreshOrders}
       />
     </div>
   );

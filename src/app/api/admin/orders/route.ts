@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { Order, OrderItem, User } from '@/lib/firebase-types';
+import { RedisCache } from '@/lib/redis-cache';
 
 // Extended Order interface with user details populated
 export interface OrderWithUser extends Order {
@@ -225,6 +226,15 @@ export async function POST(request: Request) {
 // PUT method for updating order status
 export async function PUT(request: Request) {
   try {
+    // Check authentication
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { orderId, status, paymentStatus } = body;
 
@@ -242,8 +252,53 @@ export async function PUT(request: Request) {
     if (status) updateData.status = status;
     if (paymentStatus) updateData.paymentStatus = paymentStatus;
 
+    // Get the order first to know which user's cache to invalidate
+    const orderDoc = await adminDb.collection('orders').doc(orderId).get();
+    if (!orderDoc.exists) {
+      return NextResponse.json(
+        { success: false, error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    const orderData = orderDoc.data() as Order;
+
     // Update order in Firebase
     await adminDb.collection('orders').doc(orderId).update(updateData);
+
+    // Invalidate caches
+    try {
+      console.log(`Starting cache invalidation for order ${orderId}, clientId: ${orderData.clientId}, clientEmail: ${orderData.clientEmail}`);
+      
+      // Invalidate specific order cache
+      await RedisCache.delete(`order:${orderId}`);
+      console.log(`Deleted order cache: order:${orderId}`);
+      
+      // Invalidate user's orders cache (both by clientId and clientEmail)
+      if (orderData.clientId && orderData.clientId !== 'anonymous') {
+        await RedisCache.delete(`orders:user:${orderData.clientId}`);
+        console.log(`Deleted user orders cache: orders:user:${orderData.clientId}`);
+      }
+      if (orderData.clientEmail && orderData.clientEmail !== 'customer@example.com') {
+        await RedisCache.delete(`orders:user:${orderData.clientEmail}`);
+        console.log(`Deleted user orders cache: orders:user:${orderData.clientEmail}`);
+      }
+      
+      // Invalidate admin orders cache with various combinations
+      const statuses = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+      const limits = ['10', '50', '100'];
+      
+      for (const st of statuses) {
+        for (const lim of limits) {
+          await RedisCache.delete(`orders:all:${st}:${lim}`);
+        }
+      }
+      
+      console.log(`Cache invalidation completed for order ${orderId} and user ${orderData.clientId || orderData.clientEmail}`);
+    } catch (cacheError) {
+      console.error('Cache invalidation error:', cacheError);
+      // Don't fail the whole request if cache invalidation fails
+    }
 
     console.log(`Order ${orderId} updated successfully`);
 

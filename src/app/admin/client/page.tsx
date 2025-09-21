@@ -210,18 +210,27 @@ export default function ClientPage() {
 
   const exportClients = () => {
     // Create CSV content
-    const headers = ['ID', 'Name', 'Email', 'Company', 'Phone', 'Total Orders', 'Status'];
+    const headers = requested 
+      ? ['ID', 'Name', 'Email', 'Company', 'Phone', 'Status']
+      : ['ID', 'Name', 'Email', 'Company', 'Phone', 'Total Orders', 'Status'];
+    
     const csvContent = [
       headers.join(','),
-      ...clients.map(client => [
-        client.id,
-        client.name,
-        client.email,
-        client.companyName || '',
-        client.phoneNumber || '',
-        client.totalOrders,
-        client.status
-      ].join(','))
+      ...clients.map(client => {
+        const baseData = [
+          client.id,
+          client.name,
+          client.email,
+          client.companyName || '',
+          client.phoneNumber || '',
+        ];
+        
+        if (requested) {
+          return [...baseData, client.status].join(',');
+        } else {
+          return [...baseData, client.totalOrders, client.status].join(',');
+        }
+      })
     ].join('\n');
 
     // Download CSV
@@ -310,14 +319,14 @@ export default function ClientPage() {
               <th className="py-3 px-4">Company Name</th>
               <th className="py-3 px-4">Email</th>
               <th className="py-3 px-4">Phone</th>
-              <th className="py-3 px-4">Total Orders</th>
+              {!requested && <th className="py-3 px-4">Total Orders</th>}
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
           <tbody>
             {clients.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-8 px-4 text-center text-gray-500">
+                <td colSpan={requested ? 6 : 7} className="py-8 px-4 text-center text-gray-500">
                   No {requested ? 'requested' : 'active'} clients found
                 </td>
               </tr>
@@ -329,7 +338,7 @@ export default function ClientPage() {
                   <td className="py-2 px-4">{client.companyName}</td>
                   <td className="py-2 px-4">{client.email}</td>
                   <td className="py-2 px-4">{client.phoneNumber}</td>
-                  <td className="py-2 px-4">{client.totalOrders}</td>
+                  {!requested && <td className="py-2 px-4">{client.totalOrders}</td>}
                   <td className="py-2 px-4">
                     {client.status === 'requested' ? (
                       <div className="flex gap-1 justify-end">
@@ -395,6 +404,8 @@ export default function ClientPage() {
           onClose={handleCloseModal}
           userData={convertClientToUserData(selectedUser)}
           onAddNewPricing={handleAddNewPricing}
+          onApprove={(userId) => handleUserAction(userId, 'approve')}
+          onReject={(userId, reason) => handleUserAction(userId, 'reject')}
         />
       )}
 

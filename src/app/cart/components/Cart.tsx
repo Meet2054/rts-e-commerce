@@ -265,10 +265,10 @@ export default function ShoppingCart() {
 	}
 
 	return (
-		<div className="max-w-[1550px] px-4 md:px-12 lg:px-16 mx-auto py-10">
-			<div className="flex flex-col lg:flex-row gap-10">
+		<div className="max-w-[1550px] px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 mx-auto py-10">
+			<div className="flex flex-col xl:flex-row gap-10">
 				{/* Cart Items */}
-				<div className="flex flex-col w-full lg:w-2/3">
+				<div className="flex flex-col w-full xl:w-2/3">
 					<div className="flex flex-row justify-between items-center mb-4">
 						<h1 className="text-2xl font-bold">Your Cart</h1>
 						<div className="flex flex-col items-end">
@@ -378,8 +378,9 @@ export default function ShoppingCart() {
 				</div>
 
 				{/* Order Summary */}
-				<div className="w-full lg:w-1/3">
-					<div className="bg-white rounded-lg shadow-sm border p-6 sticky top-4">
+				<div className="w-full xl:w-1/3">
+					<div className="bg-white rounded-lg flex flex-col md:flex-row xl:flex-col gap-2 md:gap-6 xl:gap-2 shadow-sm border p-6 sticky top-4">
+						<div className="w-full md:w-1/2 xl:w-full">
 						{/* Shipping Address */}
 						<div className="space-y-3 mb-6">
 							<div className="flex justify-between items-center">
@@ -446,9 +447,11 @@ export default function ShoppingCart() {
 								<span>{currency === 'USD' ? '$' : ''}{total.toFixed(2)}</span>
 							</div>
 						</div>
+						</div>
 
+						<div className="w-full md:w-1/2 xl:w-full">
 						{/* Shipping Address Form */}
-						<div className="mb-6 p-4 bg-gray-50 rounded-md">
+						<div className="mb-6 px-4 bg-gray-50 rounded-md">
 							<h3 className="text-sm font-semibold mb-3">Shipping Information</h3>
 							<div className="grid grid-cols-1 gap-3">
 								<div>
@@ -587,6 +590,7 @@ export default function ShoppingCart() {
 								'Submit Order Request'
 							)}
 						</button>
+						</div>
 					</div>
 				</div>
 			</div>

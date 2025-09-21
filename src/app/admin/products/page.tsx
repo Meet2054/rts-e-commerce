@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import AddProductModal from '../components/ui/addProduct';
 import AddExcelModal from '../components/ui/addExcel';
 import ProductDetailModal from '../components/ui/productDetail';
-import { Upload, Plus, ChevronDown, Search, Filter, Loader2 } from 'lucide-react';
+import { Upload, Plus, ChevronDown, Search, Loader2 } from 'lucide-react';
 
 interface Product {
   id: string;

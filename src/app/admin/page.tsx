@@ -183,9 +183,9 @@ export default function Dashboard() {
 
         {/* Top Requested Products */}
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <div className="font-bold text-lg">Top Requested <br /> Products</div>
-            <div className="text-sm text-gray-800">Last 30 Days</div>
+          <div className="flex justify-between items-center gap-4 mb-4">
+            <div className="font-semibold text-md">Top Requested <br /> Products</div>
+            <div className="text-xs text-gray-800">Last 30 Days</div>
           </div>
           <div className="space-y-6">
             {topProducts.map((prod, idx) => (

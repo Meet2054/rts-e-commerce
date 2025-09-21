@@ -1,9 +1,61 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+// Sidebar filter component
+function ProductFilterSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  // Only render sidebar for mobile/tablet as popup
+  return (
+    <div className={`fixed top-32 inset-0 z-50 flex ${open ? '' : 'pointer-events-none opacity-0'}`}>
+      <div className="bg-white w-[90vw] max-w-[320px] h-full p-6 overflow-y-auto shadow-xl">
+        <div className="flex justify-between items-center mb-4">
+          <div className="font-bold text-lg">Filters</div>
+          <button onClick={onClose} className="text-gray-500"><X size={30} /></button>
+        </div>
+        <div className="font-bold text-lg mb-6">Printer Type</div>
+        <div className="space-y-2 mb-6">
+          {['Inkjet', 'LaserJet', 'All-in-One', '3D Printer'].map(type => (
+            <label key={type} className="flex items-center gap-2 text-gray-700">
+              <input type="checkbox" className="accent-blue-600" />
+              {type}
+            </label>
+          ))}
+        </div>
+        <div className="font-bold text-lg mb-6">Brand</div>
+        <div className="space-y-2 mb-6">
+          {['HP', 'Canon', 'Epson', 'Brother', 'Ricoh', 'Zebra (Labels & Barcode Printers)', 'DEERC'].map(brand => (
+            <label key={brand} className="flex items-center gap-2 text-gray-700">
+              <input type="checkbox" className="accent-blue-600" />
+              {brand}
+            </label>
+          ))}
+        </div>
+        <div className="font-bold text-lg mb-6">Cartridge Type</div>
+        <div className="space-y-2 mb-6">
+          {['Black', 'Blue', 'All'].map(type => (
+            <label key={type} className="flex items-center gap-2 text-gray-700">
+              <input type="checkbox" className="accent-blue-600" />
+              {type}
+            </label>
+          ))}
+        </div>
+        <div className="font-bold text-lg mb-2 text-gray-400">Printing Features</div>
+        <div className="space-y-2 mb-6">
+          {['Wireless', 'Duplex (Double-sided)', 'Mobile Printing (AirPrint / Google Print)', 'High-Speed Printing'].map(type => (
+            <label key={type} className="flex items-center gap-2 text-gray-400">
+              <input type="checkbox" disabled className="accent-blue-600" />
+              {type}
+            </label>
+          ))}
+        </div>
+      </div>
+      {/* Click outside to close */}
+      <div className="flex-1" onClick={onClose}></div>
+    </div>
+  );
+}
 import { useAuth } from '@/components/auth/auth-provider';
 import { useCartActions } from '@/hooks/use-cart';
-import { Package, ArrowRight, Minus, Plus } from 'lucide-react';
+import { Package, ArrowRight, Minus, Plus, X, ListFilterPlus } from 'lucide-react';
 import Image from 'next/image';
 
 interface Product {
@@ -16,6 +68,23 @@ interface Product {
 }
 
 function ProductList() {
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target as Node)) {
+        setShowSortDropdown(false);
+      }
+    }
+    if (showSortDropdown) {
+      document.addEventListener('mousedown', handleClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+    };
+  }, [showSortDropdown]);
+  const [showFilterSidebar, setShowFilterSidebar] = useState(false);
   const { addToCart } = useCartActions();
   const { token } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -36,7 +105,7 @@ function ProductList() {
       setLoading(true);
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
-      params.append('pageSize', '100'); // Request 100 products by default
+      params.append('pageSize', '50'); // Request 100 products by default
 
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -167,9 +236,9 @@ function ProductList() {
   }
 
   return (
-    <div className="max-w-[1550px] mx-auto px-4 sm:px-12 lg:px-16 flex gap-6">
-      {/* Left Sidebar Filters */}
-      <aside className="w-[260px] hidden lg:block pt-6">
+    <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex gap-6">
+      {/* Left Sidebar Filters (desktop only) */}
+      <aside className="w-[260px] hidden xl:block pt-6">
         <div className="font-bold text-lg mb-6">Printer Type</div>
         <div className="space-y-2 mb-6">
           {['Inkjet', 'LaserJet', 'All-in-One', '3D Printer'].map(type => (
@@ -208,36 +277,66 @@ function ProductList() {
         </div>
       </aside>
 
+      {/* Filter button for mobile/tablet */}
+      <button
+        className="xl:hidden fixed mt-4 left-2 z-40 bg-[#2E318E] text-white px-4 py-2 rounded-md shadow-lg"
+        onClick={() => setShowFilterSidebar(true)}
+      >
+        <ListFilterPlus />
+      </button>
+      {/* Popup sidebar for mobile/tablet */}
+      <ProductFilterSidebar open={showFilterSidebar} onClose={() => setShowFilterSidebar(false)} />
+
       {/* Main Content */}
       <div className="flex-1 pt-6">
         {/* Top Bar: Results & Sort */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-2xl font-bold text-black">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+          <div className="text-2xl pl-4 font-bold text-black">
             Found <span className="text-blue-600">{filteredProducts.length}</span> results for <span className="text-blue-600">{searchTerm || 'All'}</span>
             {pagination && pagination.totalItems > filteredProducts.length && (
-              <div className="text-sm text-gray-500 mt-1">
+              <div className="text-sm text-gray-500 mt-2">
                 Showing {filteredProducts.length} of {pagination.totalItems} total products
               </div>
             )}
           </div>
-          <div className="flex items-center gap-3">
-            <button className="p-2 rounded hover:bg-white" title="Grid View">
-              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
-            </button>
-            <button className="p-2 rounded hover:bg-white" title="List View">
-              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><circle cx="3" cy="6" r="1" /><circle cx="3" cy="12" r="1" /><circle cx="3" cy="18" r="1" /></svg>
-            </button>
-            <div className="relative">
-              <select
-                className="bg-white rounded px-3 py-2 text-base font-medium text-gray-700"
-                value={sortOption}
-                onChange={e => setSortOption(e.target.value)}
+          <div className="flex items-center mt-5 md:mt-0 gap-3">
+            <div className="relative" ref={sortDropdownRef}>
+              <button
+                className="bg-white rounded-md px-3 py-2 text-base font-medium text-gray-700 border border-gray-300 shadow-lg flex items-center gap-2 min-w-[220px]"
+                onClick={() => setShowSortDropdown((prev) => !prev)}
+                type="button"
               >
-                <option value="featured">Sort by Featured</option>
-                {token && <option value="price-low">Sort by Price: Low to High</option>}
-                {token && <option value="price-high">Sort by Price: High to Low</option>}
-                <option value="rating">Sort by Rating</option>
-              </select>
+                {sortOption === 'featured' && 'Sort by Featured'}
+                {sortOption === 'price-low' && 'Sort by Price: Low to High'}
+                {sortOption === 'price-high' && 'Sort by Price: High to Low'}
+                <span className="ml-auto text-gray-500">▼</span>
+              </button>
+              {showSortDropdown && (
+                <div className="absolute left-0 top-full mt-2 w-full bg-white border border-gray-200 rounded-md shadow-xl z-50">
+                  <button
+                    className={`block w-full text-left px-4 py-2 text-base hover:bg-blue-50 ${sortOption === 'featured' ? 'bg-blue-100 font-bold' : ''}`}
+                    onClick={() => { setSortOption('featured'); setShowSortDropdown(false); }}
+                  >
+                    Sort by Featured
+                  </button>
+                  {token && (
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base hover:bg-blue-50 ${sortOption === 'price-low' ? 'bg-blue-100 font-bold' : ''}`}
+                      onClick={() => { setSortOption('price-low'); setShowSortDropdown(false); }}
+                    >
+                      Sort by Price: Low to High
+                    </button>
+                  )}
+                  {token && (
+                    <button
+                      className={`block w-full text-left px-4 py-2 text-base hover:bg-blue-50 ${sortOption === 'price-high' ? 'bg-blue-100 font-bold' : ''}`}
+                      onClick={() => { setSortOption('price-high'); setShowSortDropdown(false); }}
+                    >
+                      Sort by Price: High to Low
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -249,7 +348,7 @@ function ProductList() {
             <p className="text-gray-500">No products found</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-10 gap-4">
             {filteredProducts.map((order) => (
               <div key={order.id} className="bg-white rounded-md shadow-sm p-4 flex flex-col hover:shadow-lg transition-shadow">
                 <div className="relative w-full justify-center flex mb-2">
@@ -271,7 +370,7 @@ function ProductList() {
                 </div>
 
                 <div className='flex flex-row gap-4 justify-between'>
-                  <div className='flex flex-col w-[65%] gap-1'>
+                  <div className='flex flex-col w-[60%] gap-2'>
                     <div
                       className="font-semibold text-base text-black cursor-pointer"
                       onClick={() => window.location.href = `/products/${order.sku}`}
@@ -283,7 +382,7 @@ function ProductList() {
           
                   </div>
                   {token && (
-                    <div className='flex flex-col w-[35%] gap-1'>
+                    <div className='flex flex-col w-[40%] gap-1'>
                       <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
                         <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: Math.max(1, (q[order.sku] || 1) - 1) })); }}><Minus size={16} /></button>
                         <span className="px-2 text-base">{quantities[order.sku] || 1}</span>

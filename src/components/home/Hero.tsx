@@ -62,23 +62,11 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="w-full flex justify-center">
-      <div className="relative max-w-[1550px] w-full h-full px-4 sm:px-16 flex items-center justify-center overflow-hidden">
-        {/* Content Left */}
-        {/* <div className="absolute left-32 top-1/2 -translate-y-1/2 max-w-md space-y-3 z-20">
-          <h1 className="text-4xl font-extrabold leading-snug">
-            High-Quality Printing, <br /> Every Page, Every Time.
-          </h1>
-          <p className="text-sm font-medium max-w-sm">
-            Print More, Save More – Reliable Printers at the Best Prices.
-          </p>
-          <button className="px-6 py-4 bg-orange-400 hover:bg-orange-600 text-white text-base font-semibold rounded-xs shadow-lg">
-            Smart Printing Starts Here.
-          </button>
-        </div> */}
+    <div className="w-full pt-10 xl:pt-0 flex justify-center">
+      <div className="relative max-w-[1550px] mx-auto w-full h-full px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex items-center justify-center overflow-hidden">
 
         {/* Sliding Images */}
-        <div className="w-full flex justify-center items-center overflow-hidden h-[600px] relative">
+        <div className="w-full flex justify-center items-center overflow-hidden relative">
           <div
             className={`flex ${
               transition ? "transition-transform duration-700 ease-in-out" : ""
@@ -115,7 +103,7 @@ export default function HeroSection() {
         {/* Left Button */}
         <button
           onClick={prevSlide}
-          className="absolute left-1 top-1/2 -translate-y-1/2 bg-white shadow-md px-4 py-12 cursor-pointer rounded-md hover:bg-[#F7941F] z-30"
+          className="absolute hidden md:block left-1 top-1/2 -translate-y-1/2 bg-white shadow-md px-4 py-12 cursor-pointer rounded-md hover:bg-[#F7941F] z-30"
         >
           <ChevronLeft className="w-6 h-6 text-gray-700" />
         </button>
@@ -123,7 +111,7 @@ export default function HeroSection() {
         {/* Right Button */}
         <button
           onClick={nextSlide}
-          className="absolute right-1 top-1/2 -translate-y-1/2 bg-white shadow-md px-4 py-12 cursor-pointer rounded-md hover:bg-[#F7941F] z-30"
+          className="absolute hidden md:block right-1 top-1/2 -translate-y-1/2 bg-white shadow-md px-4 py-12 cursor-pointer rounded-md hover:bg-[#F7941F] z-30"
         >
           <ChevronRight className="w-6 h-6 text-gray-700" />
         </button>

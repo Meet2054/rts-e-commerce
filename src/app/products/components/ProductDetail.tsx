@@ -76,7 +76,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
   const gallery = [ProductImage , ProductImage, ProductImage, ProductImage];
 
   return (
-    <div className="max-w-[1550px] mx-auto px-4 sm:px-12 lg:px-16 py-2">
+    <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-2">
       {/* Back button and page path */}
       <div className="mb-6 flex items-center gap-2 text-black text-sm">
         <Link href="/products" className="flex items-center gap-4">
@@ -208,9 +208,9 @@ export default function ProductDetail({ product, related }: { product: Product, 
       </div>
 
       {/* Tabs and Related Products in 2/3 and 1/3 layout */}
-      <div className="mt-10 flex flex-col lg:flex-row gap-20">
+      <div className="mt-10 flex flex-col xl:flex-row gap-20">
         {/* Tabs */}
-        <div className="w-full lg:w-3/5">
+        <div className=" w-full lg:w-1/2 xl:w-3/5">
           <div className="flex gap-6 border-b mb-4">
             {["Description", "Support"].map((t) => (
               <button key={t} className={`py-2 px-4 font-semibold text-base border-b-2 ${tab === t.toLowerCase() ? "border-black text-black" : "border-transparent text-gray-500"}`} onClick={() => setTab(t.toLowerCase())}>{t}</button>
@@ -233,15 +233,15 @@ export default function ProductDetail({ product, related }: { product: Product, 
           </div>
         </div>
         {/* Related Products */}
-        <div className="w-full lg:w-2/5">
+        <div className="w-full xl:w-2/5">
           <div className="text-xl font-bold text-black mb-4">
             Related Products
           </div>
-          <div className="grid grid-cols-1 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-1 gap-5">
             {related.slice(0, 2).map((rp) => (
               <div key={rp.sku} className="bg-white rounded-lg shadow-sm p-4 flex flex-col">
-                <div className="flex gap-4 items-center">
-                  <Image src={ProductImage} alt={rp.name} width={300} height={80} className="object-contain rounded" />
+                <div className="flex flex-col md:flex-row gap-4 md:items-center">
+                  <Image src={ProductImage} alt={rp.name} width={250} height={80} className="object-contain rounded" />
                   <div className="flex flex-col flex-1">
                     <div className="font-semibold text-base text-black">{rp.name}</div>
                     {token ? (

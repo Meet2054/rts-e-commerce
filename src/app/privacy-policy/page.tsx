@@ -1,7 +1,7 @@
 export default function Privacy() {
   return (
     <section className="py-10 bg-[#F1F2F4]">
-      <div className="max-w-[1550px] mx-auto px-4 sm:px-16">
+      <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16">
         <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 mb-8">
           Privacy Policy
         </h1>

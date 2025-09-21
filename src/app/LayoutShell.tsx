@@ -6,6 +6,7 @@ import Header from "@/components/common/Header";
 import ProductHeader from "@/components/common/ProductHeader";
 import SubFooter from "@/components/common/SubFooter";
 import Footer from "@/components/common/Footer";
+import MobileHeader from "@/components/common/MobileHeader";
 
 function HydrateClient({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
@@ -23,11 +24,21 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
     pathname.startsWith("/sign-up") ||
     pathname.startsWith("/admin");
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 1280);
+    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <HydrateClient>
       {!hideLayout && (
         <>
-          <Header />
+          {isMobile ? <MobileHeader /> : <Header />}
           <ProductHeader />
         </>
       )}

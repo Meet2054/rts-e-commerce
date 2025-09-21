@@ -62,9 +62,9 @@ export default function ProductHeader() {
   }, []);
 
   return (
-    <div className="bg-white shadow-sm mt-3 mb-2">
-      <div className="max-w-[1550px] mx-auto px-4 sm:px-16 flex justify-between items-center py-2">
-        <div className="flex flex-col md:flex-row items-center gap-16">
+    <div className="bg-white shadow-sm mt-40 xl:mt-3 mb-2">
+      <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex justify-between items-center py-2">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:gap-16">
           {categories.map((cat, idx) => (
             <div key={cat.label + '-' + idx} className="relative" ref={el => { dropdownRefs.current[idx] = el; }}>
               <button
@@ -132,7 +132,7 @@ export default function ProductHeader() {
             </div>
           ))}
         </div>
-        <div className='flex flex-col gap-1 text-sm text-gray-800 items-end'>
+        <div className='flex-col hidden xl:flex gap-1 text-sm text-gray-800 items-end'>
           <a href="tel:+918401926641" className='flex gap-2'>+91 8401926641 <Phone size={20} className='text-blue-800' /></a>
           <a href="mailto:rtsimaging@support.com" className='flex gap-2'>rtsimaging@support.com <Mail size={20} className='text-blue-800' /></a>
         </div>

@@ -45,7 +45,7 @@ const PreviousOrders = () => {
 	}
 
 	return (
-			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-16 py-6 gap-10">
+			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6 gap-10">
                 <div className='flex flex-col w-full'>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-2xl pl-3 font-bold text-black">Previous Orders</h2>
@@ -56,7 +56,7 @@ const PreviousOrders = () => {
                     </div>
 
                     {/* Product Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                         {previousOrders.map((order) => (
                             <div key={order.id} className="bg-white rounded-md shadow-sm p-4 flex flex-col">
                                 <div className="relative w-full justify-center flex mb-2">

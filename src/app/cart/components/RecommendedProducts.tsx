@@ -87,13 +87,13 @@ const RecommendedProducts: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-16 py-6 gap-10">
+            <div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6 gap-10">
                 <div className='flex flex-col w-full'>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-2xl pl-3 font-bold text-black">Recommended Products</h2>
                         <div className="w-20 h-6 bg-gray-200 animate-pulse rounded"></div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                         {[...Array(4)].map((_, i) => (
                             <div key={i} className="bg-white rounded-md shadow-sm p-4 animate-pulse">
                                 <div className="h-48 bg-gray-200 rounded mb-4"></div>
@@ -110,10 +110,10 @@ const RecommendedProducts: React.FC = () => {
     }
 
     return (
-        <div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-16 py-6 gap-10">
+        <div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6 gap-10">
             <div className='flex flex-col w-full'>
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-2xl pl-3 font-bold text-black">Recommended Products</h2>
+                    <h2 className="text-2xl pl-3 font-bold text-black">Recommended <br className='block sm:hidden'/> Products</h2>
                     <Link href="/products" className="flex items-center py-2 text-gray-700 hover:text-black text-sm font-medium">
                         View more
                         <ArrowRight size={20} />
@@ -121,7 +121,7 @@ const RecommendedProducts: React.FC = () => {
                 </div>
 
                 {/* Product Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     {products.map((item) => (
                         <div key={item.sku} className="bg-white rounded-md shadow-sm p-4 flex flex-col">
                             <div className="relative w-full justify-center flex mb-2">

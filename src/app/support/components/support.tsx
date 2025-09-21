@@ -48,7 +48,7 @@ export default function Support() {
   };
   return (
     <section className="py-10 bg-[#F1F2F4]">
-      <div className="max-w-[1550px] mx-auto px-4 sm:px-16">
+      <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16">
         <div className="flex flex-col md:flex-row gap-10">
           {/* Left: Info */}
           <div className="flex flex-col gap-6 w-full md:w-1/2">
@@ -66,7 +66,7 @@ export default function Support() {
               Our team is just a call or message away.
             </div>
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3 bg-white rounded px-4 py-2">
+              <div className="flex items-center gap-3 bg-white rounded-md px-4 py-2">
                 <Phone className="text-[#2E318E]" size={20} />
                 <span className="font-medium">Phone Support:</span>
                 <span className="font-semibold text-black">+91 98765 43210</span>
@@ -74,14 +74,14 @@ export default function Support() {
                   (Mon–Sat, 10 AM – 7 PM)
                 </span>
               </div>
-              <div className="flex items-center gap-3 bg-white rounded px-4 py-2">
+              <div className="flex items-center gap-3 bg-white rounded-md px-4 py-2">
                 <Mail className="text-[#2E318E]" size={20} />
                 <span className="font-medium">Email Support:</span>
                 <span className="font-semibold text-black">
                   support@yourshop.com
                 </span>
               </div>
-              <div className="flex items-center gap-3 bg-white rounded px-4 py-2">
+              <div className="flex items-center gap-3 bg-white rounded-md px-4 py-2">
                 <MessageCircle className="text-[#2E318E]" size={20} />
                 <span className="font-medium">WhatsApp:</span>
                 <a
@@ -110,7 +110,7 @@ export default function Support() {
                   value={formData.fullName}
                   onChange={handleChange}
                   placeholder="Full Name *"
-                  className="border rounded px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E]"
+                  className="border rounded-md px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E]"
                   required
                 />
                 <input
@@ -119,7 +119,7 @@ export default function Support() {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="Phone No."
-                  className="border rounded px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E]"
+                  className="border rounded-md px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E]"
                 />
                 <input
                   type="email"
@@ -127,7 +127,7 @@ export default function Support() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email Address *"
-                  className="border rounded px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E]"
+                  className="border rounded-md px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E]"
                   required
                 />
                 <textarea
@@ -136,13 +136,13 @@ export default function Support() {
                   onChange={handleChange}
                   placeholder="Your Message *"
                   rows={4}
-                  className="border rounded px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E] resize-none"
+                  className="border rounded-md px-4 py-2 bg-white focus:bg-white focus:outline-[#2E318E] resize-none"
                   required
                 />
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`bg-[#2E318E] text-white px-6 py-2 rounded font-medium transition-colors ${
+                  className={`bg-[#2E318E] text-white px-6 py-2 rounded-md font-medium transition-colors ${
                     loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'
                   }`}
                 >

@@ -75,7 +75,7 @@ const faqs = [
 export default function FAQs() {
 	return (
 		<section className="py-10 bg-[#F1F2F4]">
-			<div className="max-w-[1550px] mx-auto px-4 sm:px-16">
+			<div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16">
 				<h2 className="text-3xl font-bold text-gray-900 mb-8">FAQs</h2>
 				<div className="space-y-6">
 					{faqs.map(section => (

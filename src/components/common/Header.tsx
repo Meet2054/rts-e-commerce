@@ -75,7 +75,7 @@ const Header = () => {
             <Image 
              src="/logo.svg" 
              alt="RTS Logo" 
-             width={300}
+             width={350}
              height={60} 
             />
           </Link>
@@ -83,9 +83,23 @@ const Header = () => {
           <Image 
              src="/logo2.svg" 
              alt="RTS Logo" 
-             width={300} 
+             width={200} 
              height={60} 
-            />
+          />
+
+          <Image 
+             src="/logo3.svg" 
+             alt="RTS Logo" 
+             width={200} 
+             height={60} 
+          />
+
+          <Image 
+             src="/logo4.svg" 
+             alt="RTS Logo" 
+             width={200} 
+             height={60} 
+          />
           {/* If user is not logged in, show login/signup */}
           {!user ? (
             <div className="flex items-center gap-4">

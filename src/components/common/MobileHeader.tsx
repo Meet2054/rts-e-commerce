@@ -48,14 +48,14 @@ export default function MobileHeader() {
 	return (
 		<header className={`fixed top-0 z-50 w-full bg-[#F1F2F4] shadow-sm flex flex-col gap-2 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
 			<div className="flex items-center bg-white justify-between px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-4">
-				<div className='flex items-center gap-4 relative'>
-								<button onClick={() => setShowDropdown((prev) => !prev)}>
-									{showDropdown ? (
-										<X size={32} className="text-black" />
-									) : (
-										<Tally3 size={32} className="text-black rotate-90" />
-									)}
-								</button>
+				<div className='flex items-center justify-between w-full md:w-auto gap-4 relative'>
+					<button onClick={() => setShowDropdown((prev) => !prev)}>
+						{showDropdown ? (
+							<X size={32} className="text-black" />
+						) : (
+							<Tally3 size={32} className="text-black rotate-90" />
+						)}
+					</button>
 					{/* Dropdown menu */}
 					{showDropdown && (
 						<div ref={dropdownRef} className="absolute left-0 top-12 w-[260px] bg-white shadow-lg rounded-xl z-50 py-3 px-2 flex flex-col gap-1 border border-gray-100">
@@ -104,7 +104,9 @@ export default function MobileHeader() {
 					)}
 					<Image src="/logo.svg" alt="RTS Logo" width={170} height={32} />
 				</div>
-				<Image src="/logo2.svg" alt="Katun Logo" width={170} height={32} />
+				<Image src="/logo2.svg" alt="Katun Logo" className='hidden md:block' width={150} height={32} />
+				<Image src="/logo3.svg" alt="Katun Logo" className='hidden md:block' width={150} height={32} />
+				<Image src="/logo4.svg" alt="Katun Logo" className='hidden md:block' width={150} height={32} />
 			</div>
 			{/* Search bar */}
 			<div className="flex items-center justify-between bg-white px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-3">

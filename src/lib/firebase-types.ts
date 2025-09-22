@@ -30,6 +30,10 @@ export interface User extends BaseDocument {
   website?: string;
   gst?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
   
   // Business Preferences
   roleInCompany?: 'owner' | 'manager' | 'employee';

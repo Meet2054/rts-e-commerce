@@ -1,16 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { signUp, updateUserProfile } from '@/lib/firebase-auth';
-import { Mail, Lock, User, AlertCircle, Eye, EyeOff, Phone } from 'lucide-react';
+import { signUp } from '@/lib/firebase-auth';
+import { AlertCircle, Building2, MapPin, Briefcase, User, Phone, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
+import { getAllCountries, getStatesByCountry, lookupPostalCode, type Country, type State } from '@/lib/location-utils';
 
 export default function SignUpForm() {
-  const [step, setStep] = useState<'userinfo' | 'company' | 'preferences' | 'agreements' | 'created'>('userinfo');
-  const [currentUser, setCurrentUser] = useState<any>(null); // Store created user
+  const [step, setStep] = useState<'account' | 'address' | 'credentials' | 'created'>('account');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -18,21 +17,77 @@ export default function SignUpForm() {
     displayName: '',
     phoneNumber: '',
     companyName: '',
-    businessType: '',
-    industry: '',
-    website: '',
-    gst: '',
     address: '',
-    roleInCompany: '', // Updated field name
-    currency: '',
-    language: '',
-    agreedToTerms: false, // Updated field name
+    city: '',
+    state: '',
+    zipCode: '',
+    country: '',
+    roleInCompany: '',
+    agreedToTerms: false,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const router = useRouter();
+  const [countries, setCountries] = useState<Country[]>([]);
+  const [states, setStates] = useState<State[]>([]);
+  const [isLookingUpPostal, setIsLookingUpPostal] = useState(false);
+
+  // Load countries on component mount
+  useEffect(() => {
+    const loadCountries = async () => {
+      const countryList = getAllCountries();
+      setCountries(countryList);
+    };
+    loadCountries();
+  }, []);
+
+  // Update states when country changes
+  useEffect(() => {
+    if (formData.country) {
+      const stateList = getStatesByCountry(formData.country);
+      setStates(stateList);
+      // Reset state if country changed
+      if (formData.state && !stateList.find(s => s.code === formData.state)) {
+        setFormData(prev => ({ ...prev, state: '' }));
+      }
+    } else {
+      setStates([]);
+    }
+  }, [formData.country, formData.state]);
+
+  // Handle postal code lookup
+  const handlePostalCodeLookup = async (postalCode: string) => {
+    if (postalCode.length >= 3) {
+      setIsLookingUpPostal(true);
+      try {
+        const result = await lookupPostalCode(postalCode);
+        if (result.valid && result.countryCode) {
+          const updates: Partial<typeof formData> = {};
+          
+          if (result.countryCode && result.countryCode !== formData.country) {
+            updates.country = result.countryCode;
+          }
+          
+          if (result.stateCode && result.stateCode !== formData.state) {
+            updates.state = result.stateCode;
+          }
+          
+          if (result.city && result.city !== formData.city) {
+            updates.city = result.city;
+          }
+          
+          if (Object.keys(updates).length > 0) {
+            setFormData(prev => ({ ...prev, ...updates }));
+          }
+        }
+      } catch (error) {
+        console.error('Postal code lookup failed:', error);
+      } finally {
+        setIsLookingUpPostal(false);
+      }
+    }
+  };
 
   const variants = {
     initial: { opacity: 0, y: 40 },
@@ -43,10 +98,25 @@ export default function SignUpForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const target = e.target as HTMLInputElement | HTMLSelectElement;
     const { name, value, type } = target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (target as HTMLInputElement).checked : value
-    }));
+    
+    // Handle postal code with lookup
+    if (name === 'zipCode') {
+      const newFormData = {
+        ...formData,
+        [name]: value
+      };
+      setFormData(newFormData);
+      
+      // Trigger postal code lookup after a delay
+      if (value.length >= 3) {
+        setTimeout(() => handlePostalCodeLookup(value), 500);
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? (target as HTMLInputElement).checked : value
+      }));
+    }
   };
 
   const validateForm = () => {
@@ -70,25 +140,68 @@ export default function SignUpForm() {
     return true;
   };
 
-  // Step 1: User Info - Create the user account
-  const handleUserInfoSubmit = async (e: React.FormEvent) => {
+  // Step 1: Account - Basic account information (User Name, Phone, Company, Job Title)
+  const handleAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      setStep('address');
+      console.log('✅ [SignUp] Account info collected, moving to address');
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error('Account step error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Address - Address information
+  const handleAddressSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      setStep('credentials');
+      console.log('✅ [SignUp] Address info collected, moving to credentials');
+    } catch (err) {
+      setError('Failed to save address information');
+      console.error('Address step error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 3: Credentials - Email and password setup with account creation
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!validateForm()) return;
+    if (!formData.agreedToTerms) {
+      setError('You must agree to all Terms & Conditions');
+      return;
+    }
     setLoading(true);
     try {
-      // Create user with basic info only initially
+      // Create user with all collected info
       const { user, error } = await signUp(formData.email, formData.password, {
         displayName: formData.displayName,
         phoneNumber: formData.phoneNumber,
+        companyName: formData.companyName,
+        roleInCompany: formData.roleInCompany as 'owner' | 'manager' | 'employee',
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        zipCode: formData.zipCode,
+        country: formData.country,
         role: 'client',
+        agreedToTerms: true,
       });
       if (error) {
         setError(error);
       } else if (user) {
-        setCurrentUser(user); // Store user for later updates
-        setStep('company');
-        console.log('✅ [SignUp] User created, moving to company info');
+        setStep('created');
+        console.log('✅ [SignUp] User created successfully');
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -96,120 +209,6 @@ export default function SignUpForm() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Step 2: Company Info - Update user profile with company data
-  const handleCompanySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) {
-      setError('User session lost. Please try again.');
-      setStep('userinfo');
-      return;
-    }
-    
-    setLoading(true);
-    setError(''); // Clear any previous errors
-    try {
-      // Only include fields that have values
-      const companyData: any = {};
-      
-      if (formData.companyName.trim()) companyData.companyName = formData.companyName.trim();
-      if (formData.businessType) companyData.businessType = formData.businessType;
-      if (formData.industry) companyData.industry = formData.industry;
-      if (formData.website.trim()) companyData.website = formData.website.trim();
-      if (formData.gst.trim()) companyData.gst = formData.gst.trim();
-      if (formData.address.trim()) companyData.address = formData.address.trim();
-      
-      const { error } = await updateUserProfile(currentUser.uid, companyData);
-      
-      if (error) {
-        setError(error);
-      } else {
-        setStep('preferences');
-        console.log('✅ [SignUp] Company info updated');
-      }
-    } catch (err) {
-      setError('Failed to save company information');
-      console.error('Company info error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 3: Preferences - Update user profile with preference data
-  const handlePreferencesSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentUser) {
-      setError('User session lost. Please try again.');
-      setStep('userinfo');
-      return;
-    }
-    
-    setLoading(true);
-    setError(''); // Clear any previous errors
-    try {
-      // Only include fields that have values
-      const preferencesData: any = {};
-      
-      if (formData.roleInCompany) preferencesData.roleInCompany = formData.roleInCompany;
-      if (formData.currency) preferencesData.currency = formData.currency;
-      if (formData.language) preferencesData.language = formData.language;
-      
-      const { error } = await updateUserProfile(currentUser.uid, preferencesData);
-      
-      if (error) {
-        setError(error);
-      } else {
-        setStep('agreements');
-        console.log('✅ [SignUp] Preferences updated');
-      }
-    } catch (err) {
-      setError('Failed to save preferences');
-      console.error('Preferences error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 4: Agreements - Final profile completion
-  const handleAgreementsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.agreedToTerms) {
-      setError('You must agree to all Terms & Conditions');
-      return;
-    }
-    
-    if (!currentUser) {
-      setError('User session lost. Please try again.');
-      setStep('userinfo');
-      return;
-    }
-    
-    setLoading(true);
-    setError(''); // Clear any previous errors
-    try {
-      const { error } = await updateUserProfile(currentUser.uid, {
-        agreedToTerms: true,
-        // agreementDate will be set automatically in the updateUserProfile function
-      });
-      
-      if (error) {
-        setError(error);
-      } else {
-        setStep('created');
-        console.log('✅ [SignUp] Profile completed successfully');
-      }
-    } catch (err) {
-      setError('Failed to complete registration');
-      console.error('Agreements error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 5: Account Created
-  const handleGoHome = () => {
-    router.push('/products');
   };
 
   return (
@@ -222,9 +221,9 @@ export default function SignUpForm() {
         </div>
         <div className="max-w-md w-full mx-auto">
           <AnimatePresence mode="wait">
-            {step === 'userinfo' && (
+            {step === 'account' && (
               <motion.div
-                key="userinfo"
+                key="account"
                 variants={variants}
                 initial="initial"
                 animate="animate"
@@ -233,10 +232,10 @@ export default function SignUpForm() {
                 className="space-y-8"
               >
                 <div className="flex flex-col items-center">
-                  <h2 className="text-2xl font-bold text-black text-center lg:text-left">Create your account</h2>
-                  <p className="mt-1 text-center lg:text-left text-sm text-black">Start with your basic information.</p>
+                  <h2 className="text-2xl font-bold text-black text-center lg:text-left">Create Account</h2>
+                  <p className="mt-1 text-center lg:text-left text-sm text-black">Enter your name, company, and contact number</p>
                 </div>
-                <form className="mt-6 space-y-6" onSubmit={handleUserInfoSubmit}>
+                <form className="mt-6 space-y-6" onSubmit={handleAccountSubmit}>
                   {error && (
                     <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
@@ -244,7 +243,7 @@ export default function SignUpForm() {
                     </div>
                   )}
                   <div className="space-y-4">
-                    {/* Full Name */}
+                    {/* User Name */}
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
                       <input
@@ -265,62 +264,35 @@ export default function SignUpForm() {
                         name="phoneNumber"
                         value={formData.phoneNumber}
                         onChange={handleChange}
-                        className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Phone Number"
-                      />
-                    </div>
-                    {/* Email */}
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleChange}
                         required
                         className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Email Address"
+                        placeholder="Phone No."
                       />
                     </div>
-                    {/* Password */}
+                    {/* Company */}
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
                       <input
-                        type={showPassword ? 'text' : 'password'}
-                        name="password"
-                        value={formData.password}
+                        type="text"
+                        name="companyName"
+                        value={formData.companyName}
                         onChange={handleChange}
                         required
-                        className="w-full pl-10 pr-12 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Password"
+                        className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Company*"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
-                    {/* Confirm Password */}
+                    {/* Job Title */}
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
                       <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
+                        type="text"
+                        name="roleInCompany"
+                        value={formData.roleInCompany}
                         onChange={handleChange}
-                        required
-                        className="w-full pl-10 pr-12 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Confirm Password"
+                        className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Job Title"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
                   </div>
                   {/* Sign In Link */}
@@ -328,22 +300,22 @@ export default function SignUpForm() {
                     <p className="text-sm text-black">
                       Already have an account?{' '}
                       <Link href="/sign-in" className="text-blue-600 hover:text-blue-500 font-medium">
-                        Sign in here
+                        Sign in
                       </Link>
                     </p>
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center"
+                    className="w-full bg-[#2E318E] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center"
                   >
                     {loading ? (
                       <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full border-b-2 border-white"></div>
-                        Creating account...
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
                       </div>
                     ) : (
-                      'Create Account'
+                      'Next'
                     )}
                   </button>
                 </form>
@@ -351,9 +323,9 @@ export default function SignUpForm() {
             )}
 
 
-            {step === 'company' && (
+            {step === 'address' && (
               <motion.div
-                key="company"
+                key="address"
                 variants={variants}
                 initial="initial"
                 animate="animate"
@@ -362,95 +334,125 @@ export default function SignUpForm() {
                 className="space-y-8"
               >
                 <div className="flex flex-col items-center">
-                  <h2 className="text-2xl font-bold text-black text-center">Company Information</h2>
-                  <p className="text-sm text-black text-center">Add your business details for verification.</p>
+                  <h2 className="text-2xl font-bold text-black text-center">Address Details</h2>
+                  <p className="text-sm text-black text-center">Provide your full address and location</p>
                 </div>
 
-                <form className="space-y-4" onSubmit={handleCompanySubmit}>
+                <form className="space-y-4" onSubmit={handleAddressSubmit}>
                   {error && (
                     <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
                       <span className="text-red-600 text-sm">{error}</span>
                     </div>
                   )}
-                  <input
-                    type="text"
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    required
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                    placeholder="Company Name"
-                  />
 
-                  <select
-                    name="businessType"
-                    value={formData.businessType}
-                    onChange={handleChange}
-                    required
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                  >
-                    <option value="">Business Type</option>
-                    <option value="manufacturer">Manufacturer</option>
-                    <option value="distributor">Distributor</option>
-                    <option value="retailer">Retailer</option>
-                  </select>
+                  {/* Address */}
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Street Address"
+                    />
+                  </div>
 
-                  <select
-                    name="industry"
-                    value={formData.industry}
-                    onChange={handleChange}
-                    required
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                  >
-                    <option value="">Industry</option>
-                    <option value="office">Office Equipment</option>
-                    <option value="it">IT Services</option>
-                    <option value="other">Other</option>
-                  </select>
+                  {/* City */}
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="City"
+                    />
+                  </div>
 
-                  <input
-                    type="text"
-                    name="website"
-                    value={formData.website}
-                    onChange={handleChange}
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                    placeholder="Website"
-                  />
+                  {/* Country */}
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800 z-10" />
+                    <select
+                      name="country"
+                      value={formData.country}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
+                    >
+                      <option value="">Select Country</option>
+                      {countries.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                  <input
-                    type="text"
-                    name="gst"
-                    value={formData.gst}
-                    onChange={handleChange}
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                    placeholder="GST No."
-                  />
+                  {/* State/Province */}
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800 z-10" />
+                    <select
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      required={states.length > 0}
+                      disabled={states.length === 0}
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none disabled:opacity-50"
+                    >
+                      <option value="">
+                        {states.length === 0 ? 'Select Country First' : 'Select State/Province'}
+                      </option>
+                      {states.map((state) => (
+                        <option key={state.code} value={state.code}>
+                          {state.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                    placeholder="Company Address"
-                  />
+                  {/* Zip/Postal Code with Auto-lookup */}
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                    <input
+                      type="text"
+                      name="zipCode"
+                      value={formData.zipCode}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Zip/Postal Code (auto-fills location)"
+                    />
+                    {isLookingUpPostal && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-gray-600 text-center">
+                    💡 Enter your postal code first for automatic location detection
+                  </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
+                    className="w-full bg-[#2E318E] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
                   >
-                    {loading ? 'Saving...' : 'Continue to Preferences'}
+                    {loading ? 'Processing...' : 'Continue to Credentials'}
                   </button>
                 </form>
               </motion.div>
             )}
 
 
-            {step === 'preferences' && (
+            {step === 'credentials' && (
               <motion.div
-                key="preferences"
+                key="credentials"
                 variants={variants}
                 initial="initial"
                 animate="animate"
@@ -459,11 +461,11 @@ export default function SignUpForm() {
                 className="space-y-8"
               >
                 <div className="flex flex-col items-center">
-                  <h2 className="text-2xl font-bold text-black text-center">Business Preferences</h2>
-                  <p className="text-sm text-black text-center">Personalize your account settings.</p>
+                  <h2 className="text-2xl font-bold text-black text-center">Account Credentials</h2>
+                  <p className="text-sm text-black text-center">Set your email, username, and password</p>
                 </div>
                 
-                <form className="space-y-4" onSubmit={handlePreferencesSubmit}>
+                <form className="space-y-4" onSubmit={handleCredentialsSubmit}>
                   {error && (
                     <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
@@ -471,95 +473,96 @@ export default function SignUpForm() {
                     </div>
                   )}
 
-                  <select
-                    name="roleInCompany"
-                    value={formData.roleInCompany}
-                    onChange={handleChange}
-                    required
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                  >
-                    <option value="">Role in Company</option>
-                    <option value="owner">Owner</option>
-                    <option value="manager">Manager</option>
-                    <option value="employee">Employee</option>
-                  </select>
+                  {/* Email Address */}
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="E-mail Address"
+                    />
+                  </div>
 
-                  <select
-                    name="currency"
-                    value={formData.currency}
-                    onChange={handleChange}
-                    required
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                  >
-                    <option value="">Preferred Currency</option>
-                    <option value="INR">INR</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
-                  </select>
+                  {/* Username */}
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                    <input
+                      type="text"
+                      name="username"
+                      value={formData.displayName} // Using displayName as username
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Username (already entered)"
+                      readOnly
+                    />
+                  </div>
 
-                  <select
-                    name="language"
-                    value={formData.language}
-                    onChange={handleChange}
-                    required
-                    className="w-full py-3 px-4 bg-[#F1F2F4] rounded-lg"
-                  >
-                    <option value="">Preferred Language</option>
-                    <option value="en">English</option>
-                    <option value="hi">Hindi</option>
-                  </select>
+                  {/* Password */}
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-12 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Password *"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
 
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
-                  >
-                    {loading ? 'Saving...' : 'Continue to Agreements'}
-                  </button>
+                  {/* Confirm Password */}
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      required
+                      className="w-full pl-10 pr-12 py-3 bg-[#F1F2F4] rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Confirm Password *"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
 
-                </form>
-              </motion.div>
-            )}
-
-
-            {step === 'agreements' && (
-              <motion.div
-                key="agreements"
-                variants={variants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ duration: 0.4 }}
-                className="space-y-8"
-              >
-                <div className="flex flex-col items-center">
-                  <h2 className="text-2xl font-bold text-black text-center">Agreements & Security</h2>
-                  <p className="text-sm text-black text-center">Accept terms and secure your account.</p>
-                </div>
-                <form className="space-y-4" onSubmit={handleAgreementsSubmit}>
-
-                  <div className="flex items-center">
+                  {/* Terms & Conditions */}
+                  <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
                       name="agreedToTerms"
                       checked={formData.agreedToTerms}
                       onChange={handleChange}
-                      className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      required
+                      className="mt-1 accent-blue-600"
                     />
-                    <label htmlFor="agreedToTerms" className="ml-2 text-sm text-gray-600">Agree all Terms & Conditions</label>
+                    <label className="text-sm text-black">
+                      Agree all Terms & Conditions
+                    </label>
                   </div>
-
-                  {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                      <span className="text-red-600 text-sm">{error}</span>
-                    </div>
-                  )}
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
+                    className="w-full bg-[#2E318E] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg"
                   >
                     {loading ? 'Creating Account...' : 'Create Account'}
                   </button>
@@ -567,6 +570,8 @@ export default function SignUpForm() {
                 </form>
               </motion.div>
             )}
+
+
             {step === 'created' && (
               <motion.div
                 key="created"
@@ -578,33 +583,30 @@ export default function SignUpForm() {
                 className="space-y-8"
               >
                 <div className="flex flex-col items-center">
-                  <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <CheckCircle className="h-8 w-8 text-green-600" />
                   </div>
-                  <h2 className="text-2xl font-bold text-black text-center">Registration Submitted!</h2>
-                  <p className="text-sm text-gray-600 text-center mt-2">
-                    Your account has been created successfully and is now pending admin approval.
+                  <h2 className="text-2xl font-bold text-black text-center">Account Created Successfully!</h2>
+                  <p className="text-sm text-black text-center max-w-md">
+                    Your account will be reviewed by our admin team. You&apos;ll receive access once approved, typically within 24-48 hours.
                   </p>
                 </div>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <svg className="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    <span className="font-semibold text-yellow-800">Approval Required</span>
-                  </div>
-                  <p className="text-sm text-yellow-700">
-                    Your account will be reviewed by our admin team. You'll receive access once approved, typically within 24-48 hours.
-                  </p>
+                
+                <div className="space-y-4">
+                  <button
+                    onClick={() => window.location.href = '/sign-in'}
+                    className="w-full bg-[#2E318E] hover:bg-blue-700 text-white py-3 rounded-lg"
+                  >
+                    Go to Sign In
+                  </button>
+
+                  <button
+                    onClick={() => window.location.href = '/'}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-black py-3 rounded-lg"
+                  >
+                    Return to Home
+                  </button>
                 </div>
-                <button
-                  onClick={() => router.push('/')}
-                  className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-900 transition-colors"
-                >
-                  Go to Website
-                </button>
               </motion.div>
             )}
           </AnimatePresence>

@@ -50,6 +50,33 @@ export const signUp = async (email: string, password: string, userData: Partial<
     if (userData.phoneNumber && userData.phoneNumber.trim() !== '') {
       userDocData.phoneNumber = userData.phoneNumber.trim();
     }
+    if (userData.companyName && userData.companyName.trim() !== '') {
+      userDocData.companyName = userData.companyName.trim();
+    }
+    if (userData.roleInCompany && userData.roleInCompany.trim() !== '') {
+      userDocData.roleInCompany = userData.roleInCompany.trim();
+    }
+    if (userData.address && userData.address.trim() !== '') {
+      userDocData.address = userData.address.trim();
+    }
+    if (userData.city && userData.city.trim() !== '') {
+      userDocData.city = userData.city.trim();
+    }
+    if (userData.state && userData.state.trim() !== '') {
+      userDocData.state = userData.state.trim();
+    }
+    if (userData.zipCode && userData.zipCode.trim() !== '') {
+      userDocData.zipCode = userData.zipCode.trim();
+    }
+    if (userData.country && userData.country.trim() !== '') {
+      userDocData.country = userData.country.trim();
+    }
+    if (userData.agreedToTerms !== undefined) {
+      userDocData.agreedToTerms = userData.agreedToTerms;
+      if (userData.agreedToTerms) {
+        userDocData.agreementDate = serverTimestamp();
+      }
+    }
 
     await setDoc(doc(db, 'users', result.user.uid), userDocData);
     

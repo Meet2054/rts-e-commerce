@@ -1,7 +1,17 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { formatDate } from '@/lib/date-utils';
+
+interface UserOrder {
+  id: string;
+  orderId: string;
+  createdAt: any;
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  totals: {
+    total: number;
+  };
+}
 
 interface UserData {
   id: string;
@@ -21,6 +31,9 @@ interface UserData {
   roleInCompany?: string;
   agreedToTerms?: boolean;
   createdAt: any;
+  totalOrders: number;
+  lastOrderDate?: any;
+  orders?: UserOrder[];
   _meta?: {
     source: string;
     timestamp: string;
@@ -37,20 +50,27 @@ interface UserDetailsModalProps {
   onAddNewPricing?: (userId: string) => void;
 }
 
-export default function RequestedUserDetailsModal({ 
+export default function UserDetailsModal({ 
   open, 
   onClose, 
   userData: initialUserData,
-  onApprove,
-  onReject
-}: UserDetailsModalProps & { onApprove?: (userId: string) => void; onReject?: (userId: string, reason?: string) => void; }) {
+  onAddNewPricing 
+}: UserDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [suspendedAccount, setSuspendedAccount] = useState(false);
+  const [userOrders, setUserOrders] = useState<UserOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(initialUserData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | null>(null);
-  
+  const [debugInfo, setDebugInfo] = useState({
+    lastFetch: 'Not fetched yet',
+    cacheStatus: 'Unknown',
+    dataSource: 'Initial props',
+    apiCalls: 0,
+    errors: [] as string[]
+  });
+
   const fetchUserData = (bypassCache = false) => {
     // Use the current userData ID if available, otherwise fall back to initialUserData
     const userId = userData?.id || initialUserData?.id;
@@ -197,6 +217,8 @@ export default function RequestedUserDetailsModal({
           country: data.user.country || 'Not provided',
           agreedToTerms: data.user.agreedToTerms || false,
           createdAt: data.user.createdAt || null,
+          totalOrders: data.user.totalOrders || 0,
+          lastOrderDate: data.user.lastOrderDate || null,
           _meta: data.meta // Store metadata for debugging
         };
         
@@ -219,35 +241,6 @@ export default function RequestedUserDetailsModal({
       .finally(() => {
         setLoading(false);
       });
-  };
-  const handleApprove = async () => {
-    const userId = displayUserData.id;
-    if (!userId || !onApprove) return;
-    
-    setActionLoading('approve');
-    try {
-      await onApprove(userId);
-      onClose(); // Close modal after successful approval
-    } catch (error) {
-      console.error('Error approving user:', error);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleReject = async () => {
-    const userId = displayUserData.id;
-    if (!userId || !onReject) return;
-    
-    setActionLoading('reject');
-    try {
-      await onReject(userId, rejectionReason);
-      onClose(); // Close modal after successful rejection
-    } catch (error) {
-      console.error('Error rejecting user:', error);
-    } finally {
-      setActionLoading(null);
-    }
   };
 
   // Close modal on outside click
@@ -275,6 +268,13 @@ export default function RequestedUserDetailsModal({
     }
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
+
+  // Fetch user orders when modal opens
+  useEffect(() => {
+    if (open && userData) {
+      fetchUserOrders();
+    }
+  }, [open, userData]);
 
   // Fetch latest user data from database when modal opens
   useEffect(() => {
@@ -318,11 +318,96 @@ export default function RequestedUserDetailsModal({
     }
   }, [open, initialUserData]);
 
+  const fetchUserOrders = async () => {
+    const currentUserData = userData || initialUserData;
+    if (!currentUserData) return;
+    
+    setLoadingOrders(true);
+    try {
+      // Try different identifiers to match orders
+      const identifiers = [
+        currentUserData.clientId,
+        currentUserData.id, 
+        currentUserData.email
+      ].filter(Boolean); // Remove any undefined/null values
+      
+      console.log('Trying to fetch orders for identifiers:', identifiers, 'userData:', currentUserData);
+      
+      let foundOrders: any[] = [];
+      
+      // Try each identifier until we find orders
+      for (const identifier of identifiers) {
+        const response = await fetch(`/api/orders?userId=${identifier}`);
+        if (response.ok) {
+          const result = await response.json();
+          console.log(`Orders API response for ${identifier}:`, result);
+          
+          if (result.success && result.orders && result.orders.length > 0) {
+            foundOrders = result.orders;
+            console.log(`Found ${foundOrders.length} orders for identifier: ${identifier}`);
+            break; // Stop trying once we find orders
+          }
+        } else {
+          console.error(`Orders API failed for ${identifier} with status:`, response.status);
+        }
+      }
+      
+      setUserOrders(foundOrders.slice(0, 3)); // Show only recent 3 orders
+      
+      if (foundOrders.length === 0) {
+        console.log('No orders found for any identifier');
+      }
+    } catch (error) {
+      console.error('Error fetching user orders:', error);
+      setUserOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  const handleSuspendAccount = () => {
+    const currentUserData = userData || initialUserData;
+    setSuspendedAccount(!suspendedAccount);
+    // Here you would typically make an API call to suspend/unsuspend the account
+    if (currentUserData) {
+      console.log(`Account ${!suspendedAccount ? 'suspended' : 'activated'} for user:`, currentUserData.id);
+    }
+  };
+
+  const handleExportClientData = () => {
+    const currentUserData = userData || initialUserData;
+    if (!currentUserData) return;
+    
+    // Create CSV content
+    const csvContent = [
+      ['Field', 'Value'],
+      ['Client ID', currentUserData.clientId],
+      ['Name', currentUserData.displayName],
+      ['Email', currentUserData.email],
+      ['Phone', currentUserData.phoneNumber || ''],
+      ['Company', currentUserData.companyName || ''],
+      ['Status', currentUserData.status],
+      ['Total Orders', currentUserData.totalOrders.toString()],
+      ['Last Order', currentUserData.lastOrderDate ? formatDate(currentUserData.lastOrderDate) : ''],
+      ['Created', formatDate(currentUserData.createdAt)]
+    ].map(row => row.join(',')).join('\n');
+
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `client-${currentUserData.clientId}-data.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   if (!open) return null;
-  
+
   // Create a default user data object to use when data is missing
   const displayUserData = userData || {
     id: initialUserData?.id || '',
+    clientId: initialUserData?.clientId || '',
     displayName: initialUserData?.displayName || initialUserData?.name || 'Not available',
     email: initialUserData?.email || 'Not available',
     phoneNumber: initialUserData?.phoneNumber || initialUserData?.phone || 'Not provided',
@@ -335,7 +420,9 @@ export default function RequestedUserDetailsModal({
     country: initialUserData?.country || 'Not provided',
     agreedToTerms: initialUserData?.agreedToTerms || false,
     createdAt: initialUserData?.createdAt || null,
-    status: initialUserData?.status || 'requested',
+    status: initialUserData?.status || 'active',
+    totalOrders: initialUserData?.totalOrders || 0,
+    lastOrderDate: initialUserData?.lastOrderDate || null,
     _meta: {
       source: 'initial',
       timestamp: new Date().toISOString(),
@@ -369,17 +456,34 @@ export default function RequestedUserDetailsModal({
     error
   });
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'text-green-600 bg-green-100';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-100';
+      case 'cancelled':
+        return 'text-red-600 bg-red-100';
+      case 'complete':
+        return 'text-green-600 bg-green-100';
+      default:
+        return 'text-gray-600 bg-gray-100';
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
       <div 
         ref={modalRef} 
-        className="bg-white rounded-md shadow-lg max-w-2xl w-full mx-4 flex flex-col"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b bg-white">
-          <div className="flex flex-col">
+        <div className="flex items-center justify-between p-4 border-b bg-white">
+          <div>
             <div className="flex items-center">
-              <h2 className="text-xl font-bold text-black">User Request Detail</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {displayUserData.displayName} ({displayUserData.companyName || 'N/A'})
+              </h2>
               {displayUserData._meta?.source && (
                 <span 
                   className={`text-xs font-semibold ml-2 px-1.5 py-0.5 rounded ${
@@ -396,9 +500,15 @@ export default function RequestedUserDetailsModal({
                 </span>
               )}
             </div>
-            {loading && (
-              <p className="text-xs text-blue-500 animate-pulse mt-1">Refreshing data...</p>
-            )}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-sm text-gray-600">Status:</span>
+              <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${getStatusColor(displayUserData.status)}`}>
+                {displayUserData.status}
+              </span>
+              {loading && (
+                <span className="text-xs text-blue-500 animate-pulse">Refreshing...</span>
+              )}
+            </div>
           </div>
           <div className="flex items-center">
             <button
@@ -414,15 +524,16 @@ export default function RequestedUserDetailsModal({
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 cursor-pointer hover:text-black text-xl font-bold"
+              className="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100"
               aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
         </div>
+
         {/* Content */}
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto p-4">
           {error ? (
             <div className="bg-red-50 p-4 rounded-md mb-4">
               <div className="flex">
@@ -455,98 +566,201 @@ export default function RequestedUserDetailsModal({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-2 gap-6">
+                
+                {/* Account Information */}
                 <div>
-                  <div className="font-semibold mb-2">Account Information</div>
-                  <div className="text-sm text-gray-700 mb-1">Full Name: <span className="font-medium">{displayUserData.displayName}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Email Address: <span className="font-medium">{displayUserData.email}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Phone Number: <span className="font-medium">{displayUserData.phoneNumber}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Role in Company: <span className="font-medium">{displayUserData.roleInCompany}</span></div>
-                  <div className="text-sm text-gray-400 mb-1">Password: <span className="font-medium">[hidden for security]</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Agreed to Terms: <span className="font-medium">{displayUserData.agreedToTerms ? 'Yes' : 'No'}</span></div>
+                  <h3 className="text-base font-medium text-gray-900 mb-3">Account Information</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-sm text-gray-600">Full Name:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.displayName}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Email Address:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.email}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Phone Number:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.phoneNumber || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Password:</span>
+                      <p className="text-sm text-gray-900">[hidden for security]</p>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Business Information */}
                 <div>
-                  <div className="font-semibold mb-2">Company & Address Information</div>
-                  <div className="text-sm text-gray-700 mb-1">Company Name: <span className="font-medium">{displayUserData.companyName}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Address: <span className="font-medium">{displayUserData.address}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">City: <span className="font-medium">{displayUserData.city}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">State/Province: <span className="font-medium">{displayUserData.state}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Zip/Postal Code: <span className="font-medium">{displayUserData.zipCode}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Country: <span className="font-medium">{displayUserData.country}</span></div>
+                  <h3 className="text-base font-medium text-gray-900 mb-3">Business Information</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <span className="text-sm text-gray-600">Company Name:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.companyName || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Address:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.address || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">City:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.city || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">State/Province:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.state || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Zip/Postal Code:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.zipCode || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-600">Country:</span>
+                      <p className="text-sm text-gray-900">{displayUserData.country || 'Not provided'}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="mb-6">
-                <div className="font-semibold mb-2">Request Information</div>
-                <div className="text-sm text-gray-700 mb-1">Request Date: <span className="font-medium">{displayUserData.createdAt ? formatDate(displayUserData.createdAt) : 'N/A'}</span></div>
-                <div className="text-sm text-gray-700 mb-1">Status: <span className="font-medium">Pending</span></div>
-                <div className="text-sm text-gray-700 mb-1">Notes: <span className="font-medium">Wants access to Toner & Printer categories</span></div>
-                
-                {/* Add a debugging section for admins - visible in all environments */}
-                <div className="mt-4 p-2 border border-gray-200 bg-gray-50 text-xs">
-                  <details>
-                    <summary className="cursor-pointer font-medium mb-1">Debug Information</summary>
-                    <div className="ml-2 mt-1">
-                      <div>User ID: {displayUserData.id}</div>
-                      <div>Data source: {displayUserData._meta?.source || 'unknown'}</div>
-                      <div>Cache status: {displayUserData._meta?.cacheStatus || 'unknown'}</div>
-                      <div>Last fetched: {loading ? 'fetching now...' : (displayUserData._meta?.timestamp || 'unknown')}</div>
-                      <div>Initial user ID: {initialUserData?.id || 'none'}</div>
-                      <div>Current fetch URL: /api/admin/users/{userData?.id || initialUserData?.id}</div>
-                      <div className="mt-1">
-                        <button 
-                          onClick={() => fetchUserData(true)} 
-                          className="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs mr-1"
-                        >
-                          Force refresh from Firebase
-                        </button>
-                        <button 
-                          onClick={() => {
-                            console.log('Current state debug:', {
-                              userData,
-                              initialUserData,
-                              displayUserData,
-                              loading,
-                              error
-                            });
-                          }} 
-                          className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs"
-                        >
-                          Log debug info
-                        </button>
-                      </div>
-                    </div>
+
+              {/* Order Information */}
+              <div className="mt-6">
+                <h3 className="text-base font-medium text-gray-900 mb-3">Order Information</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <span className="text-sm text-gray-600">Total Orders:</span>
+                    <p className="text-sm text-gray-900">{displayUserData.totalOrders}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm text-gray-600">Last Order Date:</span>
+                    <p className="text-sm text-gray-900">
+                      {displayUserData.lastOrderDate ? formatDate(displayUserData.lastOrderDate) : 'No orders yet'}
+                    </p>
+                  </div>
+                </div>
+
+            {/* Recent Orders Table */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Recent Orders</h4>
+              <div className="border rounded overflow-hidden">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Order ID
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Date
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Status
+                      </th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Amount
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {loadingOrders ? (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-2 text-sm text-gray-500 text-center">
+                          Loading orders...
+                        </td>
+                      </tr>
+                    ) : userOrders.length > 0 ? (
+                      userOrders.map((order) => (
+                        <tr key={order.id}>
+                          <td className="px-3 py-2 text-sm text-gray-900">#{order.orderId}</td>
+                          <td className="px-3 py-2 text-sm text-gray-900">{formatDate(order.createdAt)}</td>
+                          <td className="px-3 py-2">
+                            <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
+                              order.status === 'delivered' 
+                                ? 'bg-green-100 text-green-800' 
+                                : order.status === 'shipped'
+                                ? 'bg-blue-100 text-blue-800'
+                                : order.status === 'processing'
+                                ? 'bg-orange-100 text-orange-800'
+                                : order.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-sm text-gray-900">₹{order.totals.total.toLocaleString()}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="px-3 py-2 text-sm text-gray-500 text-center">
+                          No orders found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Debug Panel */}
+            <div className="mt-6">
+              <h3 className="text-base font-medium text-gray-900 mb-3">Debug Information</h3>
+              <div className="bg-gray-50 p-4 rounded-md">
+                <div className="text-xs font-mono text-gray-600">
+                  <p><strong>Last Fetch:</strong> {debugInfo.lastFetch}</p>
+                  <p><strong>Cache Status:</strong> {debugInfo.cacheStatus}</p>
+                  <p><strong>Data Source:</strong> {debugInfo.dataSource}</p>
+                  <p><strong>API Calls:</strong> {debugInfo.apiCalls}</p>
+                  {debugInfo.errors.length > 0 && (
+                    <>
+                      <p><strong>Errors:</strong></p>
+                      <ul className="ml-4">
+                        {debugInfo.errors.map((error, index) => (
+                          <li key={index} className="text-red-600">• {error}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  <details className="mt-2">
+                    <summary className="cursor-pointer hover:text-gray-800">Raw Data</summary>
+                    <pre className="mt-2 p-2 bg-white border rounded overflow-x-auto">
+                      {JSON.stringify(userData, null, 2)}
+                    </pre>
                   </details>
                 </div>
               </div>
-              <div className="mb-6">
-                <select 
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm mb-4"
-                  value={rejectionReason}
-                  onChange={e => setRejectionReason(e.target.value)}
-                >
-                  <option value="">Add Reason of Rejection</option>
-                  <option value="Incomplete Information">Incomplete Information</option>
-                  <option value="Invalid Documents">Invalid Documents</option>
-                  <option value="Not Eligible">Not Eligible</option>
-                </select>
-              </div>
-              <div className="flex gap-4">
-                <button 
-                  className="admin-button w-1/2 bg-white text-black border border-gray-300 hover:bg-red-100 hover:text-red-700"
-                  onClick={handleReject}
-                  disabled={actionLoading === 'reject'}
-                >
-                  {actionLoading === 'reject' ? 'Processing...' : 'Reject Request'}
-                </button>
-                <button 
-                  className="admin-button w-1/2 bg-black text-white"
-                  onClick={handleApprove}
-                  disabled={actionLoading === 'approve'}
-                >
-                  {actionLoading === 'approve' ? 'Processing...' : 'Approve Request'}
-                </button>
-              </div>
-            </>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="flex items-center justify-center gap-3 p-4 border-t bg-gray-50">
+          <button
+            onClick={handleSuspendAccount}
+            className={`px-4 py-2 text-sm font-medium rounded border ${
+              suspendedAccount
+                ? 'bg-red-600 text-white border-red-600 hover:bg-red-700'
+                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {suspendedAccount ? 'Account Suspended' : 'Suspend Account'}
+          </button>
+          
+          <button
+            onClick={handleExportClientData}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+          >
+            <Download className="h-4 w-4" />
+            Export Client Data
+          </button>
+          
+          {onAddNewPricing && userData && (
+            <button
+              onClick={() => onAddNewPricing(userData.id)}
+              className="px-4 py-2 text-sm font-medium text-white bg-black rounded hover:bg-gray-800"
+            >
+              Add New Pricing
+            </button>
           )}
         </div>
       </div>

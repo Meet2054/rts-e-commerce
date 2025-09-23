@@ -5,7 +5,7 @@ import { AuthProvider } from '@/components/auth/auth-provider';
 // import ChatWidget from '@/components/ui/chat-widget';
 import { CartProvider } from '@/context/CartContext';
 import LayoutShell from './LayoutShell';
-
+import SupportChat from '@/components/chat/support-chat';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -23,7 +23,10 @@ export default function RootLayout({
       <body className={`${inter.className} bg-[#F1F2F4]`}>
         <AuthProvider>
           <CartProvider>
-            <LayoutShell>{children}</LayoutShell>
+            <LayoutShell>{children}
+              
+            </LayoutShell>
+           <SupportChat />
           </CartProvider>
           {/* <ChatWidget /> */}
         </AuthProvider>

@@ -16,39 +16,14 @@ export default function ShoppingCart() {
 	
 	// Create default shipping address from user data
 	const getDefaultShippingAddress = (): ShippingAddress => {
-		// Parse user address if it's available (it might be a single string)
-		let parsedAddress = {
-			line1: '',
-			city: '',
-			state: '',
-			postalCode: ''
-		};
-
-		if (userData?.address) {
-			// Try to parse if it's a comma-separated address
-			const addressParts = userData.address.split(',').map(part => part.trim());
-			if (addressParts.length > 0) {
-				parsedAddress.line1 = addressParts[0];
-				if (addressParts.length > 1) {
-					parsedAddress.city = addressParts[1];
-				}
-				if (addressParts.length > 2) {
-					parsedAddress.state = addressParts[2];
-				}
-				if (addressParts.length > 3) {
-					parsedAddress.postalCode = addressParts[3];
-				}
-			}
-		}
-
 		return {
 			fullName: userData?.displayName || user?.displayName || user?.email?.split('@')[0] || '',
-			addressLine1: parsedAddress.line1,
+			addressLine1: userData?.address || '',
 			addressLine2: '',
-			city: parsedAddress.city,
-			state: parsedAddress.state,
-			postalCode: parsedAddress.postalCode,
-			country: userData?.currency === 'USD' ? 'USA' : 'India',
+			city: userData?.city || '',
+			state: userData?.state || '',
+			postalCode: userData?.zipCode || '',
+			country: userData?.country || 'India',
 			phone: userData?.phoneNumber || ''
 		};
 	};

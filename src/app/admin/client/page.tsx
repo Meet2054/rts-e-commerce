@@ -185,28 +185,46 @@ export default function ClientPage() {
   };
 
   // Convert Client data to UserData format for the modal
-  const convertClientToUserData = (client: Client) => ({
-    id: client.id,
-    clientId: client.id,
-    displayName: client.name,
-    email: client.email,
-    phoneNumber: client.phoneNumber,
-    companyName: client.companyName,
-    status: client.status,
-    createdAt: client.createdAt,
-    totalOrders: client.totalOrders,
-    // Set defaults for optional fields
-    businessType: undefined,
-    industry: undefined,
-    website: undefined,
-    gst: undefined,
-    address: undefined,
-    roleInCompany: undefined,
-    currency: 'USD',
-    language: 'English',
-    lastOrderDate: undefined,
-    orders: []
-  });
+  const convertClientToUserData = (client: Client) => {
+    console.log('🔄 Converting client data to user data:', client);
+    
+    const userData = {
+      id: client.id,
+      clientId: client.id,
+      displayName: client.name || 'Unknown User',
+      email: client.email || 'No email provided',
+      phoneNumber: client.phoneNumber || 'Not provided',
+      companyName: client.companyName || 'Not provided',
+      status: client.status,
+      createdAt: client.createdAt,
+      totalOrders: client.totalOrders || 0,
+      // Set reasonable defaults for optional fields
+      businessType: 'Not provided',
+      industry: 'Not provided',
+      website: 'Not provided',
+      gst: 'Not provided',
+      address: 'Not provided',
+      city: 'Not provided',
+      state: 'Not provided',
+      zipCode: 'Not provided',
+      country: 'Not provided',
+      roleInCompany: 'Not provided',
+      agreedToTerms: false,
+      currency: 'USD',
+      language: 'English',
+      lastOrderDate: null,
+      orders: []
+    };
+    
+    console.log('✅ Converted user data:', {
+      id: userData.id,
+      displayName: userData.displayName,
+      email: userData.email,
+      fieldsCount: Object.keys(userData).length
+    });
+    
+    return userData;
+  };
 
   const exportClients = () => {
     // Create CSV content

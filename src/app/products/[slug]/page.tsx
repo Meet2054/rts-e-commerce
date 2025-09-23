@@ -170,7 +170,7 @@ export default function ProductDescriptionPage({ params }: { params: { slug: str
   console.log(`✅ [Page] Product detail page loaded for ${product.name} with ${relatedProducts.length} related products`);
 
   return (
-    <div className="space-y-3 bg-[#F1F2F4]">
+    <div className="space-y-3">
       <ProductDetails product={product} related={relatedProducts} />
       <SimilarProducts product={product} products={relatedProducts} />
     </div>

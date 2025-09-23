@@ -171,7 +171,7 @@ export default function ShoppingCart() {
 	// Error state
 	if (error) {
 		return (
-			<div className="bg-red-50 border border-red-200 rounded-lg p-6 mx-auto max-w-md">
+			<div className="border border-red-200 rounded-lg p-6 mx-auto max-w-md">
 				<div className="text-red-800 font-semibold mb-2">Error Loading Cart</div>
 				<div className="text-red-600 mb-4">{error}</div>
 				<button
@@ -187,7 +187,7 @@ export default function ShoppingCart() {
 	// Empty cart state
 	if (isEmpty) {
 		return (
-			<div className="bg-[#F1F2F4] py-24 w-full flex flex-col items-center justify-center">
+			<div className="py-24 w-full flex flex-col items-center justify-center">
 				<CartIcon className="w-24 h-24 text-gray-400 mb-6" />
 				<div className="text-xl font-semibold mb-2 text-center">Your cart is empty</div>
 				<div className="text-gray-500 mb-8 text-center max-w-md">

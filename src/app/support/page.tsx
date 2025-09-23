@@ -5,7 +5,7 @@ import Support from "./components/support";
 
 export default function SupportPage() {
 	return (
-		<div className="space-y-10 bg-[#F1F2F4]">
+		<div className="space-y-10">
 			<Support />
 			<FAQs />
 			<RecommendedProducts />

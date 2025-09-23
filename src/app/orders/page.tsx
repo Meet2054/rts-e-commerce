@@ -22,7 +22,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="space-y-3 bg-[#F1F2F4]">
+    <div className="space-y-3">
       
       <div className="min-h-screen">
         <div className="max-w-[1550px] px-4 md:px-12 lg:px-16 mx-auto py-10">

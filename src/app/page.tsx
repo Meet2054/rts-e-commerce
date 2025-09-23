@@ -7,7 +7,7 @@ import Categories from '../components/home/Categories';
 
 export default function HomePage() {
   return (
-    <div className='space-y-3 bg-[#F1F2F4]'>
+    <div className='space-y-3'>
       <HeroSection />
       <Welcom />
       <PreviousOrder />

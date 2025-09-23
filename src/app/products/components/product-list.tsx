@@ -57,6 +57,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { useCartActions } from '@/hooks/use-cart';
 import { Package, ArrowRight, Minus, Plus, X, ListFilterPlus } from 'lucide-react';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 
 interface Product {
   id: string;
@@ -350,7 +351,12 @@ function ProductList() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-10 gap-4">
             {filteredProducts.map((order) => (
-              <div key={order.id} className="bg-white rounded-md shadow-sm p-4 flex flex-col hover:shadow-lg transition-shadow">
+              <motion.div
+                key={order.id} 
+                className="bg-white rounded-md shadow-sm p-4 flex flex-col hover:shadow-lg transition-shadow"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
                 <div className="relative w-full justify-center flex mb-2">
                   <span className="absolute right-0 -rotate-45" title="Open">
                     <ArrowRight size={20} />
@@ -364,7 +370,7 @@ function ProductList() {
                       alt={order.name} 
                       width={300} 
                       height={200} 
-                      className="object-contain my-10 rounded-lg" 
+                      className="object-contain my-7 rounded-lg" 
                     />
                   </div>
                 </div>
@@ -402,7 +408,7 @@ function ProductList() {
                     </div>
                   )}
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         )}

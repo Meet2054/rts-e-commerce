@@ -2,10 +2,9 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/components/auth/auth-provider';
-// import ChatWidget from '@/components/ui/chat-widget';
 import { CartProvider } from '@/context/CartContext';
 import LayoutShell from './LayoutShell';
-import SupportChat from '@/components/chat/support-chat';
+// import SupportChat from '@/components/chat/support-chat';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
@@ -23,12 +22,11 @@ export default function RootLayout({
       <body className={`${inter.className} bg-[#F1F2F4]`}>
         <AuthProvider>
           <CartProvider>
-            <LayoutShell>{children}
-              
+            <LayoutShell>
+              {children}  
             </LayoutShell>
-           <SupportChat />
+           {/* <SupportChat /> */}
           </CartProvider>
-          {/* <ChatWidget /> */}
         </AuthProvider>
       </body>
     </html>

@@ -34,7 +34,7 @@ const Welcom = () => {
                             </div>
                         </div>
 
-						<div className="hidden lg:flex gap-4 w-full lg:w-[60%] justify-between lg:justify-start items-center">
+						<div className="hidden lg:flex gap-4 w-full lg:w-[60%] justify-between lg:justify-end items-center">
                             <div className="text-gray-600 max-w-md">
 								As a valued returning customer, you qualify for special discounts and offers on your next purchase.
 							</div>
@@ -60,7 +60,7 @@ const Welcom = () => {
                             </div>
                         </div>
 							
-						<div className="hidden lg:flex gap-4 w-full lg:w-[60%] justify-between lg:justify-start items-center">
+						<div className="hidden lg:flex gap-4 w-full lg:w-[60%] justify-between lg:justify-end items-center">
                             <div className="text-gray-600 max-w-md">
                               Returning customers enjoy exclusive discounts! Log in to see your special pricing.							
 							</div>

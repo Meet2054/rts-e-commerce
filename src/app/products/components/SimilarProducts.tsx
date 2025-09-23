@@ -6,6 +6,7 @@ import Image from 'next/image';
 import ProductImage from "../../../../public/product.png"
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus, Loader2  } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 
 // Accept product and products as props
@@ -78,7 +79,12 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                 {/* Product Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                     {similar.map((item) => (
-                        <div key={item.sku} className="bg-white rounded-md shadow-sm p-4 flex flex-col">
+                        <motion.div
+							key={item.sku}
+							className="bg-white rounded-md shadow-sm p-4 flex flex-col"
+							whileHover={{ scale: 1.05 }}
+							transition={{ type: "spring", stiffness: 300, damping: 20 }}
+						>                            
                             <div className="relative w-full justify-center flex mb-2">
                                 <Link href={`/products/${item.sku}`} className="absolute right-0 -rotate-45" title="Open">
                                     <ArrowRight size={20} />
@@ -88,7 +94,7 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                                     alt={item.name} 
                                     width={300} 
                                     height={200} 
-                                    className="object-contain my-10 rounded-lg" 
+                                    className="object-contain my-7 rounded-lg" 
                                 />
                             </div>
                             <div className='flex flex-row gap-2 justify-between'>
@@ -136,7 +142,7 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
             </div>

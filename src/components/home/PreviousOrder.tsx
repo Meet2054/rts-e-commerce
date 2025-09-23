@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
+import { motion } from 'framer-motion';
 
 const previousOrders = [
 	{
@@ -58,7 +59,12 @@ const PreviousOrders = () => {
                     {/* Product Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                         {previousOrders.map((order) => (
-                            <div key={order.id} className="bg-white rounded-md shadow-sm p-4 flex flex-col">
+                            <motion.div
+                                key={order.id}
+                                className="bg-white rounded-md shadow-sm p-4 flex flex-col"
+                                whileHover={{ scale: 1.05 }}
+                                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+						    >
                                 <div className="relative w-full justify-center flex mb-2">
                                     <button className="absolute right-0 -rotate-45" title="Open">
                                         <ArrowRight size={20} />
@@ -68,7 +74,7 @@ const PreviousOrders = () => {
                                         alt={order.name} 
                                         width={300} 
                                         height={200} 
-                                        className="object-contain my-10 rounded-lg" 
+                                        className="object-contain my-7 rounded-lg" 
                                     />
                                     
                                 </div>
@@ -87,7 +93,7 @@ const PreviousOrders = () => {
                                         <button className="mt-2 bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base">Add Cart</button>
                                     </div>
                                 </div>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
                 </div>

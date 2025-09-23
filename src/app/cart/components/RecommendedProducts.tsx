@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
 import { useCartActions } from '@/hooks/use-cart';
 import { useAuth } from '@/components/auth/auth-provider';
+import { motion } from 'framer-motion';
 
 // Updated Product interface to match API
 interface Product {
@@ -123,7 +124,12 @@ const RecommendedProducts: React.FC = () => {
                 {/* Product Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
                     {products.map((item) => (
-                        <div key={item.sku} className="bg-white rounded-md shadow-sm p-4 flex flex-col">
+                        <motion.div 
+                            whileHover={{ scale: 1.05 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            key={item.sku} 
+                            className="bg-white rounded-md shadow-sm p-4 flex flex-col"
+                        >
                             <div className="relative w-full justify-center flex mb-2">
                                 <Link href={`/products/${item.sku}`} className="absolute right-0 -rotate-45" title="Open">
                                     <ArrowRight size={20} />
@@ -133,7 +139,7 @@ const RecommendedProducts: React.FC = () => {
                                     alt={item.name} 
                                     width={300} 
                                     height={200} 
-                                    className="object-contain my-10 rounded-lg" 
+                                    className="object-contain my-7 rounded-lg" 
                                 />
                             </div>
                             <div className='flex flex-row justify-between'>
@@ -170,7 +176,7 @@ const RecommendedProducts: React.FC = () => {
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     ))}
                 </div>
             </div>

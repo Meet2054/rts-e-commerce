@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useAuth } from '@/components/auth/auth-provider';
 
 interface Product {
@@ -104,7 +105,12 @@ const BestSelling = () => {
 				{/* Product Cards */}
 				<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
 					{bestSellingProducts.map((product) => (
-						<div key={product.id} className="bg-white rounded-md shadow-sm p-4 flex flex-col">
+						<motion.div
+							key={product.id}
+							className="bg-white rounded-md shadow-sm p-4 flex flex-col"
+							whileHover={{ scale: 1.05 }}
+							transition={{ type: "spring", stiffness: 300, damping: 20 }}
+						>
 							<div className="relative w-full justify-center flex mb-2">
 								<button className="absolute right-0 -rotate-45" title="Open">
 									<ArrowRight size={20} />
@@ -114,7 +120,7 @@ const BestSelling = () => {
 									alt={product.name} 
 									width={300} 
 									height={200} 
-									className="object-contain my-10 rounded-lg"
+									className="object-contain my-7 rounded-lg"
 									onError={(e) => {
 										const target = e.target as HTMLImageElement;
 										target.src = '/product-placeholder.png';
@@ -147,7 +153,7 @@ const BestSelling = () => {
 									</div>
 								)}
 							</div>
-						</div>
+						</motion.div>
 					))}
 				</div>
 			</div>

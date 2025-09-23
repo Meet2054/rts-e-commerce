@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 const slides = [
   { id: 1, image: "/hero1.png" },
@@ -11,124 +11,69 @@ const slides = [
   { id: 4, image: "/hero4.png" },
 ];
 
-const slidesWithClone = [...slides, slides[0]]; // Add first slide at end
-
 export default function HeroSection() {
   const [current, setCurrent] = useState(0);
-  const [transition, setTransition] = useState(true);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   useEffect(() => {
-    const interval = setInterval(() => {
-      nextSlide();
-    }, 2000);
-    return () => clearInterval(interval);
+    const timer = setTimeout(() => {
+      setCurrent((prev) => (prev + 1) % slides.length);
+    }, 3000);
+    return () => clearTimeout(timer);
   }, [current]);
-
-  const nextSlide = () => {
-    if (current < slides.length) {
-      setCurrent(current + 1);
-      setTransition(true);
-    }
-  };
-
-  const prevSlide = () => {
-    if (current === 0) {
-      setTransition(false);
-      setCurrent(slides.length - 1);
-      setTimeout(() => setTransition(true), 0); // re-enable transition
-    } else {
-      setCurrent(current - 1);
-      setTransition(true);
-    }
-  };
-
-  // When transition ends, if at clone, reset to real first slide instantly
-  useEffect(() => {
-    if (current === slides.length) {
-      timeoutRef.current = setTimeout(() => {
-        setTransition(false);
-        setCurrent(0);
-      }, 700); // match transition duration
-    }
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [current]);
-
-  const handleDotClick = (idx: number) => {
-    setCurrent(idx);
-    setTransition(true);
-  };
 
   return (
     <div className="w-full pt-10 xl:pt-0 flex justify-center">
       <div className="relative max-w-[1550px] mx-auto w-full h-full px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex items-center justify-center overflow-hidden">
-
-        {/* Sliding Images */}
-        <div className="w-full flex justify-center items-center overflow-hidden relative">
-          <div
-            className={`flex ${
-              transition ? "transition-transform duration-700 ease-in-out" : ""
-            } w-full`}
-            style={{
-              transform: `translateX(-${current * 100}%)`,
-              height: "100%",
-            }}
-            onTransitionEnd={() => {
-              if (current === slides.length) {
-                setTransition(false);
-                setCurrent(0);
-              }
-            }}
-          >
-            {slidesWithClone.map((slide) => (
-              <div
-                key={slide.id + Math.random()}
-                className="min-w-full flex justify-center items-center"
-                style={{ height: "100%" }}
-              >
-                <Image
-                  src={slide.image}
-                  alt="Printer"
-                  width={1550}
-                  height={600}
-                  className="object-contain"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Left Button */}
-        <button
-          onClick={prevSlide}
-          className="absolute hidden md:block left-1 top-1/2 -translate-y-1/2 bg-white shadow-md px-4 py-12 cursor-pointer rounded-md hover:bg-[#F7941F] z-30"
-        >
-          <ChevronLeft className="w-6 h-6 text-gray-700" />
-        </button>
-
-        {/* Right Button */}
-        <button
-          onClick={nextSlide}
-          className="absolute hidden md:block right-1 top-1/2 -translate-y-1/2 bg-white shadow-md px-4 py-12 cursor-pointer rounded-md hover:bg-[#F7941F] z-30"
-        >
-          <ChevronRight className="w-6 h-6 text-gray-700" />
-        </button>
-
-        {/* Bottom Dots */}
-        <div className="absolute bottom-6 flex gap-3 justify-center w-full">
-          {slides.map((_, index) => (
-            <div
-              key={index}
-              onClick={() => handleDotClick(index)}
-              className={`h-1.5 w-8 rounded-sm cursor-pointer transition-all ${
-                current % slides.length === index
-                  ? "bg-orange-500"
-                  : "bg-orange-200"
-              }`}
-            />
-          ))}
+        {/* Stack Card Images */}
+        <div className="w-full h-[600px] relative flex items-center justify-center">
+          {slides.map((slide, idx) => {
+            // Calculate stack position
+            const isActive = idx === current;
+            const isPrev = idx === (current - 1 + slides.length) % slides.length;
+            return (
+              <AnimatePresence key={slide.id}>
+                {isActive && (
+                  <motion.div
+                    key={slide.id}
+                    initial={{ opacity: 0, scale: 0.95, y: 40 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -60 }}
+                    transition={{ duration: 0.7, ease: "easeInOut" }}
+                    className="absolute left-0 top-0 w-full h-full flex justify-center items-center"
+                    style={{ zIndex: 10 }}
+                  >
+                    <Image
+                      src={slide.image}
+                      alt="Printer"
+                      width={1250}
+                      height={600}
+                      className="object-contain rounded-xl shadow-xl"
+                    />
+                  </motion.div>
+                )}
+                {/* Show previous image underneath for stack effect */}
+                {isPrev && (
+                  <motion.div
+                    key={slide.id + "-prev"}
+                    initial={{ opacity: 0.5, scale: 0.92, y: 60 }}
+                    animate={{ opacity: 0.7, scale: 0.96, y: 20 }}
+                    exit={{ opacity: 0, scale: 0.9, y: -60 }}
+                    transition={{ duration: 0.7, ease: "easeInOut" }}
+                    className="absolute left-0 top-0 w-full h-full flex justify-center items-center"
+                    style={{ zIndex: 5 }}
+                  >
+                    <Image
+                      src={slide.image}
+                      alt="Printer"
+                      width={1250}
+                      height={600}
+                      className="object-contain rounded-xl shadow-xl"
+                      style={{ filter: "blur(1px) grayscale(30%)" }}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            );
+          })}
         </div>
       </div>
     </div>

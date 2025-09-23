@@ -8,6 +8,7 @@ import React, { useState } from "react";
 import { useCartActions } from "@/hooks/use-cart";
 import { useAuth } from '@/components/auth/auth-provider';
 import { Loader2, Plus, Minus } from 'lucide-react';
+import { motion } from "framer-motion";
 
 const COLORS = ["#2D9CDB", "#27AE60", "#F2994A", "#EB5757", "#4F4F4F"];
 
@@ -239,7 +240,12 @@ export default function ProductDetail({ product, related }: { product: Product, 
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-1 gap-5">
             {related.slice(0, 2).map((rp) => (
-              <div key={rp.sku} className="bg-white rounded-lg shadow-sm p-4 flex flex-col">
+              <motion.div
+                key={rp.sku}
+                className="bg-white rounded-md shadow-sm p-4 flex flex-col"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
                 <div className="flex flex-col md:flex-row gap-4 md:items-center">
                   <Image src={ProductImage} alt={rp.name} width={250} height={80} className="object-contain rounded" />
                   <div className="flex flex-col flex-1">
@@ -262,7 +268,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
                     )}
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
           <div className="bg-white mt-3 text-center rounded-md py-2">

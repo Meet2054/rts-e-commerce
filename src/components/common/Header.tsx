@@ -243,10 +243,10 @@ const Header = () => {
                       transition={{ duration: 0.2 }}
                       className="absolute right-0 mt-2 w-60 bg-white shadow-[0_4px_15px_rgba(0,0,0,0.4)] rounded-lg z-50 py-3 px-2 flex flex-col gap-1 border border-gray-100"
                     >
-                      <span className={`${Dropdown} cursor-pointer`}>24 × 7 Customer Care</span>
+                      <Link href="/support" className={Dropdown}>24 × 7 Customer Care</Link>
                       <Link href="/orders" className={Dropdown}>My Orders</Link>
-                      <Link href="/terms" className={Dropdown}>Term &amp; Condition</Link>
-                      <Link href="/privacy" className={Dropdown}>Privacy Policy</Link>
+                      <Link href="/terms-conditions" className={Dropdown}>Term &amp; Condition</Link>
+                      <Link href="/privacy-policy" className={Dropdown}>Privacy Policy</Link>
                     </motion.div>
                   )}
                 </AnimatePresence>

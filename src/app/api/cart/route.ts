@@ -4,7 +4,6 @@ import { RedisCache, CacheKeys, CacheTTL } from '@/lib/redis-cache';
 import { Cart, CartItem, AddToCartRequest } from '@/lib/cart-types';
 import { CartCalculations, CartValidation, CartStorage } from '@/lib/cart-utils';
 import { adminDb } from '@/lib/firebase-admin';
-import { verifyAuthToken } from '@/lib/auth-utils';
 import { adminAuth } from '@/lib/firebase-admin';
 
 // Helper function to get user-specific price for a product
@@ -58,7 +57,12 @@ async function getUserSpecificPrice(productSku: string, basePrice: number, authH
     console.log(`💰 [CART API] No custom price found for ${productSku}, using base price: ${basePrice}`);
     return basePrice;
   } catch (error) {
-    console.warn('Error getting user-specific price:', error);
+    // Enhanced error logging with specific token expiration handling
+    if (error instanceof Error && error.message.includes('expired')) {
+      console.warn('🔒 [CART API] Firebase token expired - falling back to base pricing:', error.message);
+    } else {
+      console.warn('❌ [CART API] Error getting user-specific price:', error);
+    }
     return basePrice;
   }
 }

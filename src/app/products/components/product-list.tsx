@@ -163,6 +163,45 @@ function ProductList() {
     }
   };
 
+  // Handle manual quantity input
+  const handleQuantityInput = (sku: string, value: string) => {
+    // Allow empty input for typing
+    if (value === '') {
+      setQuantities(prev => ({
+        ...prev,
+        [sku]: 0
+      }));
+      return;
+    }
+
+    // Parse and validate the input
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 1 && numValue <= 999) {
+      setQuantities(prev => ({
+        ...prev,
+        [sku]: numValue
+      }));
+    }
+  };
+
+  // Handle quantity input on enter or blur
+  const handleQuantitySubmit = (sku: string, value: string) => {
+    const numValue = parseInt(value);
+    if (isNaN(numValue) || numValue < 1) {
+      // Reset to 1 if invalid
+      setQuantities(prev => ({
+        ...prev,
+        [sku]: 1
+      }));
+    } else if (numValue > 999) {
+      // Cap at 999
+      setQuantities(prev => ({
+        ...prev,
+        [sku]: 999
+      }));
+    }
+  };
+
   // Handle add to cart with loading state
   const handleAddToCart = async (product: Product, quantity: number) => {
     try {
@@ -391,11 +430,25 @@ function ProductList() {
                     <div className='flex flex-col w-[40%] gap-1'>
                       <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">
                         <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: Math.max(1, (q[order.sku] || 1) - 1) })); }}><Minus size={16} /></button>
-                        <span className="px-2 text-base">{quantities[order.sku] || 1}</span>
-                        <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: (q[order.sku] || 1) + 1 })); }}><Plus size={16} /></button>
+                        <input
+                          type="text"
+                          value={quantities[order.sku] || 1}
+                          onChange={(e) => handleQuantityInput(order.sku, e.target.value)}
+                          onBlur={(e) => handleQuantitySubmit(order.sku, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleQuantitySubmit(order.sku, e.currentTarget.value);
+                              e.currentTarget.blur();
+                            }
+                          }}
+                          className="w-12 px-1 text-base text-center bg-transparent border-none outline-none"
+                          min="1"
+                          max="999"
+                        />
+                        <button className="cursor-pointer" onClick={e => { e.preventDefault(); setQuantities(q => ({ ...q, [order.sku]: Math.min(999, (q[order.sku] || 1) + 1) })); }}><Plus size={16} /></button>
                       </div>
                       <button
-                        className="mt-2 bg-[#2E318E] cursor-pointer text-white px-4 py-1.5 rounded-md text-base disabled:opacity-50"
+                        className="mt-2 bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base block text-center hover:bg-blue-700 transition-colors cursor-pointer"
                         disabled={addingToCart[order.sku]}
                         onClick={e => {
                           e.preventDefault();

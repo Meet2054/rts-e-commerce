@@ -40,14 +40,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    let tokenRefreshInterval: NodeJS.Timeout | null = null;
+    
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Clear existing interval
+      if (tokenRefreshInterval) {
+        clearInterval(tokenRefreshInterval);
+        tokenRefreshInterval = null;
+      }
+      
       setUser(firebaseUser);
       
       if (firebaseUser) {
         try {
-          // Get user token for API calls
-          const userToken = await firebaseUser.getIdToken();
+          // Get user token for API calls with force refresh
+          const userToken = await firebaseUser.getIdToken(true); // Force refresh token
           setToken(userToken);
+          
+          // Set up automatic token refresh before expiration
+          const refreshToken = async () => {
+            try {
+              const freshToken = await firebaseUser.getIdToken(true);
+              setToken(freshToken);
+              console.log('🔄 [Auth] Token refreshed successfully');
+            } catch (error) {
+              console.error('❌ [Auth] Token refresh failed:', error);
+            }
+          };
+
+          // Refresh token every 50 minutes (tokens expire after 1 hour)
+          tokenRefreshInterval = setInterval(refreshToken, 50 * 60 * 1000);
           
           // Get user data from Firestore
           const userData = await getUserData(firebaseUser.uid);
@@ -94,7 +116,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    // Clean up interval on unmount
+    return () => {
+      unsubscribe();
+      if (tokenRefreshInterval) {
+        clearInterval(tokenRefreshInterval);
+      }
+    };
   }, []);
 
   return (

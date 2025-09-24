@@ -5,6 +5,7 @@ import Image from "next/image";
 import ProductImage from "../../../../public/product.png"
 import Link from "next/link";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCartActions } from "@/hooks/use-cart";
 import { useAuth } from '@/components/auth/auth-provider';
 import { Loader2, Plus, Minus } from 'lucide-react';
@@ -44,9 +45,39 @@ export default function ProductDetail({ product, related }: { product: Product, 
   const [tab, setTab] = useState("description");
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
+  const [relatedProductLoading, setRelatedProductLoading] = useState<{ [key: string]: { addingToCart: boolean; buyingNow: boolean } }>({});
   
+  const router = useRouter();
   const { token } = useAuth();
   const { addToCart } = useCartActions();
+
+  // Handle manual quantity input
+  const handleQuantityInput = (value: string) => {
+    // Allow empty input for typing
+    if (value === '') {
+      setQuantity(0);
+      return;
+    }
+
+    // Parse and validate the input
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 1 && numValue <= 999) {
+      setQuantity(numValue);
+    }
+  };
+
+  // Handle quantity input on enter or blur
+  const handleQuantitySubmit = (value: string) => {
+    const numValue = parseInt(value);
+    if (isNaN(numValue) || numValue < 1) {
+      // Reset to 1 if invalid
+      setQuantity(1);
+    } else if (numValue > 999) {
+      // Cap at 999
+      setQuantity(999);
+    }
+  };
 
   // Handle add to cart
   const handleAddToCart = async () => {
@@ -70,6 +101,92 @@ export default function ProductDetail({ product, related }: { product: Product, 
       console.error('Failed to add to cart:', error);
     } finally {
       setIsAddingToCart(false);
+    }
+  };
+
+  // Handle buy now - add to cart and redirect to cart page
+  const handleBuyNow = async () => {
+    try {
+      setIsBuyingNow(true);
+      
+      // Add product to cart
+      await addToCart({
+        id: product.sku, // Use SKU as ID for consistency
+        sku: product.sku,
+        name: product.name,
+        image: ProductImage.src,
+        price: product.price,
+        brand: product.brand,
+        category: product.category
+      }, quantity);
+      
+      // Redirect to cart page
+      router.push('/cart');
+      
+    } catch (error) {
+      console.error('Failed to buy now:', error);
+    } finally {
+      setIsBuyingNow(false);
+    }
+  };
+
+  // Handle related product add to cart
+  const handleRelatedAddToCart = async (relatedProduct: RelatedProduct) => {
+    try {
+      setRelatedProductLoading(prev => ({
+        ...prev,
+        [relatedProduct.sku]: { ...prev[relatedProduct.sku], addingToCart: true }
+      }));
+      
+      await addToCart({
+        id: relatedProduct.sku,
+        sku: relatedProduct.sku,
+        name: relatedProduct.name,
+        image: ProductImage.src,
+        price: relatedProduct.price,
+        brand: product.brand, // Use main product's brand as fallback
+        category: product.category // Use main product's category as fallback
+      }, 1); // Default quantity of 1 for related products
+      
+    } catch (error) {
+      console.error('Failed to add related product to cart:', error);
+    } finally {
+      setRelatedProductLoading(prev => ({
+        ...prev,
+        [relatedProduct.sku]: { ...prev[relatedProduct.sku], addingToCart: false }
+      }));
+    }
+  };
+
+  // Handle related product buy now
+  const handleRelatedBuyNow = async (relatedProduct: RelatedProduct) => {
+    try {
+      setRelatedProductLoading(prev => ({
+        ...prev,
+        [relatedProduct.sku]: { ...prev[relatedProduct.sku], buyingNow: true }
+      }));
+      
+      // Add product to cart
+      await addToCart({
+        id: relatedProduct.sku,
+        sku: relatedProduct.sku,
+        name: relatedProduct.name,
+        image: ProductImage.src,
+        price: relatedProduct.price,
+        brand: product.brand, // Use main product's brand as fallback
+        category: product.category // Use main product's category as fallback
+      }, 1); // Default quantity of 1 for related products
+      
+      // Redirect to cart page
+      router.push('/cart');
+      
+    } catch (error) {
+      console.error('Failed to buy related product:', error);
+    } finally {
+      setRelatedProductLoading(prev => ({
+        ...prev,
+        [relatedProduct.sku]: { ...prev[relatedProduct.sku], buyingNow: false }
+      }));
     }
   };
 
@@ -157,10 +274,24 @@ export default function ProductDetail({ product, related }: { product: Product, 
                   >
                     <Minus size={16} />
                   </button>
-                  <span className="px-4 py-1 bg-white border rounded-md min-w-[3rem] text-center">{quantity}</span>
+                  <input
+                    type="text"
+                    value={quantity}
+                    onChange={(e) => handleQuantityInput(e.target.value)}
+                    onBlur={(e) => handleQuantitySubmit(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleQuantitySubmit(e.currentTarget.value);
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="px-4 py-1 bg-white border rounded-md text-center outline-none"
+                    min="1"
+                    max="999"
+                  />
                   <button 
-                    onClick={() => setQuantity(Math.min(100, quantity + 1))}
-                    disabled={quantity >= 100}
+                    onClick={() => setQuantity(Math.min(999, quantity + 1))}
+                    disabled={quantity >= 999}
                     className="px-3 py-2 cursor-pointer border rounded-md bg-white hover:bg-[#F7941F] disabled:opacity-50"
                   >
                     <Plus size={16} />
@@ -190,8 +321,19 @@ export default function ProductDetail({ product, related }: { product: Product, 
                     `Add to Cart`
                   )}
                 </button>
-                <button className="bg-black text-white px-6 py-2 rounded-md text-base hover:bg-gray-800">
-                  Buy Now
+                <button 
+                  onClick={handleBuyNow}
+                  disabled={isBuyingNow || isAddingToCart}
+                  className="bg-black text-white px-6 py-2 rounded-md text-base hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isBuyingNow ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Buy Now'
+                  )}
                 </button>
               </div>
             </>
@@ -247,15 +389,43 @@ export default function ProductDetail({ product, related }: { product: Product, 
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
                 <div className="flex flex-col md:flex-row gap-4 md:items-center">
-                  <Image src={ProductImage} alt={rp.name} width={250} height={80} className="object-contain rounded" />
+                  <Link href={`/products/${rp.sku}`} className="cursor-pointer">
+                    <Image src={ProductImage} alt={rp.name} width={250} height={80} className="object-contain rounded hover:opacity-80 transition-opacity" />
+                  </Link>
                   <div className="flex flex-col flex-1">
                     <div className="font-semibold text-base text-black">{rp.name}</div>
                     {token ? (
                       <>
                         <div className="text-lg font-bold text-black mt-1">${rp.price}</div>
                         <div className="flex flex-col w-full gap-2 mt-4">
-                          <Link href={`/products/${rp.sku}`} className="bg-gray-200 text-black px-4 py-1.5 rounded-md text-base text-center">Add to cart</Link>
-                          <Link href={`/products/${rp.sku}`} className="bg-black text-white px-4 py-1.5 rounded-md text-base text-center">Buy Now</Link>
+                          <button
+                            onClick={() => handleRelatedAddToCart(rp)}
+                            disabled={relatedProductLoading[rp.sku]?.addingToCart || relatedProductLoading[rp.sku]?.buyingNow}
+                            className="bg-gray-200 text-black px-4 py-1.5 rounded-md text-base text-center hover:bg-[#F7941F] disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {relatedProductLoading[rp.sku]?.addingToCart ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Adding...
+                              </>
+                            ) : (
+                              'Add to cart'
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleRelatedBuyNow(rp)}
+                            disabled={relatedProductLoading[rp.sku]?.addingToCart || relatedProductLoading[rp.sku]?.buyingNow}
+                            className="bg-black text-white px-4 py-1.5 rounded-md text-base text-center hover:bg-gray-800 disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {relatedProductLoading[rp.sku]?.buyingNow ? (
+                              <>
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              'Buy Now'
+                            )}
+                          </button>
                         </div>
                       </>
                     ) : (
@@ -271,8 +441,8 @@ export default function ProductDetail({ product, related }: { product: Product, 
               </motion.div>
             ))}
           </div>
-          <div className="bg-white mt-3 text-center rounded-md py-2">
-            <Link href="/products" className="text-black font-semibold hover:underline">View more</Link>
+          <div className="bg-white mt-3 text-center admin-button">
+            <Link href="/products" className="">View more</Link>
           </div>
         </div>
       </div>

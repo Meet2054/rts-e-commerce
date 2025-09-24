@@ -35,7 +35,7 @@ const Footer = () => {
                         width={200} 
                         height={100} 
                     />
-                    <div className="text-base text-gray-700">
+                    <div className="text-base text-black">
                         RTS Imaging B2B Marketplace<br />
                         Your trusted partner for printers, inks, and toners.<br />
                         Supplying businesses with reliable products and seamless order support.

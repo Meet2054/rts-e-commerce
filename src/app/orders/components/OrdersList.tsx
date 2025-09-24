@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -12,6 +12,7 @@ interface OrdersListState {
   orders: Order[];
   loading: boolean;
   error: string | null;
+  reorderingOrderId: string | null;
 }
 
 export interface OrdersListRef {
@@ -19,20 +20,15 @@ export interface OrdersListRef {
 }
 
 const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
-  const { user, userData } = useAuth();
+  const { user } = useAuth();
   const [state, setState] = useState<OrdersListState>({
     orders: [],
     loading: true,
-    error: null
+    error: null,
+    reorderingOrderId: null
   });
 
-  useEffect(() => {
-    if (user) {
-      fetchOrders();
-    }
-  }, [user]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -64,7 +60,85 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
         error: error instanceof Error ? error.message : 'Failed to load orders'
       }));
     }
+  }, [user]);
+
+  const handleReorder = async (order: Order) => {
+    if (!user) return;
+
+    try {
+      setState(prev => ({ ...prev, reorderingOrderId: order.id || order.orderId }));
+      
+      console.log('🔄 [Reorder] Starting reorder for:', order.orderId);
+
+      // Prepare the new order data with correct field mapping for API
+      const newOrderData = {
+        clientId: user.uid,
+        clientEmail: user.email || order.clientEmail,
+        items: order.items.map(item => ({
+          id: item.productId,
+          sku: item.sku,
+          name: item.nameSnap,
+          brand: item.brandSnap,
+          image: item.imageSnap,
+          quantity: item.qty,
+          price: item.unitPrice
+        })),
+        subtotal: order.totals.subtotal,
+        tax: order.totals.tax,
+        shipping: order.totals.shipping,
+        total: order.totals.total,
+        currency: order.currency || 'USD',
+        shippingAddress: {
+          fullName: order.shippingInfo.fullName,
+          phone: order.shippingInfo.phone || '',
+          addressLine1: order.shippingInfo.address.street,
+          addressLine2: '', // Add empty string for addressLine2 if not present
+          city: order.shippingInfo.address.city,
+          state: order.shippingInfo.address.state,
+          postalCode: order.shippingInfo.address.zipCode,
+          country: order.shippingInfo.address.country || 'USA'
+        },
+        notes: `Reorder of ${order.orderId}`,
+        userId: user.uid,
+        userEmail: user.email || order.clientEmail
+      };
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(newOrderData)
+      });
+
+      const data = await response.json();
+      console.log('📥 [Reorder] API Response:', data);
+
+      if (data.success) {
+        console.log('✅ [Reorder] New order created:', data.orderId);
+        
+        // Show success message
+        alert(`Order successfully reordered! New order ID: ${data.orderId}`);
+        
+        // Refresh the orders list to show the new order
+        await fetchOrders();
+      } else {
+        console.error('❌ [Reorder] API Error Response:', data);
+        throw new Error(data.error || data.details || 'Failed to create reorder');
+      }
+    } catch (error) {
+      console.error('❌ [Reorder] Error:', error);
+      alert(`Failed to reorder: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setState(prev => ({ ...prev, reorderingOrderId: null }));
+    }
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchOrders();
+    }
+  }, [user, fetchOrders]);
 
   // Expose fetchOrders function to parent component via ref
   useImperativeHandle(ref, () => ({
@@ -144,7 +218,7 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
         <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
         <h3 className="text-xl font-semibold mb-2">No Orders Yet</h3>
         <p className="text-gray-600 mb-6">
-          You haven't placed any orders yet. Start shopping to see your orders here!
+          You haven&apos;t placed any orders yet. Start shopping to see your orders here!
         </p>
         <Link
           href="/products"
@@ -165,11 +239,31 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="flex items-center gap-4">
                 {getStatusIcon(order.status)}
-                <div>
+                <div className='flex'>
+                  <div>
                   <h3 className="font-semibold text-lg">Order {order.orderId}</h3>
                   <p className="text-sm text-gray-600">
                     Placed on {formatDateTime(order.createdAt)}
                   </p>
+                  </div>
+                  <button 
+                    className={`admin-button ml-8 flex items-center gap-2 ${
+                      state.reorderingOrderId === (order.id || order.orderId) 
+                        ? 'opacity-50 cursor-not-allowed' 
+                        : ''
+                    }`}
+                    onClick={() => handleReorder(order)}
+                    disabled={state.reorderingOrderId === (order.id || order.orderId)}
+                  >
+                    {state.reorderingOrderId === (order.id || order.orderId) ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Reordering...
+                      </>
+                    ) : (
+                      'Re Order'
+                    )}
+                  </button>
                 </div>
               </div>
               <div className="flex items-center gap-4">

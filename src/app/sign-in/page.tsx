@@ -67,8 +67,8 @@ export default function AuthForms() {
             const { signOut } = await import('@/lib/firebase-auth');
             await signOut();
           } else {
-            // Approved user - redirect to products
-            router.push('/products');
+            // Approved user - redirect to home
+            router.push('/');
           }
         }
       }

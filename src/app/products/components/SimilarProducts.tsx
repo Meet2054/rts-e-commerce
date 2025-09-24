@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useCartActions } from '@/hooks/use-cart';
 import Image from 'next/image';
 import ProductImage from "../../../../public/product.png"
@@ -33,6 +33,45 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
       
     const { addToCart } = useCartActions();
 
+    // Handle manual quantity input
+    const handleQuantityInput = (sku: string, value: string) => {
+        // Allow empty input for typing
+        if (value === '') {
+            setQuantities(prev => ({
+                ...prev,
+                [sku]: 0
+            }));
+            return;
+        }
+
+        // Parse and validate the input
+        const numValue = parseInt(value);
+        if (!isNaN(numValue) && numValue >= 1 && numValue <= 999) {
+            setQuantities(prev => ({
+                ...prev,
+                [sku]: numValue
+            }));
+        }
+    };
+
+    // Handle quantity input on enter or blur
+    const handleQuantitySubmit = (sku: string, value: string) => {
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 1) {
+            // Reset to 1 if invalid
+            setQuantities(prev => ({
+                ...prev,
+                [sku]: 1
+            }));
+        } else if (numValue > 999) {
+            // Cap at 999
+            setQuantities(prev => ({
+                ...prev,
+                [sku]: 999
+            }));
+        }
+    };
+
     const handleAddToCart = async (item: Product) => {
         try {
             setIsAddingToCart(item.sku);
@@ -54,23 +93,25 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
         }
     };
 
+    const similar = useMemo(() => {
+        return products
+            .filter(p => (p.category === product.category || p.brand === product.brand) && p.sku !== product.sku)
+            .slice(0, 4);
+    }, [products, product.category, product.brand, product.sku]);
+
     // Initialize quantities for similar products
     useEffect(() => {
         const initial: { [sku: string]: number } = {};
         similar.forEach(item => { initial[item.sku] = 1; });
         setQuantities(initial);
-    }, [products, product]);
-
-    const similar = products
-        .filter(p => (p.category === product.category || p.brand === product.brand) && p.sku !== product.sku)
-        .slice(0, 4);
+    }, [similar]);
 
     return (
         <div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6 gap-10">
             <div className='flex flex-col w-full'>
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-2xl pl-3 font-bold text-black">Similar Products</h2>
-                    <Link href="/products" className="flex items-center py-2 text-gray-700 hover:text-black text-sm font-medium">
+                    <Link href="/products" className="flex items-center admin-button">
                         View more
                         <ArrowRight size={20} />
                     </Link>
@@ -85,7 +126,10 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
 							whileHover={{ scale: 1.05 }}
 							transition={{ type: "spring", stiffness: 300, damping: 20 }}
 						>                            
-                            <div className="relative w-full justify-center flex mb-2">
+                            <div 
+                            className="relative w-full justify-center cursor-pointer flex mb-2"
+                            onClick={() => window.location.href = `/products/${item.sku}`}
+                            >
                                 <Link href={`/products/${item.sku}`} className="absolute right-0 -rotate-45" title="Open">
                                     <ArrowRight size={20} />
                                 </Link>
@@ -114,13 +158,27 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                                         >
                                             <Minus size={16} />
                                         </button>
-                                        <span className="px-2 text-base">{quantities[item.sku] || 1}</span>
+                                        <input
+                                            type="text"
+                                            value={quantities[item.sku] || 1}
+                                            onChange={(e) => handleQuantityInput(item.sku, e.target.value)}
+                                            onBlur={(e) => handleQuantitySubmit(item.sku, e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    handleQuantitySubmit(item.sku, e.currentTarget.value);
+                                                    e.currentTarget.blur();
+                                                }
+                                            }}
+                                            className="w-12 px-1 text-base text-center bg-transparent border-none outline-none"
+                                            min="1"
+                                            max="999"
+                                        />
                                         <button
                                             onClick={() => setQuantities(q => ({
                                                 ...q,
-                                                [item.sku]: Math.min(100, (q[item.sku] || 1) + 1)
+                                                [item.sku]: Math.min(999, (q[item.sku] || 1) + 1)
                                             }))}
-                                            disabled={(quantities[item.sku] || 1) >= 100}
+                                            disabled={(quantities[item.sku] || 1) >= 999}
                                             className="cursor-pointer"
                                         >
                                             <Plus size={16} />
@@ -129,7 +187,7 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                                     <button
                                         onClick={() => handleAddToCart(item)}
                                         disabled={isAddingToCart === item.sku}
-                                        className="mt-2 cursor-pointer bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base"
+                                        className="mt-2 bg-[#2E318E] text-white px-4 py-1.5 rounded-md text-base block text-center hover:bg-blue-700 transition-colors cursor-pointer"
                                     >
                                         {isAddingToCart === item.sku ? (
                                             <>

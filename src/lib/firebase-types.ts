@@ -11,7 +11,7 @@ export interface BaseDocument {
 // User types
 export interface User extends BaseDocument {
   email: string;
-  role: 'admin' | 'client' | 'support';
+  role: 'admin' | 'client' | 'support' | 'employee';
   displayName: string;
   phoneNumber?: string;
   

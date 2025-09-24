@@ -27,12 +27,12 @@ export const signUp = async (email: string, password: string, userData: Partial<
     // Determine if user should be admin (you can customize this logic)
     const isAdmin = email.endsWith('@admin.com') || email === 'admin@yourdomain.com';
     
-    // Filter out undefined and empty values before saving to Firestore
+    // Base user document data - only fields that are guaranteed to exist
     const userDocData: any = {
       email,
       role: isAdmin ? 'admin' as const : 'client' as const,
-      status: isAdmin ? 'active' as const : 'requested' as const, // Admins are auto-approved
-      approved: isAdmin ? true : false, // Admins are auto-approved
+      status: isAdmin ? 'active' as const : 'requested' as const,
+      approved: isAdmin ? true : false,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -40,37 +40,42 @@ export const signUp = async (email: string, password: string, userData: Partial<
     // Add approval timestamp for admins
     if (isAdmin) {
       userDocData.approvedAt = serverTimestamp();
-      userDocData.approvedBy = 'system'; // System auto-approval for admins
+      userDocData.approvedBy = 'system';
     }
     
-    // Only add fields that have actual values
-    if (userData.displayName && userData.displayName.trim() !== '') {
+    // Only add fields that are actually collected in sign-up form
+    // Step 1: Account Information
+    if (userData.displayName?.trim()) {
       userDocData.displayName = userData.displayName.trim();
     }
-    if (userData.phoneNumber && userData.phoneNumber.trim() !== '') {
+    if (userData.phoneNumber?.trim()) {
       userDocData.phoneNumber = userData.phoneNumber.trim();
     }
-    if (userData.companyName && userData.companyName.trim() !== '') {
+    if (userData.companyName?.trim()) {
       userDocData.companyName = userData.companyName.trim();
     }
-    if (userData.roleInCompany && userData.roleInCompany.trim() !== '') {
+    if (userData.roleInCompany?.trim()) {
       userDocData.roleInCompany = userData.roleInCompany.trim();
     }
-    if (userData.address && userData.address.trim() !== '') {
+    
+    // Step 2: Address Information
+    if (userData.address?.trim()) {
       userDocData.address = userData.address.trim();
     }
-    if (userData.city && userData.city.trim() !== '') {
+    if (userData.city?.trim()) {
       userDocData.city = userData.city.trim();
     }
-    if (userData.state && userData.state.trim() !== '') {
+    if (userData.state?.trim()) {
       userDocData.state = userData.state.trim();
     }
-    if (userData.zipCode && userData.zipCode.trim() !== '') {
+    if (userData.zipCode?.trim()) {
       userDocData.zipCode = userData.zipCode.trim();
     }
-    if (userData.country && userData.country.trim() !== '') {
+    if (userData.country?.trim()) {
       userDocData.country = userData.country.trim();
     }
+    
+    // Step 3: Terms Agreement
     if (userData.agreedToTerms !== undefined) {
       userDocData.agreedToTerms = userData.agreedToTerms;
       if (userData.agreedToTerms) {

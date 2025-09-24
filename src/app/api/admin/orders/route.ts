@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { Order, OrderItem, User } from '@/lib/firebase-types';
+import { Order} from '@/lib/firebase-types';
 import { RedisCache } from '@/lib/redis-cache';
 
 // Extended Order interface with user details populated
@@ -16,28 +16,133 @@ export interface OrderWithUser extends Order {
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    console.log('Fetching orders from Firebase...');
+    // Parse query parameters
+    const url = new URL(request.url);
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const limit = parseInt(url.searchParams.get('limit') || '10');
+    const status = url.searchParams.get('status');
+    const startDate = url.searchParams.get('startDate');
+    const endDate = url.searchParams.get('endDate');
+
+    console.log('Fetching orders from Firebase with params:', { page, limit, status, startDate, endDate });
     
-    // Fetch all orders from Firebase
-    const ordersSnapshot = await adminDb.collection('orders').orderBy('createdAt', 'desc').get();
+    // For now, let's use a simple approach that avoids composite index issues
+    // We'll fetch orders with minimal filters and do additional filtering client-side when needed
     
-    if (ordersSnapshot.empty) {
-      console.log('No orders found in Firebase');
-      return NextResponse.json({ 
-        success: true, 
+    let query = adminDb.collection('orders').orderBy('createdAt', 'desc');
+    let needsClientSideFilter = false;
+    const clientSideFilters: {
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+    } = {};
+    
+    // Only apply status filter if there are no date filters (to avoid composite index)
+    if (status && status !== 'all' && !startDate && !endDate) {
+      query = query.where('status', '==', status);
+    } else if (status && status !== 'all') {
+      needsClientSideFilter = true;
+      clientSideFilters.status = status;
+    }
+    
+    // Only apply date filters if there's no status filter (to avoid composite index)
+    if (!status || status === 'all') {
+      if (startDate) {
+        const startTimestamp = new Date(startDate + 'T00:00:00.000Z');
+        query = query.where('createdAt', '>=', startTimestamp);
+      }
+      if (endDate) {
+        const endTimestamp = new Date(endDate + 'T23:59:59.999Z');
+        query = query.where('createdAt', '<=', endTimestamp);
+      }
+    } else if (startDate || endDate) {
+      needsClientSideFilter = true;
+      if (startDate) clientSideFilters.startDate = startDate;
+      if (endDate) clientSideFilters.endDate = endDate;
+    }
+
+    let allOrdersData: any[] = [];
+    let total = 0;
+
+    if (needsClientSideFilter) {
+      // Get all orders and filter client-side
+      const allOrdersSnapshot = await adminDb.collection('orders').orderBy('createdAt', 'desc').get();
+      const allOrders = allOrdersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Apply client-side filters
+      let filteredOrders = allOrders;
+      
+      if (clientSideFilters.status) {
+        filteredOrders = filteredOrders.filter((order: any) => order.status === clientSideFilters.status);
+      }
+      
+      if (clientSideFilters.startDate) {
+        const startTime = new Date(clientSideFilters.startDate + 'T00:00:00.000Z').getTime();
+        filteredOrders = filteredOrders.filter((order: any) => {
+          const orderTime = order.createdAt?.toDate?.()?.getTime() || new Date(order.createdAt).getTime();
+          return orderTime >= startTime;
+        });
+      }
+      
+      if (clientSideFilters.endDate) {
+        const endTime = new Date(clientSideFilters.endDate + 'T23:59:59.999Z').getTime();
+        filteredOrders = filteredOrders.filter((order: any) => {
+          const orderTime = order.createdAt?.toDate?.()?.getTime() || new Date(order.createdAt).getTime();
+          return orderTime <= endTime;
+        });
+      }
+      
+      total = filteredOrders.length;
+      
+      // Apply pagination
+      const offset = (page - 1) * limit;
+      allOrdersData = filteredOrders.slice(offset, offset + limit);
+      
+      console.log(`Client-side filtering: ${allOrders.length} total orders, ${filteredOrders.length} after filters, ${allOrdersData.length} on page ${page}`);
+      
+    } else {
+      // Use Firebase query directly
+      try {
+        const totalSnapshot = await query.get();
+        total = totalSnapshot.size;
+        
+        // Apply pagination
+        const offset = (page - 1) * limit;
+        const paginatedSnapshot = await query.offset(offset).limit(limit).get();
+        allOrdersData = paginatedSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+      } catch (error) {
+        console.error('Firebase query failed, falling back to client-side:', error);
+        // Fallback to getting all orders and filtering client-side
+        const allOrdersSnapshot = await adminDb.collection('orders').orderBy('createdAt', 'desc').get();
+        const allOrders = allOrdersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        total = allOrders.length;
+        const offset = (page - 1) * limit;
+        allOrdersData = allOrders.slice(offset, offset + limit);
+      }
+    }
+
+    const totalPages = Math.ceil(total / limit);
+
+    if (allOrdersData.length === 0) {
+      return NextResponse.json({
+        success: true,
         orders: [],
-        message: 'No orders found' 
+        total: 0,
+        totalPages: 0,
+        currentPage: page,
+        count: 0,
+        message: 'No orders found'
       });
     }
 
+    // Process each order and fetch user details
     const orders: OrderWithUser[] = [];
     
-    // Process each order and fetch associated user details
-    for (const orderDoc of ordersSnapshot.docs) {
-      const orderData = orderDoc.data();
-      
+    for (const orderData of allOrdersData) {
       // Fetch user details for this order
       let userDetails = null;
       if (orderData.clientId) {
@@ -59,10 +164,10 @@ export async function GET() {
         }
       }
 
-      // Construct the order object with proper types
+      // Construct the order object
       const order: OrderWithUser = {
-        id: orderDoc.id,
-        orderId: orderData.orderId || orderDoc.id,
+        id: orderData.id,
+        orderId: orderData.orderId || orderData.id,
         clientId: orderData.clientId || '',
         clientEmail: orderData.clientEmail || '',
         status: orderData.status || 'pending',
@@ -100,13 +205,17 @@ export async function GET() {
       orders.push(order);
     }
 
-    console.log(`Successfully fetched ${orders.length} orders with user details`);
+    const filterType = needsClientSideFilter ? 'client-side filtered' : 'Firebase query';
+    console.log(`Successfully fetched ${orders.length} orders with user details (page ${page}/${totalPages}) - ${filterType}`);
 
     return NextResponse.json({
       success: true,
       orders: orders,
+      total,
+      totalPages,
+      currentPage: page,
       count: orders.length,
-      message: `Found ${orders.length} orders`
+      message: `Found ${total} orders, showing page ${page} of ${totalPages} (${filterType})`
     });
 
   } catch (error) {

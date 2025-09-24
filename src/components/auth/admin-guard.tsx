@@ -29,7 +29,7 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
     return null;
   }
 
-  // Not admin - show access denied
+  // Not admin or employee - show access denied
   if (!isAdmin) {
     if (fallback) {
       return <>{fallback}</>;
@@ -52,10 +52,10 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
           
           <div className="text-gray-600 mb-6">
             <p className="mb-3">
-              You don't have permission to access the admin panel.
+              You do not have permission to access the admin panel.
             </p>
             <p className="text-sm">
-              This area is restricted to administrators only.
+              This area is restricted to administrators and employees only.
             </p>
           </div>
 

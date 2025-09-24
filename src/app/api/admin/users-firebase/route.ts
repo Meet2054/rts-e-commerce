@@ -3,7 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Admin users API called (Firebase version)');
+    console.log('Admin users API called (Firebase version with role filtering)');
     
     // Check authentication - simplified version
     const authHeader = request.headers.get('authorization');
@@ -24,9 +24,13 @@ export async function GET(request: NextRequest) {
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const status = url.searchParams.get('status'); // 'active', 'requested', 'inactive'
+    const role = url.searchParams.get('role'); // 'admin', 'client', 'employee'
+    const search = url.searchParams.get('search'); // search term
+    const startDate = url.searchParams.get('startDate');
+    const endDate = url.searchParams.get('endDate');
     const offset = (page - 1) * limit;
 
-    console.log('Query params:', { page, limit, status, offset });
+    console.log('Query params:', { page, limit, status, role, search, startDate, endDate, offset });
 
     // Fetch users from Firebase Firestore
     try {
@@ -36,28 +40,40 @@ export async function GET(request: NextRequest) {
       const allUsers: any[] = [];
       usersSnapshot.forEach((doc) => {
         const userData = doc.data();
-        // Only include non-admin users
-        if (userData.role !== 'admin') {
-          allUsers.push({
-            id: doc.id,
-            name: userData.name || userData.displayName || 'Unknown User',
-            email: userData.email || 'No email',
-            role: userData.role || 'customer',
-            createdAt: userData.createdAt?.toDate() || new Date(),
-            updatedAt: userData.updatedAt?.toDate() || new Date(),
-            // Additional fields
-            companyName: userData.companyName || 'N/A',
-            phoneNumber: userData.phoneNumber || userData.phone || 'N/A',
-            // Status and approval fields
-            status: userData.status || null,
-            approved: userData.approved || null,
-            approvedAt: userData.approvedAt || null,
-            rejectedAt: userData.rejectedAt || null
-          });
-        }
+        // Include all users (admins and non-admins)
+        allUsers.push({
+          id: doc.id,
+          // Use the actual field name from sign-up (displayName)
+          name: userData.displayName || 'Unknown User',
+          email: userData.email || 'No email',
+          role: userData.role || 'client',
+          createdAt: userData.createdAt?.toDate() || new Date(),
+          updatedAt: userData.updatedAt?.toDate() || new Date(),
+          // Sign-up form fields - Account Information
+          displayName: userData.displayName || '',
+          phoneNumber: userData.phoneNumber || '',
+          companyName: userData.companyName || '',
+          roleInCompany: userData.roleInCompany || '',
+          // Sign-up form fields - Address Information  
+          address: userData.address || '',
+          city: userData.city || '',
+          state: userData.state || '',
+          zipCode: userData.zipCode || '',
+          country: userData.country || '',
+          // Sign-up form fields - Terms Agreement
+          agreedToTerms: userData.agreedToTerms || false,
+          agreementDate: userData.agreementDate || null,
+          // Status and approval fields
+          status: userData.status || 'requested',
+          approved: userData.approved || false,
+          approvedAt: userData.approvedAt || null,
+          rejectedAt: userData.rejectedAt || null,
+          approvedBy: userData.approvedBy || null,
+          rejectedBy: userData.rejectedBy || null
+        });
       });
 
-      console.log('Non-admin users found:', allUsers.length);
+      console.log('All users found:', allUsers.length);
 
       // Get order counts for each user (if you have orders collection)
       const usersWithOrderCounts = await Promise.all(
@@ -83,42 +99,121 @@ export async function GET(request: NextRequest) {
           
           const userData = allUsers.find(u => u.id === user.id);
           
+          console.log(`🔍 [STATUS] User ${user.displayName || user.name} (${user.email}):`, {
+            approved: userData?.approved,
+            status: userData?.status,
+            createdAt: user.createdAt
+          });
+          
           // Check if user has been explicitly approved or rejected
           if (userData && userData.approved === true) {
             userStatus = 'active';
-          } else if (userData && userData.approved === false) {
-            userStatus = 'inactive';
+            console.log(`📍 [STATUS] → Set to 'active' (approved=true)`);
           } else if (userData && userData.status) {
             // Use explicit status field if available
             userStatus = userData.status as 'active' | 'requested' | 'inactive';
+            console.log(`📍 [STATUS] → Set to '${userStatus}' (from status field)`);
+          } else if (userData && userData.approved === false) {
+            // Users with approved=false are pending approval (requested)
+            userStatus = 'requested';
+            console.log(`📍 [STATUS] → Set to 'requested' (approved=false, pending approval)`);
           } else {
             // Fallback: If user was created recently (last 7 days), consider them as 'requested'
             const daysSinceCreated = Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
             userStatus = daysSinceCreated <= 7 ? 'requested' : 'active';
+            console.log(`📍 [STATUS] → Set to '${userStatus}' (fallback: ${daysSinceCreated} days old)`);
           }
 
           return {
             id: user.id,
+            // Basic info (for backward compatibility)
             name: user.name,
             email: user.email,
+            role: user.role,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            // Actual sign-up form fields
+            displayName: user.displayName,
+            phoneNumber: user.phoneNumber, 
             companyName: user.companyName,
-            phoneNumber: user.phoneNumber,
+            roleInCompany: user.roleInCompany,
+            address: user.address,
+            city: user.city,
+            state: user.state,
+            zipCode: user.zipCode,
+            country: user.country,
+            agreedToTerms: user.agreedToTerms,
+            agreementDate: user.agreementDate,
+            // Status info
             totalOrders,
             status: userStatus,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt
+            approved: user.approved,
+            approvedAt: user.approvedAt,
+            rejectedAt: user.rejectedAt,
+            approvedBy: user.approvedBy,
+            rejectedBy: user.rejectedBy
           };
         })
       );
 
       console.log('Users with order counts:', usersWithOrderCounts.length);
 
-      // Filter by status if provided
-      const filteredUsers = status 
-        ? usersWithOrderCounts.filter(u => u.status === status)
-        : usersWithOrderCounts;
+      // Apply all filters
+      let filteredUsers = usersWithOrderCounts;
 
-      console.log('Filtered users:', filteredUsers.length);
+      // Filter by status if provided
+      if (status) {
+        filteredUsers = filteredUsers.filter(u => u.status === status);
+        console.log(`After status filter '${status}':`, filteredUsers.length);
+      }
+
+      // Filter by role if provided
+      if (role) {
+        filteredUsers = filteredUsers.filter(u => u.role === role);
+        console.log(`After role filter '${role}':`, filteredUsers.length);
+      }
+
+      // Filter by search term if provided (search in name, email, company)
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filteredUsers = filteredUsers.filter(u => 
+          (u.name || '').toLowerCase().includes(searchLower) ||
+          (u.email || '').toLowerCase().includes(searchLower) ||
+          (u.companyName || '').toLowerCase().includes(searchLower) ||
+          (u.displayName || '').toLowerCase().includes(searchLower)
+        );
+        console.log(`After search filter '${search}':`, filteredUsers.length);
+      }
+
+      // Filter by date range if provided
+      if (startDate || endDate) {
+        filteredUsers = filteredUsers.filter(u => {
+          const userDate = u.createdAt;
+          if (!userDate) return false;
+
+          if (startDate) {
+            const start = new Date(startDate);
+            if (userDate < start) return false;
+          }
+
+          if (endDate) {
+            const end = new Date(endDate + 'T23:59:59.999Z'); // End of day
+            if (userDate > end) return false;
+          }
+
+          return true;
+        });
+        console.log(`After date range filter (${startDate} to ${endDate}):`, filteredUsers.length);
+      }
+
+      console.log(`Final filtered users:`, filteredUsers.length);
+      console.log('All user statuses with roles:', usersWithOrderCounts.map(u => ({ 
+        id: u.id, 
+        name: u.name, 
+        status: u.status, 
+        role: u.role, 
+        approved: u.approved 
+      })));
 
       // Apply pagination
       const paginatedUsers = filteredUsers.slice(offset, offset + limit);
@@ -164,14 +259,27 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const { userId, action } = await request.json();
+    const body = await request.json();
+    const { userId, action, role } = body;
     
-    if (!userId || !action || !['approve', 'reject'].includes(action)) {
-      return NextResponse.json({ error: 'Invalid request data' }, { status: 400 });
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
+
+    // Validate action type
+    if (action && !['approve', 'reject', 'changeRole'].includes(action)) {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+
+    // Validate role for role change action
+    if (action === 'changeRole') {
+      if (!role || !['admin', 'client', 'employee'].includes(role)) {
+        return NextResponse.json({ error: 'Invalid role. Must be admin, client, or employee' }, { status: 400 });
+      }
     }
 
     try {
-      // Update user status in Firebase
+      // Update user in Firebase
       const userRef = adminDb.collection('users').doc(userId);
       const userDoc = await userRef.get();
       
@@ -188,18 +296,31 @@ export async function PUT(request: NextRequest) {
         updateData.status = 'active';
         updateData.approved = true;
         updateData.approvedAt = new Date();
-      } else {
-        updateData.status = 'inactive'; // Changed from 'rejected' to 'inactive'
+      } else if (action === 'reject') {
+        updateData.status = 'inactive';
         updateData.approved = false;
         updateData.rejectedAt = new Date();
+      } else if (action === 'changeRole') {
+        updateData.role = role;
+        console.log(`Changing role for user ${userId} to ${role}`);
+      } else {
+        // Handle legacy requests that don't specify an action but have approve/reject
+        if (!action && !role) {
+          return NextResponse.json({ error: 'Action or role is required' }, { status: 400 });
+        }
       }
 
       await userRef.update(updateData);
 
+      console.log(`User ${userId} updated successfully:`, updateData);
+
       return NextResponse.json({ 
-        message: `User ${action}d successfully`,
+        message: action === 'changeRole' 
+          ? `User role changed to ${role} successfully`
+          : `User ${action}d successfully`,
         userId,
-        action
+        action,
+        role: action === 'changeRole' ? role : undefined
       });
 
     } catch (firebaseError) {
@@ -211,9 +332,9 @@ export async function PUT(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error updating user status:', error);
+    console.error('Error updating user:', error);
     return NextResponse.json(
-      { error: 'Failed to update user status' },
+      { error: 'Failed to update user', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

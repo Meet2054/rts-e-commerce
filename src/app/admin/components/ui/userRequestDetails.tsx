@@ -5,29 +5,28 @@ import { formatDate } from '@/lib/date-utils';
 
 interface UserData {
   id: string;
-  clientId: string;
+  // Basic info
   displayName: string;
-  name?: string; // Add name as optional field
   email: string;
-  phoneNumber?: string;
-  phone?: string; // Add phone as optional field
-  companyName?: string;
+  role: string;
   status: 'active' | 'requested' | 'inactive';
+  createdAt: Date | { toDate(): Date } | string;
+  updatedAt: Date | { toDate(): Date } | string;
+  phoneNumber?: string;
+  companyName?: string;
+  roleInCompany?: string;
   address?: string;
   city?: string;
   state?: string;
   zipCode?: string;
   country?: string;
-  roleInCompany?: string;
   agreedToTerms?: boolean;
-  createdAt: any;
-  _meta?: {
-    source: string;
-    timestamp: string;
-    cacheStatus: string;
-    fieldsReceived: string[];
-    fieldsReturned: string[];
-  }
+  agreementDate?: Date | { toDate(): Date } | string;
+  approved?: boolean;
+  approvedAt?: Date | { toDate(): Date } | string;
+  rejectedAt?: Date | { toDate(): Date } | string;
+  approvedBy?: string;
+  rejectedBy?: string;
 }
 
 interface UserDetailsModalProps {
@@ -40,193 +39,18 @@ interface UserDetailsModalProps {
 export default function RequestedUserDetailsModal({ 
   open, 
   onClose, 
-  userData: initialUserData,
+  userData,
   onApprove,
   onReject
 }: UserDetailsModalProps & { onApprove?: (userId: string) => void; onReject?: (userId: string, reason?: string) => void; }) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [userData, setUserData] = useState<UserData | null>(initialUserData);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | null>(null);
-  
-  const fetchUserData = (bypassCache = false) => {
-    // Use the current userData ID if available, otherwise fall back to initialUserData
-    const userId = userData?.id || initialUserData?.id;
-    if (!userId) {
-      setError('No user ID available to fetch data');
-      return;
-    }
-    
-    console.log(`🚀 [UserDetails] Using user ID for fetch: "${userId}"`);
-    
-    setLoading(true);
-    setError(null);
-    
-    // Get auth token from localStorage or useAuth context
-    let token = localStorage.getItem('userToken');
-    
-    // Fallback: try other possible token storage locations
-    if (!token) {
-      token = localStorage.getItem('authToken');
-    }
-    if (!token) {
-      token = localStorage.getItem('firebase-token');
-    }
-    if (!token) {
-      // For testing purposes, use a dummy token
-      token = 'dummy-token-for-testing';
-      console.log('⚠️ [UserDetails] No auth token found, using dummy token for testing');
-    }
-    
-    // Set headers based on whether we want to bypass cache
-    const headers: Record<string, string> = {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    };
-    
-    // Add cache control headers if we want to bypass cache
-    if (bypassCache) {
-      headers['Cache-Control'] = 'no-cache';
-      headers['Pragma'] = 'no-cache';
-      console.log('🔄 Fetching fresh data directly from Firebase (bypassing Redis cache)');
-    } else {
-      console.log('🔍 Fetching data (may use Redis cache if available)');
-    }
-    
-    console.log(`🚀 [UserDetails] Starting fetch for user ID: ${userId}`);
-    console.log(`🔑 [UserDetails] Auth token available: ${!!token} (length: ${token ? token.length : 0})`);
-    console.log(`🔧 [UserDetails] Request headers:`, JSON.stringify(headers));
-    console.log(`🌐 [UserDetails] Fetch URL: /api/admin/users/${userId}`);
-    
-    fetch(`/api/admin/users/${userId}`, {
-      method: 'GET',
-      headers
-    })
-      .then(response => {
-        console.log(`📥 [UserDetails] Response status: ${response.status}`);
-        console.log(`📤 [UserDetails] Response headers:`, Object.fromEntries([...response.headers.entries()]));
-        console.log(`📤 [UserDetails] Response ok: ${response.ok}`);
-        
-        if (!response.ok) {
-          console.error(`❌ [UserDetails] Response error: ${response.status} ${response.statusText}`);
-          
-          // Try to get error details from response body
-          return response.text().then(errorText => {
-            console.error(`❌ [UserDetails] Error response body:`, errorText);
-            throw new Error(`API Error ${response.status}: ${response.statusText}\nDetails: ${errorText}`);
-          }).catch(textError => {
-            console.error(`❌ [UserDetails] Could not read error response:`, textError);
-            throw new Error(`API Error ${response.status}: ${response.statusText}`);
-          });
-        }
-        
-        return response.json().then(data => {
-          console.log(`📦 [UserDetails] Response data:`, JSON.stringify(data, null, 2));
-          return data;
-        });
-      })
-      .then(data => {
-        console.log(`📥 [UserDetails] Processing received data:`, data);
-        
-        if (!data) {
-          console.error(`❌ [UserDetails] No data received from server`);
-          throw new Error('No data received from server');
-        }
-        
-        if (!data.user) {
-          console.error(`❌ [UserDetails] Data received but user object is missing`);
-          throw new Error('No user data received from server');
-        }
-        
-        console.log(`✅ [UserDetails] User data received:`, {
-          id: data.user.id,
-          fieldsPresent: Object.keys(data.user).length,
-          fields: Object.keys(data.user)
-        });
-        
-        // Log data source information
-        const dataSource = data.meta?.source || 'unknown';
-        const cacheStatus = data.meta?.cacheStatus || 'unknown';
-        console.log(`📊 [UserDetails] Data received from ${dataSource} (cache: ${cacheStatus})`);
-        
-        // Log diagnostic information if fields are missing
-        const requiredFields = ['displayName', 'email', 'phoneNumber', 'address', 'city', 'state', 'zipCode', 'country'];
-        const missingFields = requiredFields.filter(field => !data.user[field] && !data.user[field === 'displayName' ? 'name' : field]);
-        
-        if (missingFields.length > 0) {
-          console.warn(`⚠️ [UserDetails] Missing fields: ${missingFields.join(', ')}`, {
-            userId: data.user.id,
-            meta: data.meta
-          });
-        }
-        
-        // Process and sanitize the user data to ensure all required fields are present
-        console.log(`🔧 [UserDetails] Processing user data fields`);
-        
-        // Extract fields with fallbacks
-        const displayName = data.user.displayName || data.user.name;
-        const phoneNumber = data.user.phoneNumber || data.user.phone;
-        const address = data.user.address || data.user.addressLine1;
-        const zipCode = data.user.zipCode || data.user.postalCode;
-        
-        console.log(`🔧 [UserDetails] Field extraction results:`, {
-          displayName: displayName || '(missing)',
-          email: data.user.email || '(missing)',
-          phoneNumber: phoneNumber || '(missing)',
-          address: address || '(missing)',
-          city: data.user.city || '(missing)',
-          state: data.user.state || '(missing)',
-          zipCode: zipCode || '(missing)',
-          country: data.user.country || '(missing)'
-        });
-        
-        const processedData = {
-          ...data.user,
-          // Ensure these fields always exist
-          displayName: displayName || 'Unknown',
-          email: data.user.email || 'No email provided',
-          phoneNumber: phoneNumber || 'Not provided',
-          roleInCompany: data.user.roleInCompany || 'Not provided',
-          companyName: data.user.companyName || 'Not provided',
-          address: address || 'Not provided',
-          city: data.user.city || 'Not provided',
-          state: data.user.state || 'Not provided',
-          zipCode: zipCode || 'Not provided',
-          country: data.user.country || 'Not provided',
-          agreedToTerms: data.user.agreedToTerms || false,
-          createdAt: data.user.createdAt || null,
-          _meta: data.meta // Store metadata for debugging
-        };
-        
-        console.log(`✅ [UserDetails] Final processed data:`, {
-          id: processedData.id,
-          fieldsPresent: Object.keys(processedData).length,
-          displayName: processedData.displayName,
-          email: processedData.email,
-          dataSource: processedData._meta?.source || 'unknown'
-        });
-        
-        setUserData(processedData);
-      })
-      .catch(err => {
-        console.error('Error fetching user details:', err);
-        setError(err.message === 'No user data received from server' 
-          ? 'No data received from server. Please try again.' 
-          : 'Failed to fetch latest user data');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
   const handleApprove = async () => {
-    const userId = displayUserData.id;
-    if (!userId || !onApprove) return;
-    
+    if (!userData || !onApprove) return;
     setActionLoading('approve');
     try {
-      await onApprove(userId);
+      await onApprove(userData.id);
       onClose(); // Close modal after successful approval
     } catch (error) {
       console.error('Error approving user:', error);
@@ -236,12 +60,10 @@ export default function RequestedUserDetailsModal({
   };
 
   const handleReject = async () => {
-    const userId = displayUserData.id;
-    if (!userId || !onReject) return;
-    
+    if (!userData || !onReject) return;
     setActionLoading('reject');
     try {
-      await onReject(userId, rejectionReason);
+      await onReject(userData.id, rejectionReason);
       onClose(); // Close modal after successful rejection
     } catch (error) {
       console.error('Error rejecting user:', error);
@@ -276,98 +98,8 @@ export default function RequestedUserDetailsModal({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [open, onClose]);
 
-  // Fetch latest user data from database when modal opens
-  useEffect(() => {
-    if (open && initialUserData?.id) {
-      setUserData(initialUserData); // Set initial data immediately
-      
-      // Log the user ID being used for fetching
-      console.log(`🔍 [UserDetails] Modal opened for user ID: "${initialUserData.id}"`);
-      console.log(`🔍 [UserDetails] Initial user data:`, JSON.stringify({
-        id: initialUserData.id,
-        name: initialUserData.displayName || initialUserData.name,
-        email: initialUserData.email
-      }));
-      
-      // If the user ID starts with 'test-', ensure we have a test ID that the API will handle
-      let testUserId = initialUserData.id;
-      if (!testUserId.startsWith('test-') && testUserId.length < 10) {
-        testUserId = `test-${testUserId}`;
-        console.log(`🔧 [UserDetails] Converting to test user ID: ${testUserId}`);
-        
-        // Update the initialUserData for testing purposes
-        const testUserData = {
-          ...initialUserData,
-          id: testUserId
-        };
-        setUserData(testUserData);
-      }
-      
-      // First try to get data from cache for faster rendering
-      fetchUserData(false); 
-      
-      // Then get fresh data from Firebase after a short delay
-      const timer = setTimeout(() => {
-        console.log('🔄 Refreshing with latest data from Firebase...');
-        fetchUserData(true);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    } else {
-      setUserData(initialUserData);
-    }
-  }, [open, initialUserData]);
 
-  if (!open) return null;
-  
-  // Create a default user data object to use when data is missing
-  const displayUserData = userData || {
-    id: initialUserData?.id || '',
-    displayName: initialUserData?.displayName || initialUserData?.name || 'Not available',
-    email: initialUserData?.email || 'Not available',
-    phoneNumber: initialUserData?.phoneNumber || initialUserData?.phone || 'Not provided',
-    roleInCompany: initialUserData?.roleInCompany || 'Not provided',
-    companyName: initialUserData?.companyName || 'Not provided',
-    address: initialUserData?.address || 'Not provided',
-    city: initialUserData?.city || 'Not provided',
-    state: initialUserData?.state || 'Not provided',
-    zipCode: initialUserData?.zipCode || 'Not provided',
-    country: initialUserData?.country || 'Not provided',
-    agreedToTerms: initialUserData?.agreedToTerms || false,
-    createdAt: initialUserData?.createdAt || null,
-    status: initialUserData?.status || 'requested',
-    _meta: {
-      source: 'initial',
-      timestamp: new Date().toISOString(),
-      cacheStatus: 'none',
-      fieldsReceived: [],
-      fieldsReturned: []
-    }
-  };
-  
-  console.log(`🔍 [UserDetails] Display data preparation:`, {
-    hasUserData: !!userData,
-    hasInitialUserData: !!initialUserData,
-    initialDataFields: initialUserData ? Object.keys(initialUserData) : [],
-    displayDataId: displayUserData.id,
-    displayDataName: displayUserData.displayName,
-    displayDataEmail: displayUserData.email
-  });
-
-  // Add render logging
-  console.log(`🖥️ [UserDetails] Rendering modal with data:`, {
-    hasUserData: !!userData,
-    hasInitialUserData: !!initialUserData,
-    displayUserData: {
-      id: displayUserData.id,
-      displayName: displayUserData.displayName,
-      email: displayUserData.email,
-      phone: displayUserData.phoneNumber,
-      dataSource: displayUserData._meta?.source
-    },
-    loading,
-    error
-  });
+  if (!open || !userData) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
@@ -377,177 +109,72 @@ export default function RequestedUserDetailsModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-white">
-          <div className="flex flex-col">
-            <div className="flex items-center">
-              <h2 className="text-xl font-bold text-black">User Request Detail</h2>
-              {displayUserData._meta?.source && (
-                <span 
-                  className={`text-xs font-semibold ml-2 px-1.5 py-0.5 rounded ${
-                    displayUserData._meta.source === 'redis' 
-                      ? 'bg-green-100 text-green-800' 
-                      : displayUserData._meta.source === 'firestore' 
-                      ? 'bg-orange-100 text-orange-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {displayUserData._meta.source === 'redis' ? '🔄 Cached' : 
-                   displayUserData._meta.source === 'firestore' ? '🔥 Fresh' : 
-                   displayUserData._meta.source}
-                </span>
-              )}
-            </div>
-            {loading && (
-              <p className="text-xs text-blue-500 animate-pulse mt-1">Refreshing data...</p>
-            )}
-          </div>
-          <div className="flex items-center">
-            <button
-              onClick={() => fetchUserData(true)}
-              className="mr-2 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded-md flex items-center"
-              title="Bypass cache and load fresh data from database"
-              disabled={loading}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {loading ? 'Loading...' : 'Refresh'}
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 cursor-pointer hover:text-black text-xl font-bold"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          <h2 className="text-xl font-bold text-black">User Request Detail</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 cursor-pointer hover:text-black text-xl font-bold"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         {/* Content */}
         <div className="p-6">
-          {error ? (
-            <div className="bg-red-50 p-4 rounded-md mb-4">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Error loading user data</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      type="button"
-                      onClick={() => fetchUserData(true)}
-                      className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    >
-                      Try Again
-                    </button>
-                  </div>
-                </div>
-              </div>
+          {/* User Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <div className="font-semibold mb-2">Account Information</div>
+              <div className="text-sm text-gray-700 mb-1">Full Name: <span className="font-medium">{userData.displayName}</span></div>
+              <div className="text-sm text-gray-700 mb-1">Email Address: <span className="font-medium">{userData.email}</span></div>
+              <div className="text-sm text-gray-700 mb-1">Phone Number: <span className="font-medium">{userData.phoneNumber}</span></div>
+              <div className="text-sm text-gray-700 mb-1">Role in Company: <span className="font-medium">{userData.roleInCompany}</span></div>
+              <div className="text-sm text-gray-400 mb-1">Password: <span className="font-medium">[hidden for security]</span></div>
+              <div className="text-sm text-gray-700 mb-1">Agreed to Terms: <span className="font-medium">{userData.agreedToTerms ? 'Yes' : 'No'}</span></div>
             </div>
-          ) : loading ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="mt-4 text-gray-500">Loading user data...</p>
+            <div>
+              <div className="font-semibold mb-2">Company & Address Information</div>
+              <div className="text-sm text-gray-700 mb-1">Company Name: <span className="font-medium">{userData.companyName}</span></div>
+              <div className="text-sm text-gray-700 mb-1">Address: <span className="font-medium">{userData.address}</span></div>
+              <div className="text-sm text-gray-700 mb-1">City: <span className="font-medium">{userData.city}</span></div>
+              <div className="text-sm text-gray-700 mb-1">State/Province: <span className="font-medium">{userData.state}</span></div>
+              <div className="text-sm text-gray-700 mb-1">Zip/Postal Code: <span className="font-medium">{userData.zipCode}</span></div>
+              <div className="text-sm text-gray-700 mb-1">Country: <span className="font-medium">{userData.country}</span></div>
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <div className="font-semibold mb-2">Account Information</div>
-                  <div className="text-sm text-gray-700 mb-1">Full Name: <span className="font-medium">{displayUserData.displayName}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Email Address: <span className="font-medium">{displayUserData.email}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Phone Number: <span className="font-medium">{displayUserData.phoneNumber}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Role in Company: <span className="font-medium">{displayUserData.roleInCompany}</span></div>
-                  <div className="text-sm text-gray-400 mb-1">Password: <span className="font-medium">[hidden for security]</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Agreed to Terms: <span className="font-medium">{displayUserData.agreedToTerms ? 'Yes' : 'No'}</span></div>
-                </div>
-                <div>
-                  <div className="font-semibold mb-2">Company & Address Information</div>
-                  <div className="text-sm text-gray-700 mb-1">Company Name: <span className="font-medium">{displayUserData.companyName}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Address: <span className="font-medium">{displayUserData.address}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">City: <span className="font-medium">{displayUserData.city}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">State/Province: <span className="font-medium">{displayUserData.state}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Zip/Postal Code: <span className="font-medium">{displayUserData.zipCode}</span></div>
-                  <div className="text-sm text-gray-700 mb-1">Country: <span className="font-medium">{displayUserData.country}</span></div>
-                </div>
-              </div>
-              <div className="mb-6">
-                <div className="font-semibold mb-2">Request Information</div>
-                <div className="text-sm text-gray-700 mb-1">Request Date: <span className="font-medium">{displayUserData.createdAt ? formatDate(displayUserData.createdAt) : 'N/A'}</span></div>
-                <div className="text-sm text-gray-700 mb-1">Status: <span className="font-medium">Pending</span></div>
-                <div className="text-sm text-gray-700 mb-1">Notes: <span className="font-medium">Wants access to Toner & Printer categories</span></div>
-                
-                {/* Add a debugging section for admins - visible in all environments */}
-                <div className="mt-4 p-2 border border-gray-200 bg-gray-50 text-xs">
-                  <details>
-                    <summary className="cursor-pointer font-medium mb-1">Debug Information</summary>
-                    <div className="ml-2 mt-1">
-                      <div>User ID: {displayUserData.id}</div>
-                      <div>Data source: {displayUserData._meta?.source || 'unknown'}</div>
-                      <div>Cache status: {displayUserData._meta?.cacheStatus || 'unknown'}</div>
-                      <div>Last fetched: {loading ? 'fetching now...' : (displayUserData._meta?.timestamp || 'unknown')}</div>
-                      <div>Initial user ID: {initialUserData?.id || 'none'}</div>
-                      <div>Current fetch URL: /api/admin/users/{userData?.id || initialUserData?.id}</div>
-                      <div className="mt-1">
-                        <button 
-                          onClick={() => fetchUserData(true)} 
-                          className="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs mr-1"
-                        >
-                          Force refresh from Firebase
-                        </button>
-                        <button 
-                          onClick={() => {
-                            console.log('Current state debug:', {
-                              userData,
-                              initialUserData,
-                              displayUserData,
-                              loading,
-                              error
-                            });
-                          }} 
-                          className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs"
-                        >
-                          Log debug info
-                        </button>
-                      </div>
-                    </div>
-                  </details>
-                </div>
-              </div>
-              <div className="mb-6">
-                <select 
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm mb-4"
-                  value={rejectionReason}
-                  onChange={e => setRejectionReason(e.target.value)}
-                >
-                  <option value="">Add Reason of Rejection</option>
-                  <option value="Incomplete Information">Incomplete Information</option>
-                  <option value="Invalid Documents">Invalid Documents</option>
-                  <option value="Not Eligible">Not Eligible</option>
-                </select>
-              </div>
-              <div className="flex gap-4">
-                <button 
-                  className="admin-button w-1/2 bg-white text-black border border-gray-300 hover:bg-red-100 hover:text-red-700"
-                  onClick={handleReject}
-                  disabled={actionLoading === 'reject'}
-                >
-                  {actionLoading === 'reject' ? 'Processing...' : 'Reject Request'}
-                </button>
-                <button 
-                  className="admin-button w-1/2 bg-black text-white"
-                  onClick={handleApprove}
-                  disabled={actionLoading === 'approve'}
-                >
-                  {actionLoading === 'approve' ? 'Processing...' : 'Approve Request'}
-                </button>
-              </div>
-            </>
-          )}
+          </div>
+          <div className="mb-6">
+            <div className="font-semibold mb-2">Request Information</div>
+            <div className="text-sm text-gray-700 mb-1">Request Date: <span className="font-medium">{userData.createdAt ? formatDate(userData.createdAt) : 'N/A'}</span></div>
+            <div className="text-sm text-gray-700 mb-1">Status: <span className="font-medium">Pending</span></div>
+            <div className="text-sm text-gray-700 mb-1">Notes: <span className="font-medium">Wants access to Toner & Printer categories</span></div>
+          </div>
+          <div className="mb-6">
+            <select 
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm mb-4"
+              value={rejectionReason}
+              onChange={e => setRejectionReason(e.target.value)}
+            >
+              <option value="">Add Reason of Rejection</option>
+              <option value="Incomplete Information">Incomplete Information</option>
+              <option value="Invalid Documents">Invalid Documents</option>
+              <option value="Not Eligible">Not Eligible</option>
+            </select>
+            <div className="flex gap-4">
+              <button 
+                className="admin-button w-1/2 bg-white text-black border border-gray-300 hover:bg-red-100 hover:text-red-700"
+                onClick={handleReject}
+                disabled={actionLoading === 'reject'}
+              >
+                {actionLoading === 'reject' ? 'Processing...' : 'Reject Request'}
+              </button>
+              <button 
+                className="admin-button w-1/2 bg-black text-white"
+                onClick={handleApprove}
+                disabled={actionLoading === 'approve'}
+              >
+                {actionLoading === 'approve' ? 'Processing...' : 'Approve Request'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

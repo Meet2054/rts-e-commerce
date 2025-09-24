@@ -55,10 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Determine admin status and approval status
           if (userData) {
-            const isUserAdmin = userData.role === 'admin';
+            const isUserAdmin = userData.role === 'admin' || userData.role === 'employee';
             setIsAdmin(isUserAdmin);
             
-            // Admin users are always approved
+            // Admin and employee users are always approved
             if (isUserAdmin) {
               setIsApproved(true);
               setApprovalStatus('active');

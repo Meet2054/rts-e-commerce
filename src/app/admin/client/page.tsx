@@ -5,20 +5,48 @@ import { AdminGuard } from '@/components/auth/admin-guard';
 import UserDetailsModal from '@/app/admin/components/ui/userDetails';
 import PricingUploadModal from '@/app/admin/components/ui/PricingUploadModal';
 import UserRequestedDetailsModal from '@/app/admin/components/ui/userRequestDetails';
+import { Search, ChevronDown } from 'lucide-react';
 
 interface Client {
   id: string;
   name: string;
   email: string;
-  companyName?: string;
-  phoneNumber?: string;
-  totalOrders: number;
+  role: string;
   status: 'active' | 'requested' | 'inactive';
   createdAt: Date;
+  updatedAt: Date;
+  
+  // Sign-up form fields - Account Information
+  displayName: string;
+  phoneNumber?: string;
+  companyName?: string;
+  roleInCompany?: string;
+  
+  // Sign-up form fields - Address Information
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
+  
+  // Sign-up form fields - Terms Agreement
+  agreedToTerms?: boolean;
+  agreementDate?: Date | { toDate(): Date } | string;
+  
+  // Status and approval fields
+  approved?: boolean;
+  approvedAt?: Date | { toDate(): Date } | string;
+  rejectedAt?: Date | { toDate(): Date } | string;
+  approvedBy?: string;
+  rejectedBy?: string;
+  
+  // Order information
+  totalOrders: number;
 }
 
 export default function ClientPage() {
-  const [requested, setRequested] = useState(true);
+  const { userData } = useAuth(); // Get current user data to pass role to modal
+  const [requested, setRequested] = useState(userData?.role === 'admin' ? true : false); // Only show requested by default for admins
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -27,11 +55,63 @@ export default function ClientPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showPricingModal, setShowPricingModal] = useState(false);
   const [pricingUser, setPricingUser] = useState<Client | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('All');
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [usersPerPage] = useState(15);
   const { token } = useAuth();
+
+  // Check if current user is admin
+  const isAdmin = userData?.role === 'admin';
+
+  // Define tabs for filtering users by role
+  const tabs = [
+    { label: 'All' },
+    { label: 'Admin' },
+    { label: 'Employee' },
+    { label: 'Client' }
+  ];
 
   useEffect(() => {
     const fetchClients = async () => {
       console.log('Auth state:', { hasToken: !!token, tokenLength: token?.length });
+      setLoading(true);
+      
+      // Non-admin users should only see active clients
+      const shouldFetchRequested = requested && isAdmin;
+      
+      // Build query parameters
+      const queryParams = new URLSearchParams({
+        status: shouldFetchRequested ? 'requested' : 'active',
+        page: currentPage.toString(),
+        limit: usersPerPage.toString()
+      });
+
+      // Add search filter if present
+      if (searchTerm) {
+        queryParams.append('search', searchTerm);
+      }
+
+      // Add role filter if not 'All'
+      if (activeTab !== 'All') {
+        queryParams.append('role', activeTab.toLowerCase());
+      }
+
+      // Add date range filters if present
+      if (dateRange.startDate) {
+        queryParams.append('startDate', dateRange.startDate);
+      }
+      if (dateRange.endDate) {
+        queryParams.append('endDate', dateRange.endDate);
+      }
       
       if (!token) {
         console.log('No token available - user may not be logged in');
@@ -40,10 +120,10 @@ export default function ClientPage() {
         console.log('Using dummy token for testing');
         
         try {
-          const statusParam = requested ? 'requested' : 'active';
-          console.log('Making request to:', `/api/admin/users-firebase?status=${statusParam}&page=1&limit=50`);
+          const url = `/api/admin/users-firebase?${queryParams.toString()}`;
+          console.log('Making request to:', url);
           
-          const response = await fetch(`/api/admin/users-firebase?status=${statusParam}&page=1&limit=50`, {
+          const response = await fetch(url, {
             headers: {
               'Authorization': `Bearer ${dummyToken}`,
               'Content-Type': 'application/json'
@@ -58,6 +138,8 @@ export default function ClientPage() {
             
             console.log('Fetched users:', users);
             setClients(users);
+            setTotalPages(data.totalPages || 1);
+            setTotalUsers(data.total || users.length);
           } else {
             const errorData = await response.json().catch(() => ({}));
             const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
@@ -76,10 +158,10 @@ export default function ClientPage() {
       console.log('Fetching clients with token:', token?.substring(0, 20) + '...');
 
       try {
-        const statusParam = requested ? 'requested' : 'active';
-        console.log('Making request to:', `/api/admin/users-firebase?status=${statusParam}&page=1&limit=50`);
+        const url = `/api/admin/users-firebase?${queryParams.toString()}`;
+        console.log('Making request to:', url);
         
-        const response = await fetch(`/api/admin/users-firebase?status=${statusParam}&page=1&limit=50`, {
+        const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -94,6 +176,8 @@ export default function ClientPage() {
           
           console.log('Fetched users:', users);
           setClients(users);
+          setTotalPages(data.totalPages || 1);
+          setTotalUsers(data.total || users.length);
         } else {
           const errorData = await response.json().catch(() => ({}));
           const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
@@ -109,7 +193,50 @@ export default function ClientPage() {
     };
 
     fetchClients();
-  }, [requested, token]); // Include token in dependencies
+  }, [requested, token, isAdmin, currentPage, usersPerPage, searchTerm, activeTab, dateRange]); // Include all filter dependencies
+
+  // Filter clients based on search term, active tab, and date range
+  useEffect(() => {
+    // Reset to first page when filters change
+    setCurrentPage(1);
+  }, [searchTerm, activeTab, dateRange, requested]);
+
+  // Pagination functions
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  // Close date filter dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.date-filter-dropdown')) {
+        setShowDateFilter(false);
+      }
+    };
+
+    if (showDateFilter) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDateFilter]);
 
   const handleUserAction = async (userId: string, action: 'approve' | 'reject') => {
     if (actionLoading) return;
@@ -190,29 +317,32 @@ export default function ClientPage() {
     
     const userData = {
       id: client.id,
-      clientId: client.id,
-      displayName: client.name || 'Unknown User',
+      displayName: client.displayName || client.name || 'Unknown User',
       email: client.email || 'No email provided',
-      phoneNumber: client.phoneNumber || 'Not provided',
-      companyName: client.companyName || 'Not provided',
+      phoneNumber: client.phoneNumber || '',
+      companyName: client.companyName || '',
+      roleInCompany: client.roleInCompany || '',
       status: client.status,
       createdAt: client.createdAt,
+      updatedAt: client.updatedAt,
       totalOrders: client.totalOrders || 0,
-      // Set reasonable defaults for optional fields
-      businessType: 'Not provided',
-      industry: 'Not provided',
-      website: 'Not provided',
-      gst: 'Not provided',
-      address: 'Not provided',
-      city: 'Not provided',
-      state: 'Not provided',
-      zipCode: 'Not provided',
-      country: 'Not provided',
-      roleInCompany: 'Not provided',
-      agreedToTerms: false,
-      currency: 'USD',
-      language: 'English',
-      lastOrderDate: null,
+      // Use actual sign-up form fields from API response
+      address: client.address || '',
+      city: client.city || '', 
+      state: client.state || '',
+      zipCode: client.zipCode || '',
+      country: client.country || '',
+      agreedToTerms: client.agreedToTerms || false,
+      agreementDate: client.agreementDate || undefined,
+      // Approval fields
+      approved: client.approved || false,
+      approvedAt: client.approvedAt || undefined,
+      rejectedAt: client.rejectedAt || undefined,
+      approvedBy: client.approvedBy || undefined,
+      rejectedBy: client.rejectedBy || undefined,
+      // Other fields
+      role: client.role || 'client',
+      lastOrderDate: undefined,
       orders: []
     };
     
@@ -261,6 +391,40 @@ export default function ClientPage() {
     window.URL.revokeObjectURL(url);
   };
 
+  // Helper function to set date range presets
+  const setDatePreset = (preset: string) => {
+    const today = new Date();
+    const startDate = new Date();
+
+    switch (preset) {
+      case 'today':
+        startDate.setHours(0, 0, 0, 0);
+        setDateRange({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        });
+        break;
+      case 'week':
+        startDate.setDate(today.getDate() - 7);
+        setDateRange({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        });
+        break;
+      case 'month':
+        startDate.setMonth(today.getMonth() - 1);
+        setDateRange({
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        });
+        break;
+      case 'clear':
+        setDateRange({ startDate: '', endDate: '' });
+        break;
+    }
+    setShowDateFilter(false);
+  };
+
   if (loading) {
     return (
       <div className="max-w-[1550px] p-8 mx-auto">
@@ -291,41 +455,148 @@ export default function ClientPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <div className="text-xl font-bold text-black">
-            Client Management - {requested ? 'Approval Requests' : 'Active Clients'}
+            Client Management - {(requested && isAdmin) ? 'Approval Requests' : 'Active Clients'}
           </div>
           <div className="text-gray-500 text-base">
-            {requested 
+            {(requested && isAdmin)
               ? 'Review and approve new user registrations' 
               : 'Manage approved clients and their orders'
             }
           </div>
         </div>
         <div className="flex gap-3">
-          <button
-            className={`px-4 py-2 rounded-lg text-sm font-semibold border ${
-              requested
-                ? 'bg-black text-white border-black'
-                : 'bg-[#F1F2F4] text-black border-[#F1F2F4]'
-            }`}
-            onClick={() => setRequested((r) => !r)}
-          >
-            {requested ? 'Pending Approval' : 'View Requests'}
-          </button>
+          {/* Only show request button to admin users */}
+          {isAdmin && (
+            <button
+              className={`px-4 py-2.5 rounded-lg text-base font-medium border-2 ${
+                requested
+                  ? 'bg-black text-white border-black'
+                  : 'bg-white text-black border-gray-300'
+              }`}
+              onClick={() => setRequested((r) => !r)}
+            >
+              {requested ? 'View Active Clients' : 'View Requests'}
+            </button>
+          )}
           <button 
             onClick={exportClients}
-            className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg text-sm font-semibold hover:bg-[#2E318E]"
+            className="flex items-center gap-2 px-4 py-2 admin-button"
           >
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export Clients List
           </button>
         </div>
       </div>
-      {/* Filter */}
-      <div className="flex justify-end mb-2">
-        <button className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1">
-          Filter by <span className="font-bold">Date Range</span>
-          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4">
+        {tabs.map(tab => (
+          <button
+            key={tab.label}
+            onClick={() => setActiveTab(tab.label)}
+            className={`admin-button ${
+              activeTab === tab.label
+                ? 'bg-black text-white'
+                : 'bg-[#F1F2F4] text-black'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      
+      {/* Search Bar */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="relative max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search users by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        <div className="flex gap-2 items-center">
+          {/* Date Range Inputs */}
+          <div className="flex gap-2 items-center">
+            <input
+              type="date"
+              value={dateRange.startDate}
+              onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Start Date"
+            />
+            <span className="text-gray-500 text-sm">to</span>
+            <input
+              type="date"
+              value={dateRange.endDate}
+              onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="End Date"
+            />
+          </div>
+
+          {/* Date Filter Dropdown */}
+          <div className="relative date-filter-dropdown">
+            <button 
+              onClick={() => setShowDateFilter(!showDateFilter)}
+              className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              Quick Filter
+              <ChevronDown size={16} />
+            </button>
+            
+            {showDateFilter && (
+              <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-300 rounded-md shadow-lg z-10">
+                <div className="py-1">
+                  <button
+                    onClick={() => setDatePreset('today')}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setDatePreset('week')}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                  >
+                    Last 7 Days
+                  </button>
+                  <button
+                    onClick={() => setDatePreset('month')}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                  >
+                    Last 30 Days
+                  </button>
+                  <button
+                    onClick={() => setDatePreset('clear')}
+                    className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 text-red-600"
+                  >
+                    Clear Filter
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-black border border-gray-300 rounded-lg"
+            >
+              Clear Search
+            </button>
+          )}
+          
+          {(dateRange.startDate || dateRange.endDate) && (
+            <button 
+              onClick={() => setDateRange({ startDate: '', endDate: '' })}
+              className="px-3 py-2 text-sm font-medium text-red-600 hover:text-red-800 border border-red-300 rounded-lg"
+            >
+              Clear Dates
+            </button>
+          )}
+        </div>
       </div>
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border p-2">
@@ -358,7 +629,7 @@ export default function ClientPage() {
                   <td className="py-2 px-4">{client.phoneNumber}</td>
                   {!requested && <td className="py-2 px-4">{client.totalOrders}</td>}
                   <td className="py-2 px-4">
-                    {client.status === 'requested' ? (
+                    {client.status === 'requested' && isAdmin ? (
                       <div className="flex gap-1 justify-end">
                         <button 
                           onClick={() => handleUserAction(client.id, 'approve')}
@@ -397,10 +668,63 @@ export default function ClientPage() {
         </table>
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
-          <span className="text-xs text-gray-500">Page 1 of 10</span>
-          <div className="flex gap-2">
-            <button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Previous</button>
-            <button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Next</button>
+          <span className="text-base text-gray-900">
+            Showing {((currentPage - 1) * usersPerPage) + 1}-{Math.min(currentPage * usersPerPage, totalUsers)} of {totalUsers} users
+          </span>
+          <div className="flex gap-2 items-center">
+            <button 
+              onClick={prevPage}
+              disabled={currentPage === 1}
+              className={`admin-button ${
+                currentPage === 1 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              Previous
+            </button>
+            
+            {/* Page numbers */}
+            <div className="flex gap-1">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNumber = totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => goToPage(pageNumber)}
+                    className={`px-3 py-1 text-sm rounded ${
+                      currentPage === pageNumber
+                        ? 'bg-black text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <button 
+              onClick={nextPage}
+              disabled={currentPage === totalPages}
+              className={`admin-button ${
+                currentPage === totalPages
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'hover:bg-gray-100'
+              }`}
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
@@ -412,6 +736,7 @@ export default function ClientPage() {
           onClose={handleCloseModal}
           userData={convertClientToUserData(selectedUser)}
           onAddNewPricing={handleAddNewPricing}
+          currentUserRole={userData?.role || 'client'} // Pass current user's role
         />
       )}
 
@@ -423,7 +748,7 @@ export default function ClientPage() {
           userData={convertClientToUserData(selectedUser)}
           onAddNewPricing={handleAddNewPricing}
           onApprove={(userId) => handleUserAction(userId, 'approve')}
-          onReject={(userId, reason) => handleUserAction(userId, 'reject')}
+          onReject={(userId) => handleUserAction(userId, 'reject')}
         />
       )}
 

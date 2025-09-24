@@ -340,7 +340,7 @@ export default function ProductsPage() {
             <button 
               onClick={prevPage}
               disabled={!pagination?.hasPrevPage || loading}
-              className={`px-4 py-2.5 rounded border-2 text-sm font-medium transition-colors ${
+              className={`admin-button ${
                 pagination?.hasPrevPage && !loading
                   ? 'border-[#F1F2F4] hover:bg-gray-50 cursor-pointer' 
                   : 'border-gray-200 text-gray-400 cursor-not-allowed'
@@ -385,7 +385,7 @@ export default function ProductsPage() {
             <button 
               onClick={nextPage}
               disabled={!pagination?.hasNextPage || loading}
-              className={`px-4 py-2.5 rounded border-2 text-sm font-medium transition-colors ${
+              className={`admin-button ${
                 pagination?.hasNextPage && !loading
                   ? 'border-[#F1F2F4] hover:bg-gray-50 cursor-pointer' 
                   : 'border-gray-200 text-gray-400 cursor-not-allowed'

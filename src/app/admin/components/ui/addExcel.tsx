@@ -1,18 +1,39 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
 import { Package, X } from 'lucide-react';
+import { useAuth } from '@/components/auth/auth-provider';
 
 interface AddExcelProps {
   open: boolean;
   onClose: () => void;
 }
 
+interface UploadError {
+  row: number;
+  error: string;
+}
+
+interface UploadWarning {
+  row: number;
+  warning: string;
+}
+
+interface UploadResult {
+  totalRows: number;
+  successfulAdds: number;
+  failedAdds: number;
+  duplicatesSkipped: number;
+  errors: UploadError[];
+  warnings: UploadWarning[];
+}
+
 export default function AddExcelModal({ open, onClose }: AddExcelProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<any>(null);
+  const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [error, setError] = useState('');
+  const { token } = useAuth();
 
   // Close modal on outside click
   useEffect(() => {
@@ -32,6 +53,12 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
       setError('Please select a product file');
       return;
     }
+
+    if (!token) {
+      setError('Authentication required. Please sign in again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     setUploadResult(null);
@@ -42,6 +69,9 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
 
       const response = await fetch('/api/admin/products/upload', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData
       });
 
@@ -50,9 +80,10 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
       if (data.success) {
         setUploadResult(data.result);
       } else {
-        setError(data.error);
+        setError(data.error || 'Upload failed');
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Upload error:', error);
       setError('Failed to upload product file');
     } finally {
       setLoading(false);
@@ -120,7 +151,7 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
               <div className="mt-3">
                 <h4 className="font-medium text-red-600">Errors:</h4>
                 <ul className="text-xs text-red-600 list-disc list-inside max-h-40 overflow-y-auto">
-                  {uploadResult.errors.map((error: any, index: number) => (
+                  {uploadResult.errors.map((error: UploadError, index: number) => (
                     <li key={index}>Row {error.row}: {error.error}</li>
                   ))}
                 </ul>
@@ -130,7 +161,7 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
               <div className="mt-3">
                 <h4 className="font-medium text-yellow-600">Warnings:</h4>
                 <ul className="text-xs text-yellow-600 list-disc list-inside max-h-40 overflow-y-auto">
-                  {uploadResult.warnings.map((warning: any, index: number) => (
+                  {uploadResult.warnings.map((warning: UploadWarning, index: number) => (
                     <li key={index}>Row {warning.row}: {warning.warning}</li>
                   ))}
                 </ul>

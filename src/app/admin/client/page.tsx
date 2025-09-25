@@ -67,7 +67,52 @@ export default function ClientPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [usersPerPage] = useState(15);
+  const [tabCounts, setTabCounts] = useState({
+    All: 0,
+    Admin: 0,
+    Employee: 0,
+    Client: 0
+  });
   const { token } = useAuth();
+
+  useEffect(() => {
+      const fetchCounts = async () => {
+        if (!token) return;
+        
+        try {
+          const promises = [
+            fetch(`/api/admin/users-firebase?page=1&limit=1`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`/api/admin/users-firebase?page=1&limit=1&role=admin`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`/api/admin/users-firebase?page=1&limit=1&role=employee`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch(`/api/admin/users-firebase?page=1&limit=1&role=client`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+          ];
+  
+          const responses = await Promise.all(promises);
+          const data = await Promise.all(responses.map(r => r.json()));
+  
+          console.log('Tab counts API responses:', data);
+
+          setTabCounts({
+            All: data[0]?.pagination?.totalCount || 0,
+            Admin: data[1]?.pagination?.totalCount || 0,
+            Employee: data[2]?.pagination?.totalCount || 0,
+            Client: data[3]?.pagination?.totalCount || 0
+          });
+        } catch (err) {
+          console.error('Error fetching tab counts:', err);
+        }
+      };
+  
+      fetchCounts();
+    }, [token]);
 
   // Check if current user is admin
   const isAdmin = userData?.role === 'admin';
@@ -138,8 +183,8 @@ export default function ClientPage() {
             
             console.log('Fetched users:', users);
             setClients(users);
-            setTotalPages(data.totalPages || 1);
-            setTotalUsers(data.total || users.length);
+            setTotalPages(data.pagination?.totalPages || 1);
+            setTotalUsers(data.pagination?.totalCount || users.length);
           } else {
             const errorData = await response.json().catch(() => ({}));
             const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
@@ -176,8 +221,8 @@ export default function ClientPage() {
           
           console.log('Fetched users:', users);
           setClients(users);
-          setTotalPages(data.totalPages || 1);
-          setTotalUsers(data.total || users.length);
+          setTotalPages(data.pagination?.totalPages || 1);
+          setTotalUsers(data.pagination?.totalCount || users.length);
         } else {
           const errorData = await response.json().catch(() => ({}));
           const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
@@ -425,22 +470,6 @@ export default function ClientPage() {
     setShowDateFilter(false);
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-[1550px] p-8 mx-auto">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-4"></div>
-          <div className="h-4 bg-gray-100 rounded mb-6 w-1/3"></div>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-16 bg-gray-100 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AdminGuard>
       <div className="max-w-[1550px] p-8 mx-auto">
@@ -458,10 +487,16 @@ export default function ClientPage() {
             Client Management - {(requested && isAdmin) ? 'Approval Requests' : 'Active Clients'}
           </div>
           <div className="text-gray-500 text-base">
-            {(requested && isAdmin)
-              ? 'Review and approve new user registrations' 
-              : 'Manage approved clients and their orders'
-            }
+            {loading ? (
+              <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+            ) : (
+              <>
+                {(requested && isAdmin)
+                  ? 'Review and approve new user registrations' 
+                  : 'Manage approved clients and their orders'
+                }
+              </>
+            )}
           </div>
         </div>
         <div className="flex gap-3">
@@ -494,13 +529,13 @@ export default function ClientPage() {
           <button
             key={tab.label}
             onClick={() => setActiveTab(tab.label)}
-            className={`admin-button ${
+            className={`px-4 py-2.5 border-2 border-gray-300 rounded-md text-base cursor-pointer font-medium transition-colors ${
               activeTab === tab.label
                 ? 'bg-black text-white'
-                : 'bg-[#F1F2F4] text-black'
+                : 'bg-[#F1F2F4] hover:bg-black hover:text-white text-black'
             }`}
           >
-            {tab.label}
+            {tab.label} ({tabCounts[tab.label as keyof typeof tabCounts]})
           </button>
         ))}
       </div>
@@ -613,7 +648,36 @@ export default function ClientPage() {
             </tr>
           </thead>
           <tbody>
-            {clients.length === 0 ? (
+            {loading ? (
+              // Skeleton loading rows
+              [...Array(10)].map((_, i) => (
+                <tr key={`skeleton-${i}`} className="animate-pulse text-center">
+                  <td className="py-2 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-16 mx-auto"></div>
+                  </td>
+                  <td className="py-2 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-32 mx-auto"></div>
+                  </td>
+                  <td className="py-2 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-28 mx-auto"></div>
+                  </td>
+                  <td className="py-2 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-40 mx-auto"></div>
+                  </td>
+                  <td className="py-2 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-24 mx-auto"></div>
+                  </td>
+                  {!requested && (
+                    <td className="py-2 px-4">
+                      <div className="h-4 bg-gray-200 rounded w-12 mx-auto"></div>
+                    </td>
+                  )}
+                  <td className="py-2 px-4">
+                    <div className="h-8 bg-gray-200 rounded w-16 mx-auto"></div>
+                  </td>
+                </tr>
+              ))
+            ) : clients.length === 0 ? (
               <tr>
                 <td colSpan={requested ? 6 : 7} className="py-8 px-4 text-center text-gray-500">
                   No {requested ? 'requested' : 'active'} clients found
@@ -669,14 +733,18 @@ export default function ClientPage() {
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
           <span className="text-base text-gray-900">
-            Showing {((currentPage - 1) * usersPerPage) + 1}-{Math.min(currentPage * usersPerPage, totalUsers)} of {totalUsers} users
+            {loading ? (
+              <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+            ) : (
+              `Showing ${((currentPage - 1) * usersPerPage) + 1}-${Math.min(currentPage * usersPerPage, totalUsers)} of ${totalUsers} users`
+            )}
           </span>
           <div className="flex gap-2 items-center">
             <button 
               onClick={prevPage}
-              disabled={currentPage === 1}
+              disabled={currentPage === 1 || loading}
               className={`admin-button ${
-                currentPage === 1 
+                currentPage === 1 || loading
                   ? 'opacity-50 cursor-not-allowed' 
                   : 'hover:bg-gray-100'
               }`}
@@ -685,8 +753,15 @@ export default function ClientPage() {
             </button>
             
             {/* Page numbers */}
-            <div className="flex gap-1">
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+            {loading ? (
+              <div className="flex gap-1">
+                {[...Array(3)].map((_, i) => (
+                  <div key={`skeleton-page-${i}`} className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 let pageNumber;
                 if (totalPages <= 5) {
                   pageNumber = i + 1;
@@ -712,13 +787,14 @@ export default function ClientPage() {
                   </button>
                 );
               })}
-            </div>
+              </div>
+            )}
             
             <button 
               onClick={nextPage}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || loading}
               className={`admin-button ${
-                currentPage === totalPages
+                currentPage === totalPages || loading
                   ? 'opacity-50 cursor-not-allowed' 
                   : 'hover:bg-gray-100'
               }`}

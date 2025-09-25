@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import AddProductModal from '../components/ui/addProduct';
 import AddExcelModal from '../components/ui/addExcel';
 import ProductDetailModal from '../components/ui/productDetail';
-import { Upload, Plus, ChevronDown, Search, Loader2 } from 'lucide-react';
+import { Upload, Plus, ChevronDown, Search } from 'lucide-react';
 
 interface Product {
   id: string;
@@ -18,8 +18,8 @@ interface Product {
   katunPN: string;
   isActive: boolean;
   category?: string;
-  createdAt?: any;
-  updatedAt?: any;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 interface ModalProduct {
@@ -54,7 +54,6 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20); // Products per page
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
@@ -79,7 +78,6 @@ export default function ProductsPage() {
         if (data.success) {
           console.log(`✅ Loaded ${data.products.length} products from ${data.source}`);
           setProducts(data.products);
-          setFilteredProducts(data.products); // Not needed for pagination, but keeping for compatibility
           setPagination(data.pagination);
           setError('');
         } else {
@@ -117,7 +115,6 @@ export default function ProductsPage() {
       if (data.success) {
         console.log(`✅ Refreshed ${data.products.length} products from ${data.source}`);
         setProducts(data.products);
-        setFilteredProducts(data.products);
         setPagination(data.pagination);
         setError('');
       } else {
@@ -196,12 +193,17 @@ export default function ProductsPage() {
         <div>
           <div className="text-xl font-bold text-black">Products -</div>
           <div className="text-gray-500 text-base">
-            {loading ? 'Loading products...' : (
-              pagination ? 
-                `Showing ${pagination.startIndex}-${pagination.endIndex} of ${pagination.totalItems} products` :
-                `Manage ${products.length} products in your catalog`
+            {loading ? (
+              <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+            ) : (
+              <>
+                {pagination ? 
+                  `Showing ${pagination.startIndex}-${pagination.endIndex} of ${pagination.totalItems} products` :
+                  `Manage ${products.length} products in your catalog`
+                }
+                {searchTerm && ` (search: "${searchTerm}")`}
+              </>
             )}
-            {searchTerm && !loading && ` (search: "${searchTerm}")`}
           </div>
         </div>
         <div className="flex gap-3 relative" ref={dropdownRef}>
@@ -281,14 +283,32 @@ export default function ProductsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={7} className="py-8 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                    <span className="text-gray-500">Loading products...</span>
-                  </div>
-                </td>
-              </tr>
+              // Skeleton loading rows
+              [...Array(10)].map((_, i) => (
+                <tr key={`skeleton-${i}`} className="text-[#84919A] animate-pulse">
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-48"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-12"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-10"></div>
+                  </td>
+                </tr>
+              ))
             ) : products.length === 0 ? (
               <tr>
                 <td colSpan={7} className="py-8 text-center">
@@ -330,7 +350,9 @@ export default function ProductsPage() {
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
           <span className="text-sm text-black">
-            {loading ? 'Loading...' : (
+            {loading ? (
+              <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+            ) : (
               pagination ? 
                 `Showing ${pagination.startIndex}-${pagination.endIndex} of ${pagination.totalItems} products` :
                 'No pagination data'
@@ -350,7 +372,13 @@ export default function ProductsPage() {
             </button>
             
             {/* Page Numbers */}
-            {pagination && pagination.totalPages > 1 && (
+            {loading ? (
+              <div className="flex gap-1">
+                {[...Array(3)].map((_, i) => (
+                  <div key={`skeleton-page-${i}`} className="h-10 w-10 bg-gray-200 rounded animate-pulse"></div>
+                ))}
+              </div>
+            ) : pagination && pagination.totalPages > 1 ? (
               <div className="flex gap-1">
                 {/* Show page numbers around current page */}
                 {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
@@ -380,7 +408,7 @@ export default function ProductsPage() {
                   );
                 })}
               </div>
-            )}
+            ) : null}
             
             <button 
               onClick={nextPage}

@@ -1,22 +1,22 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-const orderRequests = [
-	{ id: 'ORD-REQ-1056', message: 'Rajesh Kumar placed order worth ₹15,250', date: '06 Sept, 10:30 AM', status: 'New' },
-	{ id: 'ORD-REQ-1056', message: 'Rajesh Kumar placed order worth ₹15,250', date: '06 Sept, 10:30 AM', status: 'Read' },
-	{ id: 'ORD-REQ-1057', message: 'Anita Desai placed order worth ₹22,800', date: '07 Sept, 11:15 AM', status: 'New' },
-	{ id: 'ORD-REQ-1058', message: 'Vikram Singh placed order worth ₹29,450', date: '07 Sept, 1:00 PM', status: 'New' },
-	{ id: 'ORD-REQ-1059', message: 'Sita Sharma placed order worth ₹5,750', date: '08 Sept, 2:45 PM', status: 'New' },
-	{ id: 'ORD-REQ-1060', message: 'Arjun Mehta placed order worth ₹12,300', date: '09 Sept, 9:30 AM', status: 'New' },
-	{ id: 'ORD-REQ-1061', message: 'Priya Singh placed order worth ₹18,600', date: '09 Sept, 3:15 PM', status: 'New' },
-	{ id: 'ORD-REQ-1062', message: 'Rahul Verma placed order worth ₹27,000', date: '10 Sept, 10:00 AM', status: 'New' },
-	{ id: 'ORD-REQ-1063', message: 'Geeta Rani placed order worth ₹20,150', date: '10 Sept, 11:45 AM', status: 'New' },
-	{ id: 'ORD-REQ-1064', message: 'Nikhil Bhatia placed order worth ₹8,300', date: '11 Sept, 1:30 PM', status: 'New' },
-	{ id: 'ORD-REQ-1065', message: 'Sanjay Gupta placed order worth ₹35,000', date: '11 Sept, 4:00 PM', status: 'New' },
-];
+interface SupportQuery {
+	id: string;
+	userId: string;
+	fullName: string;
+	email: string;
+	phone?: string;
+	message: string;
+	status: 'pending' | 'processing' | 'solved';
+	createdAt: string;
+	updatedAt?: string;
+	updatedBy?: string;
+}
 
+// Mock data for support queries - this will be replaced with API calls
 const stockAlerts = Array.from({ length: 15 }).map((_, i) => ({
-	id: 'ORD-REQ-1056',
+	id: 'STK-ALT-' + (1056 + i),
 	product: 'Canon Toner Cartridge',
 	alert: 'Low Stock (5 left)',
 	date: '06 Sept, 10:30 AM',
@@ -24,69 +24,193 @@ const stockAlerts = Array.from({ length: 15 }).map((_, i) => ({
 }));
 
 export default function NotificationPage() {
-	const [tab, setTab] = useState<'order' | 'stock'>('order');
+	const [tab, setTab] = useState<'support' | 'stock'>('support');
+	const [supportQueries, setSupportQueries] = useState<SupportQuery[]>([]);
+	const [selectedQuery, setSelectedQuery] = useState<SupportQuery | null>(null);
+	const [showQueryModal, setShowQueryModal] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [fetchLoading, setFetchLoading] = useState(true);
+
+	// Fetch support queries from API
+	useEffect(() => {
+		const fetchSupportQueries = async () => {
+			try {
+				setFetchLoading(true);
+				const response = await fetch('/api/support');
+				const data = await response.json();
+				
+				if (data.success) {
+					setSupportQueries(data.queries || []);
+				} else {
+					console.error('Failed to fetch support queries:', data.error);
+				}
+			} catch (error) {
+				console.error('Error fetching support queries:', error);
+			} finally {
+				setFetchLoading(false);
+			}
+		};
+
+		if (tab === 'support') {
+			fetchSupportQueries();
+		}
+	}, [tab]);
+
+	// Status colors for different query states
+	const getStatusColor = (status: string) => {
+		switch (status) {
+			case 'pending': return 'text-red-600 bg-red-100';
+			case 'processing': return 'text-yellow-600 bg-yellow-100';
+			case 'solved': return 'text-green-600 bg-green-100';
+			default: return 'text-gray-600 bg-gray-100';
+		}
+	};
+
+	const handleViewQuery = (query: SupportQuery) => {
+		setSelectedQuery(query);
+		setShowQueryModal(true);
+	};
+
+	const handleStatusUpdate = async (queryId: string, newStatus: 'pending' | 'processing' | 'solved') => {
+		setLoading(true);
+		try {
+			const response = await fetch('/api/support', {
+				method: 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					queryId,
+					status: newStatus,
+					updatedBy: 'Admin'
+				})
+			});
+
+			const data = await response.json();
+			
+			if (response.ok && data.success) {
+				// Update the query in local state
+				setSupportQueries(prev => 
+					prev.map(query => 
+						query.id === queryId 
+							? { ...query, status: newStatus, updatedAt: data.query.updatedAt, updatedBy: data.query.updatedBy }
+							: query
+					)
+				);
+				
+				// Update selected query if it's the one being updated
+				if (selectedQuery?.id === queryId) {
+					setSelectedQuery(prev => prev ? { ...prev, status: newStatus, updatedAt: data.query.updatedAt, updatedBy: data.query.updatedBy } : null);
+				}
+			} else {
+				throw new Error(data.error || 'Failed to update status');
+			}
+			
+		} catch (error) {
+			console.error('Error updating query status:', error);
+			alert('Failed to update status. Please try again.');
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const markAllAsRead = () => {
+		// In a real app, this would mark all support queries as "read"
+		console.log('Marking all support queries as read');
+	};
 
 	return (
 		<div className="max-w-[1200px] mx-auto p-8">
-			<div className="mb-2">
+			<div className="mb-6">
 				<div className="text-xl font-bold text-black">Notifications</div>
 				<div className="text-gray-500 text-base">Manage and track all system, order, and stock alerts.</div>
 			</div>
-			<div className="flex gap-2 mb-6">
+			<div className="flex gap-2 mb-8">
 				<button
-					className={`px-4 py-2 rounded-lg font-semibold text-sm ${tab === 'order' ? 'bg-black text-white' : 'bg-[#F1F2F4] text-black'}`}
-					onClick={() => setTab('order')}
+					className={`px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-sm ${tab === 'support' ? 'bg-black text-white' : 'bg-[#F1F2F4] text-black'}`}
+					onClick={() => setTab('support')}
 				>
-					Order Requests
+					Support Queries
 				</button>
 				<button
-					className={`px-4 py-2 rounded-lg font-semibold text-sm ${tab === 'stock' ? 'bg-black text-white' : 'bg-[#F1F2F4] text-black'}`}
+					className={`px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-sm ${tab === 'stock' ? 'bg-black text-white' : 'bg-[#F1F2F4] text-black'}`}
 					onClick={() => setTab('stock')}
 				>
 					Stock Alerts
 				</button>
-				<button className="ml-auto px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium bg-white">Mark All as Read</button>
-			</div>
-			<div className="flex justify-end mb-2">
-				<button className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1">
-					Filter by <span className="font-bold">Date Range</span>
-					<svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+				<button 
+					onClick={markAllAsRead}
+					className="ml-auto px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium bg-white hover:bg-gray-50"
+				>
+					Mark All as Read
 				</button>
 			</div>
+
 			<div className="bg-white rounded-xl shadow-sm border p-2">
-				{tab === 'order' ? (
-					<table className="w-full text-sm">
-						<thead>
-							<tr className="text-left text-gray-500 font-semibold border-b">
-								<th className="py-3 px-4">Notification ID</th>
-								<th className="py-3 px-4">Message</th>
-								<th className="py-3 px-4">Date &amp; Time</th>
-								<th className="py-3 px-4">Status</th>
-								<th className="py-3 px-4">Action</th>
-							</tr>
-						</thead>
-						<tbody>
-							{orderRequests.map((item, idx) => (
-								<tr key={idx} className="border-b last:border-b-0">
-									<td className="py-2 px-4 font-medium">{item.id}</td>
-									<td className="py-2 px-4">{item.message}</td>
-									<td className="py-2 px-4">{item.date}</td>
-									<td className="py-2 px-4">
-										{item.status === 'New' ? (
-											<span className="inline-flex items-center gap-1 text-red-600 font-semibold text-xs">
-												<span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span> New
-											</span>
-										) : (
-											<span className="text-gray-500 text-xs">Read</span>
-										)}
-									</td>
-									<td className="py-2 px-4">
-										<button className="text-[#2E318E] font-semibold hover:underline text-xs">View Order</button>
-									</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
+				{tab === 'support' ? (
+					<>
+						{fetchLoading ? (
+							<div className="flex items-center justify-center py-12">
+								<div className="text-gray-500">Loading support queries...</div>
+							</div>
+						) : (
+							<table className="w-full text-sm">
+								<thead>
+									<tr className="text-left text-gray-500 font-semibold border-b">
+										<th className="py-3 px-4">Query ID</th>
+										<th className="py-3 px-4">User Name</th>
+										<th className="py-3 px-4">Email</th>
+										<th className="py-3 px-4">Date &amp; Time</th>
+										<th className="py-3 px-4">Status</th>
+										<th className="py-3 px-4">Action</th>
+									</tr>
+								</thead>
+								<tbody>
+									{fetchLoading ? (
+										<tr>
+											<td colSpan={6} className="py-12 text-center text-gray-500">
+												<div className="flex items-center justify-center">
+													<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black mr-2"></div>
+													Loading support queries...
+												</div>
+											</td>
+										</tr>
+									) : supportQueries.length === 0 ? (
+										<tr>
+											<td colSpan={6} className="py-12 text-center text-gray-500">
+												No support queries found
+											</td>
+										</tr>
+									) : (
+										supportQueries.map((query, idx) => (
+											<tr key={idx} className="border-b last:border-b-0">
+												<td className="py-2 px-4 font-medium">{query.id}</td>
+												<td className="py-2 px-4">{query.fullName}</td>
+												<td className="py-2 px-4">{query.email}</td>
+												<td className="py-2 px-4">{query.createdAt}</td>
+												<td className="py-2 px-4">
+													<span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(query.status)}`}>
+														{query.status === 'pending' && <span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span>}
+														{query.status === 'processing' && <span className="w-2 h-2 rounded-full bg-yellow-600 inline-block"></span>}
+														{query.status === 'solved' && <span className="w-2 h-2 rounded-full bg-green-600 inline-block"></span>}
+														{query.status.charAt(0).toUpperCase() + query.status.slice(1)}
+													</span>
+												</td>
+												<td className="py-2 px-4">
+													<button 
+														onClick={() => handleViewQuery(query)}
+														className="text-[#2E318E] font-semibold hover:underline text-xs"
+													>
+														View Query
+													</button>
+												</td>
+											</tr>
+										))
+									)}
+								</tbody>
+							</table>
+						)}
+					</>
 				) : (
 					<table className="w-full text-sm">
 						<thead>
@@ -123,15 +247,116 @@ export default function NotificationPage() {
 						</tbody>
 					</table>
 				)}
-				{/* Pagination */}
-				<div className="flex justify-between items-center px-4 py-3">
-					<span className="text-xs text-gray-500">Page 1 of 10</span>
-					<div className="flex gap-2">
-						<button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Previous</button>
-						<button className="px-4 py-1 rounded bg-[#F1F2F4] text-sm font-medium">Next</button>
+			</div>
+
+			{/* Query Detail Modal */}
+			{showQueryModal && selectedQuery && (
+				<div className="fixed inset-0 backdrop-blur-xs flex items-center justify-center z-50">
+					<div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+						<div className="p-6">
+							<div className="flex justify-between items-start mb-6">
+								<h2 className="text-xl font-bold text-gray-900">Support Query Details</h2>
+								<button
+									onClick={() => setShowQueryModal(false)}
+									className="text-gray-400 hover:text-gray-600"
+								>
+									<svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+										<path d="M18 6L6 18M6 6l12 12"/>
+									</svg>
+								</button>
+							</div>
+
+							<div className="space-y-4">
+								{/* Query Info */}
+								<div className="grid grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-1">Query ID</label>
+										<div className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">{selectedQuery.id}</div>
+									</div>
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+										<div className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded">{selectedQuery.userId}</div>
+									</div>
+								</div>
+
+								<div className="grid grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+										<div className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedQuery.fullName}</div>
+									</div>
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+										<div className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedQuery.email}</div>
+									</div>
+								</div>
+
+								{selectedQuery.phone && (
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+										<div className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedQuery.phone}</div>
+									</div>
+								)}
+
+								<div>
+									<label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+									<div className="text-sm text-gray-900 bg-gray-50 p-3 rounded min-h-[100px] whitespace-pre-wrap">{selectedQuery.message}</div>
+								</div>
+
+								<div className="grid grid-cols-2 gap-4">
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-1">Created At</label>
+										<div className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedQuery.createdAt}</div>
+									</div>
+									<div>
+										<label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+										<select
+											value={selectedQuery.status}
+											onChange={(e) => handleStatusUpdate(selectedQuery.id, e.target.value as 'pending' | 'processing' | 'solved')}
+											disabled={loading}
+											className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
+										>
+											<option value="pending">Pending</option>
+											<option value="processing">Processing</option>
+											<option value="solved">Solved</option>
+										</select>
+									</div>
+								</div>
+
+								{selectedQuery.updatedAt && (
+									<div className="grid grid-cols-2 gap-4">
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-1">Last Updated</label>
+											<div className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedQuery.updatedAt}</div>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-gray-700 mb-1">Updated By</label>
+											<div className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{selectedQuery.updatedBy}</div>
+										</div>
+									</div>
+								)}
+							</div>
+
+							<div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+								<button
+									onClick={() => setShowQueryModal(false)}
+									className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+								>
+									Close
+								</button>
+								<button
+									onClick={() => {
+										// Mark as read logic here
+										setShowQueryModal(false);
+									}}
+									className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+								>
+									Mark as Read
+								</button>
+							</div>
+						</div>
 					</div>
 				</div>
-			</div>
+			)}
 		</div>
 	);
 }

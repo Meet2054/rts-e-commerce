@@ -30,11 +30,11 @@ export default function AdminHeader() {
           <Bell className="w-6 h-6 text-black" />
           {/* User Avatar */}
           <Image
-            src="/user-avatar.jpg"
+            src=""
             alt="User"
-            width={32}
-            height={32}
-            className="rounded-full border border-gray-300"
+            width={40}
+            height={40}
+            className="rounded-full bg-amber-600 border border-gray-300"
           />
         </div>
       </div>

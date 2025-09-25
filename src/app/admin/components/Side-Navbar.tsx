@@ -1,6 +1,8 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { signOut } from '@/lib/firebase-auth';
 import {
   Home,
   BarChart2,
@@ -20,6 +22,28 @@ const navLinks = [
 ];
 
 export default function SideNavbar() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) {
+        console.error('Logout error:', error);
+        alert('Failed to logout. Please try again.');
+      } else {
+        // Clear any local storage or session storage if needed
+        localStorage.removeItem('authToken');
+        sessionStorage.clear();
+        
+        // Redirect to sign-in page
+        router.push('/sign-in');
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('Failed to logout. Please try again.');
+    }
+  };
+
   return (
     <aside className="fixed top-0 left-0 h-screen w-[300px] bg-white border-r z-40 flex flex-col pt-16">
       <nav className="flex-1 px-8 py-6 space-y-2">
@@ -36,10 +60,8 @@ export default function SideNavbar() {
       </nav>
       <div className="mt-auto px-8 pb-6">
         <button
-          className="flex items-center gap-2 text-gray-700 hover:text-[#2E318E] text-sm font-medium transition-colors"
-          onClick={() => {
-            window.location.href = '/login';
-          }}
+          className="flex items-center gap-2 text-gray-700 hover:text-red-400 text-base cursor-pointer font-medium transition-colors"
+          onClick={handleLogout}
         >
           <LogOut size={20} />
           Logout

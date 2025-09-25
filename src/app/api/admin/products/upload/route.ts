@@ -80,10 +80,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is admin
-    if (authResult.userData.role !== 'admin') {
+    // Check if user is admin or employee
+    if (authResult.userData.role !== 'admin' && authResult.userData.role !== 'employee') {
       return NextResponse.json(
-        { success: false, error: 'Admin access required' },
+        { success: false, error: 'Admin or employee access required' },
         { status: 403 }
       );
     }

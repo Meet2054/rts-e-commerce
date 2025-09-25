@@ -23,7 +23,7 @@ const Welcom = () => {
 					<div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-0 lg:justify-between bg-white rounded-xs shadow-sm p-4">
                         <div className='flex gap-4'>
                             <Image
-                                src={'/login.png'}
+                                src={'/login.svg'}
                                 alt={username}
                                 width={55}
                                 height={55}
@@ -49,7 +49,7 @@ const Welcom = () => {
                 <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-0 lg:justify-between bg-white rounded-xs shadow-sm p-4">
                         <div className='flex gap-4'>
                             <Image
-                                src={'/login.png'}
+                                src={'/login.svg'}
                                 alt={username}
                                 width={55}
                                 height={55}

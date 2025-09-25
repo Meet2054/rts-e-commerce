@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { ChevronDown, Upload, Loader2 } from 'lucide-react';
+import { ChevronDown, Upload } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { formatDate } from '@/lib/date-utils';
 
@@ -255,12 +255,6 @@ export default function OrdersPage() {
     // The useEffect will automatically fetch new data when activeTab changes
   };
 
-  const handleDateRangeChange = (newDateRange: { startDate: string; endDate: string }) => {
-    setDateRange(newDateRange);
-    setCurrentPage(1); // Reset to first page when changing date range
-    // The useEffect will automatically fetch new data when dateRange changes
-  };
-
   const nextPage = () => {
     if (currentPage < totalPages) {
       handlePageChange(currentPage + 1);
@@ -325,6 +319,13 @@ export default function OrdersPage() {
     setShowDateFilter(false);
   };
 
+  // Helper function to truncate text
+  const truncateText = (text: string, maxLength: number = 15) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
   const exportOrders = () => {
     // Create CSV content
     const headers = ['Order ID', 'Customer Name', 'Email', 'Phone', 'Company', 'Status', 'Amount', 'Items', 'Date'];
@@ -352,22 +353,6 @@ export default function OrdersPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-[1550px] p-8 mx-auto">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded mb-4"></div>
-          <div className="h-4 bg-gray-100 rounded mb-6 w-1/3"></div>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-16 bg-gray-100 rounded"></div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-[1550px] p-8 mx-auto">
       {/* Header */}
@@ -375,7 +360,11 @@ export default function OrdersPage() {
         <div>
           <div className="text-xl font-bold text-black">Orders Page -</div>
           <div className="text-gray-500 text-base">
-            {loading ? 'Loading orders...' : 'Manage and track all submitted orders'}
+            {loading ? (
+              <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+            ) : (
+              'Manage and track all submitted orders'
+            )}
           </div>
         </div>
         <button 
@@ -398,10 +387,10 @@ export default function OrdersPage() {
             key={tab.label}
             onClick={() => handleTabChange(tab.label)}
             disabled={loading}
-            className={`admin-button ${
+            className={`px-4 py-2.5 border-2 border-gray-300 rounded-md text-base cursor-pointer font-medium transition-colors ${
               activeTab === tab.label
                 ? 'bg-black text-white'
-                : 'bg-[#F1F2F4] text-black'
+                : 'bg-white hover:bg-black hover:text-white text-black'
             } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             {tab.label} ({tabCounts[tab.label as keyof typeof tabCounts]})
@@ -484,7 +473,7 @@ export default function OrdersPage() {
       <div className="bg-white rounded-xl shadow-sm border p-2">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-gray-500 font-semibold border-b">
+            <tr className="text-center text-gray-500 font-semibold border-b">
               <th className="py-3 px-4">Order ID</th>
               <th className="py-3 px-4">Customer Name</th>
               <th className="py-3 px-4">Email</th>
@@ -498,14 +487,38 @@ export default function OrdersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={9} className="py-8 text-center">
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                    <span className="text-gray-500">Loading orders...</span>
-                  </div>
-                </td>
-              </tr>
+              // Skeleton loading rows
+              [...Array(10)].map((_, i) => (
+                <tr key={`skeleton-${i}`} className="animate-pulse">
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-40"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-6 bg-gray-200 rounded-full w-16"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-14"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <div className="h-4 bg-gray-200 rounded w-12"></div>
+                  </td>
+                </tr>
+              ))
             ) : orders.length === 0 ? (
               <tr>
                 <td colSpan={9} className="py-8 px-4 text-center text-gray-500">
@@ -514,12 +527,14 @@ export default function OrdersPage() {
               </tr>
             ) : (
               orders.map((order: Order) => (
-                <tr key={order.id} className="">
+                <tr key={order.id} className="text-center">
                   <td className="py-2.5 px-4 font-medium">{order.orderId || order.id}</td>
                   <td className="py-2.5 px-4">
                     {order.user?.displayName || order.shippingInfo?.fullName || 'Unknown'}
                   </td>
-                  <td className="py-2.5 px-4">{order.user?.email || order.clientEmail}</td>
+                  <td className="py-2.5 px-4" title={order.user?.email || order.clientEmail || ''}>
+                    {truncateText(order.user?.email || order.clientEmail || '', 15)}
+                  </td>
                   <td className="py-2.5 px-4">{order.user?.companyName || '-'}</td>
                   <td className="py-2.5 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -553,7 +568,11 @@ export default function OrdersPage() {
         {/* Pagination */}
         <div className="flex justify-between items-center px-4 py-3">
           <span className="text-base text-gray-900">
-            {loading ? 'Loading...' : `Showing ${((currentPage - 1) * ordersPerPage) + 1}-${Math.min(currentPage * ordersPerPage, totalOrders)} of ${totalOrders} orders`}
+            {loading ? (
+              <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+            ) : (
+              `Showing ${((currentPage - 1) * ordersPerPage) + 1}-${Math.min(currentPage * ordersPerPage, totalOrders)} of ${totalOrders} orders`
+            )}
           </span>
           <div className="flex gap-2 items-center">
             <button 
@@ -569,7 +588,13 @@ export default function OrdersPage() {
             </button>
             
             {/* Page Numbers */}
-            {totalPages > 1 && (
+            {loading ? (
+              <div className="flex gap-1">
+                {[...Array(3)].map((_, i) => (
+                  <div key={`skeleton-page-${i}`} className="h-10 w-10 bg-gray-200 rounded animate-pulse"></div>
+                ))}
+              </div>
+            ) : totalPages > 1 ? (
               <div className="flex gap-1">
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                   let pageNumber;
@@ -601,7 +626,7 @@ export default function OrdersPage() {
                   );
                 })}
               </div>
-            )}
+            ) : null}
             
             <button 
               onClick={nextPage}

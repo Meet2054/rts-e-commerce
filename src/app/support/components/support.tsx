@@ -22,16 +22,33 @@ export default function Support() {
 
     setLoading(true);
     try {
-      // In a real application, you would submit to your support API
-      console.log('Support form submitted:', formData);
+      const response = await fetch('/api/support', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          message: formData.message,
+          userId: `USER-${Date.now()}` // Generate a simple user ID
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setSuccess(true);
+        setFormData({ fullName: '', phone: '', email: '', message: '' });
+        
+        setTimeout(() => setSuccess(false), 5000);
+        
+        console.log('Support query submitted with ID:', data.queryId);
+      } else {
+        throw new Error(data.error || 'Failed to submit support query');
+      }
       
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setSuccess(true);
-      setFormData({ fullName: '', phone: '', email: '', message: '' });
-      
-      setTimeout(() => setSuccess(false), 5000);
     } catch (error) {
       console.error('Error submitting support form:', error);
       alert('Failed to submit form. Please try again.');
@@ -47,7 +64,7 @@ export default function Support() {
     });
   };
   return (
-    <section className="py-10 bg-[#F1F2F4]">
+    <section className="py-10">
       <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16">
         <div className="flex flex-col md:flex-row gap-10">
           {/* Left: Info */}

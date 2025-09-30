@@ -45,12 +45,14 @@ interface UploadResult {
   warnings: Array<{ row: number; warning: string }>;
 }
 
-function isKatunFormat(data: any[]): boolean {
+function isKatunFormat(data: unknown[]): boolean {
   if (data.length === 0) return false;
-  const firstRow = data[0];
-  return firstRow.hasOwnProperty('OEM:') && 
-         firstRow.hasOwnProperty('Katun PN:') && 
-         firstRow.hasOwnProperty('Name:');
+  const firstRow = data[0] as Record<string, unknown>;
+  return firstRow && 
+         typeof firstRow === 'object' &&
+         'OEM:' in firstRow && 
+         'Katun PN:' in firstRow && 
+         'Name:' in firstRow;
 }
 
 function convertKatunToStandard(katunRow: KatunProductRow): StandardProductRow {
@@ -109,50 +111,9 @@ export async function POST(request: NextRequest) {
     // Read and parse Excel file
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    
-    // Get raw data to handle the specific format
-    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-    
-    // Find the header row (skip empty rows)
-    let headerRowIndex = -1;
-    let headers: string[] = [];
-    
-    for (let i = 0; i < rawData.length; i++) {
-      const row = rawData[i] as any[];
-      if (row && row.length > 0 && row[0] && String(row[0]).includes('OEM')) {
-        headerRowIndex = i;
-        headers = row.map(h => String(h || '').trim());
-        break;
-      }
-    }
-    
-    if (headerRowIndex === -1) {
-      return NextResponse.json(
-        { success: false, error: 'Could not find header row in Excel file. Expected headers starting with "OEM:"' },
-        { status: 400 }
-      );
-    }
-    
-    // Convert data starting from header row
-    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-      header: headers,
-      range: headerRowIndex 
-    });
-    
-    // Remove the header row itself from data
-    const data = jsonData.slice(1);
 
-    if (data.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Excel file is empty or has no valid data rows' },
-        { status: 400 }
-      );
-    }
-
-    const result: UploadResult = {
-      totalRows: data.length,
+    const totalResult: UploadResult = {
+      totalRows: 0,
       successfulAdds: 0,
       failedAdds: 0,
       duplicatesSkipped: 0,
@@ -160,17 +121,70 @@ export async function POST(request: NextRequest) {
       warnings: []
     };
 
-    // Get existing categories for validation
+    // Get existing categories for validation (once for all sheets)
     const categoriesSnapshot = await adminDb.collection('categories').get();
     const existingCategories = new Set(
       categoriesSnapshot.docs.map(doc => doc.id)
     );
 
-    // Detect format and process each row
-    const isKatun = isKatunFormat(data);
-    console.log('Detected format:', isKatun ? 'Katun' : 'Standard');
+    console.log(`Processing ${workbook.SheetNames.length} worksheets: ${workbook.SheetNames.join(', ')}`);
 
-    for (let i = 0; i < data.length; i++) {
+    // Process each worksheet
+    for (const sheetName of workbook.SheetNames) {
+      console.log(`\n📊 Processing worksheet: ${sheetName}`);
+      const worksheet = workbook.Sheets[sheetName];
+
+      // Get raw data to handle the specific format
+      const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      // Find the header row (skip empty rows)
+      let headerRowIndex = -1;
+      let headers: string[] = [];
+      
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i] as unknown[];
+        if (row && row.length > 0 && row[0] && String(row[0]).includes('OEM')) {
+          headerRowIndex = i;
+          headers = row.map(h => String(h || '').trim());
+          break;
+        }
+      }
+      
+      if (headerRowIndex === -1) {
+        totalResult.warnings.push({
+          row: 0,
+          warning: `Sheet '${sheetName}' skipped: Could not find header row with OEM column`
+        });
+        console.log(`⚠️ Sheet '${sheetName}' skipped: No valid header row found`);
+        continue;
+      }
+      
+      // Convert data starting from header row
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+        header: headers,
+        range: headerRowIndex 
+      });
+      
+      // Remove the header row itself from data
+      const data = jsonData.slice(1);
+
+      if (data.length === 0) {
+        totalResult.warnings.push({
+          row: 0,
+          warning: `Sheet '${sheetName}' skipped: No valid data rows found`
+        });
+        console.log(`⚠️ Sheet '${sheetName}' skipped: No data rows`);
+        continue;
+      }
+
+      // Detect format and process each row in this sheet
+      const isKatun = isKatunFormat(data);
+      console.log(`📋 Sheet '${sheetName}' - Detected format: ${isKatun ? 'Katun' : 'Standard'} (${data.length} rows)`);
+
+      // Update total row count
+      totalResult.totalRows += data.length;
+
+      for (let i = 0; i < data.length; i++) {
       const originalRow = data[i];
       const rowNumber = headerRowIndex + i + 2; // Actual Excel row number
 
@@ -182,11 +196,11 @@ export async function POST(request: NextRequest) {
 
         // Validate required fields
         if (!row.sku || !row.name || !row.category) {
-          result.errors.push({
+          totalResult.errors.push({
             row: rowNumber,
             error: 'Missing required fields: sku, name, and category are required'
           });
-          result.failedAdds++;
+          totalResult.failedAdds++;
           continue;
         }
 
@@ -196,17 +210,17 @@ export async function POST(request: NextRequest) {
         const cleanedCategory = String(row.category).trim().toLowerCase();
 
         if (!cleanedSku || !cleanedName || !cleanedCategory) {
-          result.errors.push({
+          totalResult.errors.push({
             row: rowNumber,
             error: 'SKU, name, and category cannot be empty'
           });
-          result.failedAdds++;
+          totalResult.failedAdds++;
           continue;
         }
 
         // Check if category exists
         if (!existingCategories.has(cleanedCategory)) {
-          result.warnings.push({
+          totalResult.warnings.push({
             row: rowNumber,
             warning: `Category '${cleanedCategory}' does not exist. Product will be created but category may need to be added separately.`
           });
@@ -219,8 +233,8 @@ export async function POST(request: NextRequest) {
           .get();
 
         if (!existingProductSnapshot.empty) {
-          result.duplicatesSkipped++;
-          result.warnings.push({
+          totalResult.duplicatesSkipped++;
+          totalResult.warnings.push({
             row: rowNumber,
             warning: `Product with SKU '${cleanedSku}' already exists. Skipped.`
           });
@@ -228,7 +242,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Prepare product data (removed category field completely)
-        const productData: any = {
+        const productData: Record<string, unknown> = {
           sku: cleanedSku,
           name: cleanedName,
           createdAt: new Date(),
@@ -257,7 +271,7 @@ export async function POST(request: NextRequest) {
           if (!isNaN(price) && price >= 0) {
             productData.price = price;
           } else {
-            result.warnings.push({
+            totalResult.warnings.push({
               row: rowNumber,
               warning: 'Invalid price format. Price not set.'
             });
@@ -273,7 +287,7 @@ export async function POST(request: NextRequest) {
             productData.image = imageUrl;
             productData.imageUrl = imageUrl; // Keep both for compatibility
           } else {
-            result.warnings.push({
+            totalResult.warnings.push({
               row: rowNumber,
               warning: 'Invalid image URL/path format. Image not set.'
             });
@@ -285,7 +299,7 @@ export async function POST(request: NextRequest) {
           if (!isNaN(rating) && rating >= 0 && rating <= 5) {
             productData.rating = rating;
           } else {
-            result.warnings.push({
+            totalResult.warnings.push({
               row: rowNumber,
               warning: 'Invalid rating (should be 0-5). Rating not set.'
             });
@@ -297,7 +311,7 @@ export async function POST(request: NextRequest) {
           if (!isNaN(reviews) && reviews >= 0) {
             productData.reviews = reviews;
           } else {
-            result.warnings.push({
+            totalResult.warnings.push({
               row: rowNumber,
               warning: 'Invalid reviews count. Reviews not set.'
             });
@@ -330,8 +344,8 @@ export async function POST(request: NextRequest) {
               ? JSON.parse(row.specifications)
               : row.specifications;
             productData.specifications = specs;
-          } catch (error) {
-            result.warnings.push({
+          } catch {
+            totalResult.warnings.push({
               row: rowNumber,
               warning: 'Invalid specifications JSON format. Specifications not set.'
             });
@@ -340,24 +354,30 @@ export async function POST(request: NextRequest) {
 
         // Add product to Firestore
         await adminDb.collection('products').add(productData);
-        result.successfulAdds++;
+        totalResult.successfulAdds++;
 
       } catch (error) {
         console.error(`Error processing row ${rowNumber}:`, error);
-        result.errors.push({
+        totalResult.errors.push({
           row: rowNumber,
           error: `Failed to add product: ${error instanceof Error ? error.message : 'Unknown error'}`
         });
-        result.failedAdds++;
+        totalResult.failedAdds++;
       }
     }
+    }
+
+    console.log(`\n✅ Processing complete across all worksheets:`);
+    console.log(`📊 Processed ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}`);
+    console.log(`📊 Total: ${totalResult.totalRows} rows, ${totalResult.successfulAdds} successful, ${totalResult.failedAdds} failed, ${totalResult.duplicatesSkipped} duplicates`);
 
     return NextResponse.json({
       success: true,
       result: {
-        ...result,
+        ...totalResult,
         fileName: file.name,
-        detectedFormat: isKatun ? 'Katun' : 'Standard'
+        sheetsProcessed: workbook.SheetNames.length,
+        sheetNames: workbook.SheetNames
       }
     });
 

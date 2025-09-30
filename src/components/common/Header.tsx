@@ -136,7 +136,7 @@ const Header = () => {
                       transition={{ duration: 0.2 }}
                       className="fixed left-1/2 -translate-x-1/2 top-10 z-50 w-full flex justify-center"
                     >
-                      <SearchDropdown />
+                      <SearchDropdown onClose={() => setShowSearchDropdown(false)} />
                     </motion.div>
                   )}
                 </AnimatePresence>

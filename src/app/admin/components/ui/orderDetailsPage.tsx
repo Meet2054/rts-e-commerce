@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { formatDate } from '@/lib/date-utils';
 import { useAuth } from '@/components/auth/auth-provider';
 
 interface OrderItem {
@@ -183,6 +182,7 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 							<table className="w-full text-sm border rounded">
 								<thead>
 									<tr className="bg-gray-50">
+								<th className="py-2 px-4 text-left">SKU</th>
 										<th className="py-2 px-4 text-left">Product Name</th>
 										<th className="py-2 px-4 text-left">Quantity</th>
 										<th className="py-2 px-4 text-left">Price</th>
@@ -192,6 +192,7 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 								<tbody>
 									{order.items.map((item, idx) => (
 										<tr key={idx}>
+											<td className="py-2 px-4 text-xs text-gray-600">{item.sku || 'N/A'}</td>
 											<td className="py-2 px-4">{item.nameSnap}</td>
 											<td className="py-2 px-4">{item.qty}</td>
 											<td className="py-2 px-4">${item.unitPrice.toLocaleString()}</td>

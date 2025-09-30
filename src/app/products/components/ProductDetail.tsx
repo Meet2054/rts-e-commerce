@@ -363,18 +363,41 @@ export default function ProductDetail({ product, related }: { product: Product, 
               <button key={t} className={`py-2 px-4 font-semibold text-base border-b-2 ${tab === t.toLowerCase() ? "border-black text-black" : "border-transparent text-gray-500"}`} onClick={() => setTab(t.toLowerCase())}>{t}</button>
             ))}
           </div>
-          <div className="rounded-lg p-4">
+          <div className="rounded-lg p-4 max-w-2xl">
           {tab === "description" && (
-            <div className="">
-              <div className="text-sm text-gray-500">OEM: {product.oem} ({product.oemPN})</div>
-              <div className="text-sm text-gray-500">Katun PN: {product.katunPN}</div>
-              <div className="text-sm text-gray-500">Comments: {product.comments}</div>
-              <div className="text-sm text-gray-500">For Use In: {product.forUseIn}</div>
+            <div className="space-y-6">
+              {product.oem && (
+                <div className="space-y-2">
+                  <div className="text-base font-bold text-black">OEM:</div>
+                  <div className="text-sm text-gray-700 pl-2">{product.oem} ({product.oemPN})</div>
+                </div>
+              )}
+              
+              {product.katunPN && (
+                <div className="space-y-2">
+                  <div className="text-base font-bold text-black">Katun PN:</div>
+                  <div className="text-sm text-gray-700 pl-2">{product.katunPN}</div>
+                </div>
+              )}
+              
+              {product.comments && (
+                <div className="space-y-2">
+                  <div className="text-base font-bold text-black">Comments:</div>
+                  <div className="text-sm text-gray-700 pl-2 leading-relaxed">{product.comments}</div>
+                </div>
+              )}
+              
+              {product.forUseIn && (
+                <div className="space-y-2">
+                  <div className="text-base font-bold text-black">For Use In:</div>
+                  <div className="text-sm text-gray-700 pl-2 leading-relaxed whitespace-pre-line">{product.forUseIn}</div>
+                </div>
+              )}
             </div>
           )}
             {tab === "support" && (
-              <div>
-                <div className="text-gray-700">For support, please contact our customer service or visit our help center.</div>
+              <div className="max-w-lg">
+                <div className="text-gray-700 leading-relaxed">For support, please contact our customer service or visit our help center.</div>
               </div>
             )}
           </div>

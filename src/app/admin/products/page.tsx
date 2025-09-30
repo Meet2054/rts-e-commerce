@@ -58,7 +58,48 @@ export default function ProductsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(20); // Products per page
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [availableOEMs, setAvailableOEMs] = useState<string[]>([]);
+  const [selectedOEMs, setSelectedOEMs] = useState<string[]>([]);
+  const [showOEMDropdown, setShowOEMDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const oemDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available OEMs
+  const fetchOEMs = async () => {
+    try {
+      // Fetch all products without pagination to get all available OEMs
+      const response = await fetch('/api/products?getAllOEMs=true');
+      const data = await response.json();
+      
+      if (data.success && data.products) {
+        const oems = [...new Set(
+          data.products
+            .map((product: Product) => product.oem)
+            .filter((oem: string) => oem && oem.trim() !== '')
+        )].sort() as string[];
+        setAvailableOEMs(oems);
+        console.log(`📋 Found ${oems.length} unique OEMs:`, oems);
+      }
+    } catch (error) {
+      console.error('Error fetching OEMs:', error);
+    }
+  };
+
+  // Toggle OEM filter
+  const toggleOEM = (oem: string) => {
+    setSelectedOEMs(prev => 
+      prev.includes(oem) 
+        ? prev.filter(o => o !== oem)
+        : [...prev, oem]
+    );
+    setCurrentPage(1); // Reset to first page when filter changes
+  };
+
+  // Clear all OEM filters
+  const clearOEMFilters = () => {
+    setSelectedOEMs([]);
+    setCurrentPage(1);
+  };
 
   // Fetch products from API
   useEffect(() => {
@@ -70,7 +111,8 @@ export default function ProductsPage() {
         const searchParams = new URLSearchParams({
           page: currentPage.toString(),
           pageSize: pageSize.toString(),
-          ...(searchTerm && { search: searchTerm })
+          ...(searchTerm && { search: searchTerm }),
+          ...(selectedOEMs.length > 0 && { oems: selectedOEMs.join(',') })
         });
         
         const response = await fetch(`/api/products?${searchParams.toString()}`);
@@ -94,7 +136,12 @@ export default function ProductsPage() {
     };
 
     fetchProducts();
-  }, [currentPage, pageSize, searchTerm]); // Refetch when page or search changes
+  }, [currentPage, pageSize, searchTerm, selectedOEMs]); // Refetch when page, search, or OEM filter changes
+
+  // Fetch OEMs on component mount
+  useEffect(() => {
+    fetchOEMs();
+  }, []);
 
   // Refresh function that can be called from child components
   const refreshProducts = async () => {
@@ -107,7 +154,8 @@ export default function ProductsPage() {
         pageSize: pageSize.toString(),
         // Add cache-busting parameter to force fresh data
         t: Date.now().toString(),
-        ...(searchTerm && { search: searchTerm })
+        ...(searchTerm && { search: searchTerm }),
+        ...(selectedOEMs.length > 0 && { oems: selectedOEMs.join(',') })
       });
       
       const response = await fetch(`/api/products?${searchParams.toString()}`);
@@ -144,12 +192,15 @@ export default function ProductsPage() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
       }
+      if (oemDropdownRef.current && !oemDropdownRef.current.contains(event.target as Node)) {
+        setShowOEMDropdown(false);
+      }
     }
-    if (dropdownOpen) {
+    if (dropdownOpen || showOEMDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [dropdownOpen]);
+  }, [dropdownOpen, showOEMDropdown]);
 
   const openDetailModal = (product: Product) => {
     // Convert the API product structure to the format expected by ProductDetailModal
@@ -204,9 +255,25 @@ export default function ProductsPage() {
                   `Manage ${products.length} products in your catalog`
                 }
                 {searchTerm && ` (search: "${searchTerm}")`}
+                {selectedOEMs.length > 0 && ` (filtered by ${selectedOEMs.length} OEM${selectedOEMs.length > 1 ? 's' : ''})`}
               </>
             )}
           </div>
+          {selectedOEMs.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {selectedOEMs.map((oem) => (
+                <span key={oem} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {oem}
+                  <button
+                    onClick={() => toggleOEM(oem)}
+                    className="ml-1 text-blue-600 hover:text-blue-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex gap-3 relative" ref={dropdownRef}>
           <button className="flex items-center gap-2 admin-button">
@@ -256,10 +323,56 @@ export default function ProductsPage() {
             className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
-        <button className="text-sm font-medium text-gray-700 hover:text-black flex items-center gap-1">
-          Filter by <span className="font-bold">Date Range</span>
-          <ChevronDown size={20} />
-        </button>
+        <div className="relative" ref={oemDropdownRef}>
+          <button 
+            className="text-sm font-medium bg-white px-4 py-2.5 rounded-md text-gray-700 hover:text-black flex items-center gap-1"
+            onClick={() => setShowOEMDropdown(!showOEMDropdown)}
+          >
+            Filter by <span className="font-bold">OEM</span>
+            {selectedOEMs.length > 0 && (
+              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full">
+                {selectedOEMs.length}
+              </span>
+            )}
+            <ChevronDown size={20} />
+          </button>
+          
+          {showOEMDropdown && (
+            <div className="absolute top-full right-0 mt-2 w-64 bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
+              <div className="p-3 border-b">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-gray-900">Filter by OEM</span>
+                  {selectedOEMs.length > 0 && (
+                    <button
+                      onClick={clearOEMFilters}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="p-2">
+                {availableOEMs.map((oem) => (
+                  <label key={oem} className="flex items-center px-2 py-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedOEMs.includes(oem)}
+                      onChange={() => toggleOEM(oem)}
+                      className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-900">{oem}</span>
+                  </label>
+                ))}
+                {availableOEMs.length === 0 && (
+                  <div className="px-2 py-4 text-sm text-gray-500 text-center">
+                    No OEMs available
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Error Display */}
@@ -399,7 +512,7 @@ export default function ProductsPage() {
                       key={pageNumber}
                       onClick={() => goToPage(pageNumber)}
                       disabled={loading}
-                      className={`px-3 py-2.5 rounded border-2 text-sm font-medium transition-colors ${
+                      className={`px-3 py-2 rounded border-2 text-sm font-medium transition-colors ${
                         pageNumber === pagination.currentPage
                           ? 'border-blue-500 bg-blue-50 text-blue-600'
                           : 'border-[#F1F2F4] hover:bg-gray-50 cursor-pointer'

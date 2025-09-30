@@ -9,6 +9,15 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('pageSize') || '100');
     const cacheBust = searchParams.get('t'); // Cache-busting parameter
+    const oemFilters = searchParams.getAll('oem'); // Get all OEM filter values
+    const oemsParam = searchParams.get('oems'); // Handle comma-separated OEMs from admin
+    const getAllOEMs = searchParams.get('getAllOEMs') === 'true'; // Special flag to get all OEMs
+    
+    // Combine OEM filters from both sources
+    const allOemFilters = [
+      ...oemFilters,
+      ...(oemsParam ? oemsParam.split(',').map(oem => oem.trim()) : [])
+    ].filter(Boolean);
     
     // Get user information from auth token
     let userId: string | null = null;
@@ -28,12 +37,14 @@ export async function GET(request: NextRequest) {
     
     const offset = (page - 1) * pageSize;
     
-    console.log(`Products request - User: ${userId || 'anonymous'}, Search: "${searchTerm || 'none'}", Page: ${page}, PageSize: ${pageSize}, CacheBust: ${cacheBust || 'none'}`);
+    console.log(`Products request - User: ${userId || 'anonymous'}, Search: "${searchTerm || 'none'}", OEMs: [${allOemFilters.join(', ') || 'none'}], Page: ${page}, PageSize: ${pageSize}, GetAllOEMs: ${getAllOEMs}, CacheBust: ${cacheBust || 'none'}`);    
     
-    // Include user ID in cache key for personalized pricing
+    // Include user ID and OEM filters in cache key for personalized pricing
+    const oemFilterKey = allOemFilters.length > 0 ? `_oem_${allOemFilters.sort().join('_')}` : '';
+    const getAllOEMsKey = getAllOEMs ? '_getAllOEMs' : '';
     const cacheKey = userId 
-      ? `${CacheKeys.productsList(searchTerm || '', pageSize, page)}_user_${userId}`
-      : CacheKeys.productsList(searchTerm || '', pageSize, page);
+      ? `${CacheKeys.productsList(searchTerm || '', pageSize, page)}_user_${userId}${oemFilterKey}${getAllOEMsKey}`
+      : `${CacheKeys.productsList(searchTerm || '', pageSize, page)}${oemFilterKey}${getAllOEMsKey}`;
     
     // Skip cache if cache-busting parameter is present
     const cachedData = cacheBust ? null : await RedisCache.get(cacheKey, 'api');
@@ -68,21 +79,23 @@ export async function GET(request: NextRequest) {
       
       customPricingQuery.forEach(doc => {
         const data = doc.data();
-        // The document ID is the productId, and the data contains customPrice as decimal
-        if (typeof data.customPrice === 'number') {
-          customPricing[doc.id] = data.customPrice;
+        // Use SKU from the data for matching, not document ID
+        if (typeof data.customPrice === 'number' && data.sku) {
+          customPricing[data.sku] = data.customPrice;
         }
       });
       
       console.log(`Found ${Object.keys(customPricing).length} custom prices for user ${userId}`);
+      console.log(`Custom pricing SKUs: [${Object.keys(customPricing).slice(0, 10).join(', ')}${Object.keys(customPricing).length > 10 ? ', ...' : ''}]`);
     }
 
     const allProducts = snapshot.docs.map(doc => {
       const data = doc.data();
       const productId = doc.id;
+      const productSku = data.sku;
       
-      // Use custom price if available, otherwise use base price
-      const effectivePrice = customPricing[productId] || data.price || 0;
+      // Use custom price if available (match by SKU), otherwise use base price
+      const effectivePrice = customPricing[productSku] || data.price || 0;
       
       return {
         id: productId,
@@ -90,9 +103,9 @@ export async function GET(request: NextRequest) {
         name: data.name,
         description: data.description || '',
         brand: data.brand || '',
-        price: effectivePrice, // This will be the user-specific price or base price
+        price: effectivePrice, // This will be the user-specific price or base price  
         basePrice: data.price || 0, // Always include base price for reference
-        hasCustomPrice: !!customPricing[productId], // Flag to indicate if custom pricing is applied
+        hasCustomPrice: !!customPricing[productSku], // Flag to indicate if custom pricing is applied
         image: data.image || data.imageUrl || '/product-placeholder.png',
         imageUrl: data.imageUrl || data.image || '/product-placeholder.png',
         oem: data.oem || '',
@@ -108,9 +121,11 @@ export async function GET(request: NextRequest) {
     });
 
     let filteredProducts = allProducts;
+    
+    // Apply search filter
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      filteredProducts = allProducts.filter(product => 
+      filteredProducts = filteredProducts.filter(product => 
         product.name.toLowerCase().includes(search) ||
         product.sku.toLowerCase().includes(search) ||
         product.brand.toLowerCase().includes(search) ||
@@ -119,9 +134,21 @@ export async function GET(request: NextRequest) {
       );
       console.log(`Found ${filteredProducts.length} products matching "${searchTerm}"`);
     }
+    
+    // Apply OEM filter
+    if (allOemFilters.length > 0) {
+      filteredProducts = filteredProducts.filter(product => 
+        allOemFilters.some(oem => 
+          product.oem && product.oem.toLowerCase() === oem.toLowerCase()
+        )
+      );
+      console.log(`Found ${filteredProducts.length} products matching OEM filters: [${allOemFilters.join(', ')}]`);
+    }
 
     const totalCount = filteredProducts.length;
-    const paginatedProducts = filteredProducts.slice(offset, offset + pageSize);
+    
+    // If getAllOEMs is true, return all products without pagination (for OEM fetching)
+    const paginatedProducts = getAllOEMs ? filteredProducts : filteredProducts.slice(offset, offset + pageSize);
     const totalPages = Math.ceil(totalCount / pageSize);
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;

@@ -1,11 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useCart } from '@/hooks/use-cart';
+import { getProductImageUrlQuick } from '@/lib/product-image-utils';
+import ProductImage from '@/components/ui/product-image';
 
 interface Product {
 	id: string;
@@ -88,16 +89,14 @@ const BestSelling = () => {
 		try {
 			setAddingToCart(prev => ({ ...prev, [product.id]: true }));
 			
-			await addToCart({
-				id: product.id,
-				sku: product.sku,
-				name: product.name,
-				brand: product.brand || '',
-				price: product.price,
-				image: product.image || product.imageUrl || '/product.png',
-			}, quantity);
-
-			console.log(`✅ [Best Selling] Added ${product.name} x${quantity} to cart`);
+							await addToCart({
+								id: product.id,
+								sku: product.sku,
+								name: product.name,
+								brand: product.brand || '',
+								price: product.price,
+								image: getProductImageUrlQuick(product.sku),
+							}, quantity);			console.log(`✅ [Best Selling] Added ${product.name} x${quantity} to cart`);
 		} catch (error) {
 			console.error('❌ [Best Selling] Add to cart error:', error);
 		} finally {
@@ -207,8 +206,8 @@ const BestSelling = () => {
 										name: item.nameSnap || 'Unknown Product',
 										brand: item.brandSnap || 'Unknown Brand',
 										price: unitPrice,
-										image: item.imageSnap || '/product.png',
-										imageUrl: item.imageSnap || '/product.png',
+										image: getProductImageUrlQuick(productKey),
+										imageUrl: getProductImageUrlQuick(productKey),
 										description: `${item.brandSnap || ''} ${item.nameSnap || ''}`.trim(),
 									},
 									totalSold: quantity,
@@ -329,23 +328,23 @@ const BestSelling = () => {
 						return (
 							<motion.div
 								key={product.id}
-								className="bg-white rounded-md shadow-sm p-4 flex flex-col"
+								className="bg-white rounded-md shadow-sm p-3 gap-4 flex flex-col justify-between"
 								whileHover={{ scale: 1.05 }}
 								transition={{ type: "spring", stiffness: 300, damping: 20 }}
 							>
 							<div 
-							className="relative w-full justify-center cursor-pointer flex mb-2"
+							className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2"
 							onClick={() => window.location.href = `/products/${product.sku}`}
 							>
-								<button className="absolute right-0 -rotate-45" title="Open">
-									<ArrowRight size={20} />
+								<button className="flex justify-end w-full hover:text-[#2E318E] transition-colors" title="Open">
+									<ArrowRight size={20} className='-rotate-45' />
 								</button>
-								<Image 
-									src={'/product.png'} 
-									alt={product.name} 
+								<ProductImage 
+									sku={product.sku}
+									name={product.name} 
 									width={300} 
 									height={200} 
-									className="object-contain my-7 rounded-lg"
+									className="object-contain rounded-lg"
 								/>
 							</div>
 

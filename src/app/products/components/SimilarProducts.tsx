@@ -2,11 +2,12 @@
 import React from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import { useCartActions } from '@/hooks/use-cart';
-import Image from 'next/image';
-import ProductImage from "../../../../public/product.png"
 import Link from 'next/link';
 import { ArrowRight, Plus, Minus, Loader2  } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { getProductImageUrlQuick } from '@/lib/product-image-utils';
+import ProductImage from '@/components/ui/product-image';
+
 
 
 // Accept product and products as props
@@ -32,6 +33,10 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
     const [isAddingToCart, setIsAddingToCart] = useState<string | null>(null);
       
     const { addToCart } = useCartActions();
+
+     const formatPrice = (price: number) => {
+        return `${price.toFixed(2)}`;
+    };
 
     // Handle manual quantity input
     const handleQuantityInput = (sku: string, value: string) => {
@@ -79,7 +84,7 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                 id: item.sku,
                 sku: item.sku,
                 name: item.name,
-                image: ProductImage.src,
+                image: getProductImageUrlQuick(item.sku),
                 price: item.price,
                 brand: item.brand,
                 category: item.category
@@ -122,29 +127,29 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                     {similar.map((item) => (
                         <motion.div
 							key={item.sku}
-							className="bg-white rounded-md shadow-sm p-4 flex flex-col"
+							className="bg-white rounded-md shadow-sm p-3 gap-4 flex flex-col justify-between"
 							whileHover={{ scale: 1.05 }}
 							transition={{ type: "spring", stiffness: 300, damping: 20 }}
 						>                            
                             <div 
-                            className="relative w-full justify-center cursor-pointer flex mb-2"
+                            className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2"
                             onClick={() => window.location.href = `/products/${item.sku}`}
                             >
-                                <Link href={`/products/${item.sku}`} className="absolute right-0 -rotate-45" title="Open">
-                                    <ArrowRight size={20} />
+                                <Link href={`/products/${item.sku}`} className="flex justify-end w-full" title="Open">
+                                    <ArrowRight size={20} className='-rotate-45' />
                                 </Link>
-                                <Image 
-                                    src={ProductImage} 
-                                    alt={item.name} 
+                                <ProductImage 
+                                    sku={item.sku} 
+                                    name={item.name} 
                                     width={300} 
                                     height={200} 
-                                    className="object-contain my-7 rounded-lg" 
+                                    className="object-contain rounded-lg" 
                                 />
                             </div>
                             <div className='flex flex-row gap-2 justify-between'>
                                 <div className='flex w-[60%] flex-col gap-1'>
                                     <div className="font-semibold text-base text-black">{item.name}</div>
-                                    <div className="text-lg font-bold text-black">${item.price}</div>
+                                    <div className="text-lg font-bold text-black">${formatPrice(item.price)}</div>
                                 </div>
                                 <div>
                                     <div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">

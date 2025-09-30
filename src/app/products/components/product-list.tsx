@@ -56,8 +56,8 @@ function ProductFilterSidebar({ open, onClose }: { open: boolean; onClose: () =>
 import { useAuth } from '@/components/auth/auth-provider';
 import { useCartActions } from '@/hooks/use-cart';
 import { Package, ArrowRight, Minus, Plus, X, ListFilterPlus } from 'lucide-react';
-import Image from 'next/image';
 import { motion } from 'framer-motion';
+import ProductImage from '@/components/ui/product-image';
 
 interface Product {
   id: string;
@@ -99,7 +99,7 @@ function ProductList() {
 
   useEffect(() => {
     fetchProducts();
-  }, [searchTerm, token]);
+  }, [searchTerm, token]); // fetchProducts is stable as it doesn't depend on changing state
 
   const fetchProducts = async () => {
     try {
@@ -392,24 +392,24 @@ function ProductList() {
             {filteredProducts.map((order) => (
               <motion.div
                 key={order.id} 
-                className="bg-white rounded-md shadow-sm p-4 flex flex-col hover:shadow-lg transition-shadow"
+                className="bg-white rounded-md shadow-sm p-3 gap-4 flex flex-col justify-between hover:shadow-lg transition-shadow"
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
-                <div className="relative w-full justify-center flex mb-2">
-                  <span className="absolute right-0 -rotate-45" title="Open">
-                    <ArrowRight size={20} />
+                <div className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2">
+                  <span className="flex justify-end w-full" title="Open">
+                    <ArrowRight size={20} className='-rotate-45' />
                   </span>
                   <div
-                    className="cursor-pointer"
+                    className="cursor-pointer rounded-lg"
                     onClick={() => window.location.href = `/products/${order.sku}`}
                   >
-                    <Image 
-                      src={'/product.png'} 
-                      alt={order.name} 
+                    <ProductImage 
+                      sku={order.sku} 
+                      name={order.name} 
                       width={300} 
                       height={200} 
-                      className="object-contain my-7 rounded-lg" 
+                      className="object-cover rounded-lg"
                     />
                   </div>
                 </div>

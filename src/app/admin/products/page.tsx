@@ -24,6 +24,7 @@ interface Product {
 
 interface ModalProduct {
   id: string;
+  sku: string;
   name: string;
   description: string;
   category: string;
@@ -154,6 +155,7 @@ export default function ProductsPage() {
     // Convert the API product structure to the format expected by ProductDetailModal
     const modalProduct = {
       id: product.sku, // Use SKU for the API endpoint
+      sku: product.sku, // Include SKU field for image handling
       name: product.name,
       description: product.description,
       category: product.category || 'Ink & Toner',
@@ -424,7 +426,13 @@ export default function ProductsPage() {
           </div>
         </div>
       </div>
-      <AddProductModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <AddProductModal 
+        open={modalOpen} 
+        onClose={() => {
+          setModalOpen(false);
+          refreshProducts(); // Refresh products list after adding
+        }} 
+      />
       <AddExcelModal open={excelModalOpen} onClose={() => setExcelModalOpen(false)} />
       <ProductDetailModal
         open={detailOpen}
@@ -440,6 +448,7 @@ export default function ProductsPage() {
               }
             : {
                 id: "",
+                sku: "",
                 name: "",
                 description: "",
                 category: "",

@@ -1,8 +1,6 @@
 
 "use client";
 
-import Image from "next/image";
-import ProductImage from "../../../../public/product.png"
 import Link from "next/link";
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +8,8 @@ import { useCartActions } from "@/hooks/use-cart";
 import { useAuth } from '@/components/auth/auth-provider';
 import { Loader2, Plus, Minus } from 'lucide-react';
 import { motion } from "framer-motion";
+import { getProductImageUrlQuick } from '@/lib/product-image-utils';
+import ProductImage from '@/components/ui/product-image';
 
 const COLORS = ["#2D9CDB", "#27AE60", "#F2994A", "#EB5757", "#4F4F4F"];
 
@@ -88,7 +88,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
         id: product.sku, // Use SKU as ID for consistency
         sku: product.sku,
         name: product.name,
-        image: ProductImage.src,
+        image: getProductImageUrlQuick(product.sku),
         price: product.price,
         brand: product.brand,
         category: product.category
@@ -114,7 +114,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
         id: product.sku, // Use SKU as ID for consistency
         sku: product.sku,
         name: product.name,
-        image: ProductImage.src,
+        image: getProductImageUrlQuick(product.sku),
         price: product.price,
         brand: product.brand,
         category: product.category
@@ -142,7 +142,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
         id: relatedProduct.sku,
         sku: relatedProduct.sku,
         name: relatedProduct.name,
-        image: ProductImage.src,
+        image: getProductImageUrlQuick(relatedProduct.sku),
         price: relatedProduct.price,
         brand: product.brand, // Use main product's brand as fallback
         category: product.category // Use main product's category as fallback
@@ -171,7 +171,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
         id: relatedProduct.sku,
         sku: relatedProduct.sku,
         name: relatedProduct.name,
-        image: ProductImage.src,
+        image: getProductImageUrlQuick(relatedProduct.sku),
         price: relatedProduct.price,
         brand: product.brand, // Use main product's brand as fallback
         category: product.category // Use main product's category as fallback
@@ -190,8 +190,8 @@ export default function ProductDetail({ product, related }: { product: Product, 
     }
   };
 
-  // Gallery images (mock: repeat main image)
-  const gallery = [ProductImage , ProductImage, ProductImage, ProductImage];
+  // Gallery images - ProductImage component handles URL generation
+  const gallery = [0, 1, 2, 3]; // Just for iteration
 
   return (
     <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-2">
@@ -214,7 +214,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
                     onClick={() => setSelectedImg(i)}
                     className={`border bg-white rounded-md p-1 ${selectedImg === i ? "border-black" : ""}`}
                 >
-                    <Image src={ProductImage} alt={product.name} width={100} height={50} className="object-contain" />
+                    <ProductImage sku={product.sku} name={product.name} width={100} height={50} className="object-contain" />
                 </button>
                 ))}
             </div>
@@ -222,15 +222,15 @@ export default function ProductDetail({ product, related }: { product: Product, 
             <div className="flex flex-col gap-5">
                 {/* Main image */}
                 <div className="bg-white rounded-md p-4 flex-1 flex justify-center">
-                    <Image src={gallery[selectedImg]} alt={product.name} width={650} height={500} className="rounded-md" />
+                    <ProductImage sku={product.sku} name={product.name} width={650} height={500} className="rounded-md" />
                 </div>
 
                 {/* Gallery info */}
                 <div className="grid grid-cols-2 gap-2 justify-center">
-                    <div className="flex items-center justify-center col-span-2 md:col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
+                    <div className="flex items-center justify-center col-span-2 xl:col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
                     <span>🚚</span> Free shipping worldwide
                     </div>
-                    <div className="flex items-center justify-center col-span-2 md:col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
+                    <div className="flex items-center justify-center col-span-2 xl:col-span-1 gap-2 text-xs font-medium bg-white rounded py-2.5">
                     <span>🔒</span> 100% Secured Payment
                     </div>
                     <div className="flex items-center justify-center col-span-2 gap-2 text-xs font-medium bg-white rounded py-2.5">
@@ -388,9 +388,9 @@ export default function ProductDetail({ product, related }: { product: Product, 
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
-                <div className="flex flex-col md:flex-row gap-4 md:items-center">
-                  <Link href={`/products/${rp.sku}`} className="cursor-pointer">
-                    <Image src={ProductImage} alt={rp.name} width={250} height={80} className="object-contain rounded hover:opacity-80 transition-opacity" />
+                <div className="flex flex-col sm:flex-row gap-4 xl:items-center">
+                  <Link href={`/products/${rp.sku}`} className="cursor-pointer flex justify-center sm:w-1/2">
+                    <ProductImage sku={rp.sku} name={rp.name} width={210} height={80} className="object-contain rounded hover:opacity-80 transition-opacity" />
                   </Link>
                   <div className="flex flex-col flex-1">
                     <div className="font-semibold text-base text-black">{rp.name}</div>

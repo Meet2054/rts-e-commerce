@@ -62,7 +62,7 @@ export default function HeroSection() {
   };
 
   return (
-    <div className="w-full pt-10 xl:pt-0 flex justify-center">
+    <div className="w-full pt-10 xl:pt-0 flex justify-center ">
       <div className="relative max-w-[1550px] mx-auto w-full h-full px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex items-center justify-center overflow-hidden">
 
         {/* Sliding Images */}
@@ -71,10 +71,10 @@ export default function HeroSection() {
             className={`flex ${
               transition ? "transition-transform duration-700 ease-in-out" : ""
             } w-full`}
-            style={{
-              transform: `translateX(-${current * 100}%)`,
-              height: "100%",
-            }}
+            // style={{
+            //   transform: `translateX(-${current * 100}%)`,
+            //   height: "100%",
+            // }}
             onTransitionEnd={() => {
               if (current === slides.length) {
                 setTransition(false);
@@ -86,7 +86,7 @@ export default function HeroSection() {
               <div
                 key={slide.id + Math.random()}
                 className="min-w-full flex justify-center items-center"
-                style={{ height: "100%" }}
+                // style={{ height: "100%" }}
               >
                 <Image
                   src={slide.image}

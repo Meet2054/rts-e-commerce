@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useCart, useCartSummary, useCartActions, useCartState } from "@/hooks/use-cart";
 import { useAuth } from '@/components/auth/auth-provider';
 import { ShippingAddress } from '@/lib/cart-types';
 import { Minus, Plus, Trash2, ShoppingCart as CartIcon, Loader2 } from 'lucide-react';
+import ProductImage from '@/components/ui/product-image';
 
 export default function ShoppingCart() {
 	const { user, userData, token } = useAuth();
@@ -277,16 +277,16 @@ export default function ShoppingCart() {
 					<div className="space-y-4">
 						{items.map((item) => (
 							<div key={item.id} className="bg-white rounded-lg shadow-sm border p-4">
-								<div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+								<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
 									{/* Product Image and Info */}
-									<div className="flex items-center gap-4 flex-1">
-										<Link href={`/products/${item.sku}`}>
-											<Image 
-												src={'/product.png'} 
-												alt={item.name} 
+									<div className="flex items-center gap-4 ">
+										<Link href={`/products/${item.sku}`} className="">
+											<ProductImage 
+												sku={item.sku}
+												name={item.name} 
 												width={150} 
 												height={80} 
-												className="rounded-md object-contain bg-gray-50 p-2" 
+												className="rounded-md mb-4 object-contain" 
 											/>
 										</Link>
 										<div className="flex-1">

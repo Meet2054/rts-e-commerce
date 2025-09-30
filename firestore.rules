@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection rules
+    match /users/{userId} {
+      // Allow users to read and write their own document
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow authenticated users to create their own user document during sign-up
+      allow create: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow admins to read and write any user document
+      allow read, write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'employee'];
+    }
+    
+    // Products collection rules  
+    match /products/{productId} {
+      // Allow anyone to read products (for public catalog)
+      allow read: if true;
+      
+      // Only admins and employees can create, update, delete products
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'employee'];
+    }
+    
+    // Orders collection rules
+    match /orders/{orderId} {
+      // Users can read their own orders
+      allow read: if request.auth != null && 
+        (resource.data.clientId == request.auth.uid ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'employee']));
+      
+      // Users can create their own orders
+      allow create: if request.auth != null && request.auth.uid == resource.data.clientId;
+      
+      // Only admins and employees can update orders (status changes, etc.)
+      allow update: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'employee'];
+        
+      // Only admins can delete orders
+      allow delete: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Cart collection rules (if you have a cart collection)
+    match /carts/{cartId} {
+      // Users can read and write their own cart
+      allow read, write: if request.auth != null && request.auth.uid == cartId;
+    }
+    
+    // Support queries collection rules (if you have support queries)
+    match /support-queries/{queryId} {
+      // Users can read their own queries
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'employee']));
+      
+      // Users can create their own support queries
+      allow create: if request.auth != null && request.auth.uid == resource.data.userId;
+      
+      // Only admins and employees can update support queries (status changes, responses)
+      allow update: if request.auth != null && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'employee'];
+    }
+    
+    // Default rule - deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

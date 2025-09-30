@@ -287,3 +287,108 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { sku: string } }
+) {
+  try {
+    const { sku } = await params;
+    
+    console.log(`🗑️ [API] Delete product request - SKU: "${sku}"`);
+    
+    // Verify user authentication and admin privileges
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json(
+        { success: false, error: 'Authorization required' },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7);
+    let decodedToken;
+    
+    try {
+      decodedToken = await adminAuth.verifyIdToken(token);
+    } catch (error) {
+      console.error('❌ [AUTH] Token verification failed:', error);
+      return NextResponse.json(
+        { success: false, error: 'Invalid token' },
+        { status: 401 }
+      );
+    }
+
+    const userId = decodedToken.uid;
+    console.log(`👤 [AUTH] Delete request from user: ${userId}`);
+
+    // Find the product by SKU
+    const productsRef = adminDb.collection('products');
+    const querySnapshot = await productsRef.where('sku', '==', sku).limit(1).get();
+    
+    if (querySnapshot.empty) {
+      console.log(`❌ [API] Product with SKU "${sku}" not found`);
+      return NextResponse.json(
+        { success: false, error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    const productDoc = querySnapshot.docs[0];
+    const productId = productDoc.id;
+    const productData = productDoc.data();
+    
+    console.log(`🎯 [API] Found product to delete - ID: ${productId}, Name: ${productData.name}`);
+
+    // Delete the product document
+    await productDoc.ref.delete();
+    
+    console.log(`✅ [FIRESTORE] Product deleted successfully - SKU: ${sku}, ID: ${productId}`);
+
+    // Clear relevant caches
+    try {
+      await RedisCache.delete(`product:${sku}`);
+      await RedisCache.delete(`product:${sku}_user_${userId}`);
+      
+      // Clear common product list cache keys
+      const commonCacheKeys = [
+        'products-list::50:page:1',
+        'products-list::100:page:1'
+      ];
+      
+      for (const key of commonCacheKeys) {
+        await RedisCache.delete(key);
+        await RedisCache.delete(`${key}_user_${userId}`);
+      }
+      
+      // Set a cache invalidation timestamp
+      await RedisCache.set('products-list:last-update', Date.now(), { ttl: 3600 });
+      
+      console.log(`🗑️ [REDIS] Cleared product caches for deleted SKU: ${sku}`);
+    } catch (cacheError) {
+      console.error('⚠️ [REDIS] Failed to clear cache after deletion:', cacheError);
+      // Don't fail the request if cache clearing fails
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Product deleted successfully',
+      deletedProduct: {
+        id: productId,
+        sku: sku,
+        name: productData.name
+      }
+    });
+
+  } catch (error) {
+    console.error(`❌ [API] Error deleting product with SKU "${(await params).sku}":`, error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to delete product',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}

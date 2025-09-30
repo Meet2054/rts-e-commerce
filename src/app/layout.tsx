@@ -27,7 +27,7 @@ export default function RootLayout({
             <LayoutShell>
               {children}  
             </LayoutShell>
-           <SupportChat />
+           {/* <SupportChat /> */}
           </CartProvider>
         </AuthProvider>
       </body>

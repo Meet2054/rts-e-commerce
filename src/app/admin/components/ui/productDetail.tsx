@@ -1,7 +1,10 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Upload, Camera } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
+import ProductImage from '@/components/ui/product-image';
+import { uploadProductImage, deleteProductImage } from '@/lib/firebase-storage';
+import Image from 'next/image';
 
 
 interface ProductDetailProps {
@@ -10,6 +13,7 @@ interface ProductDetailProps {
   onUpdate?: () => void; // Callback to refresh parent component
   product: {
     id: string;
+    sku: string;
     name: string;
     description: string;
     category: string;
@@ -38,8 +42,14 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
   const [stock, setStock] = useState(product.stock);
   const [status, setStatus] = useState(product.status);
 
-  // Images (dummy for now)
-  const [images, setImages] = useState([1, 2, 3]);
+  // Image upload states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Delete states
+  const [deleting, setDeleting] = useState(false);
 
   // Close modal on outside click
   useEffect(() => {
@@ -67,6 +77,8 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
       setError('');
       setSuccess('');
       setEditMode(false);
+      setSelectedFile(null);
+      setImagePreview(null);
     }
     
     // Reset session state when modal closes
@@ -75,8 +87,10 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
       setSuccess('');
       setEditMode(false);
       setHasBeenUpdated(false); // Reset for next modal session
+      setSelectedFile(null);
+      setImagePreview(null);
     }
-  }, [open, product.id, hasBeenUpdated]); // Only depend on modal open state and product ID
+  }, [open, product.id, product.name, product.description, product.category, product.price, product.stock, product.status, hasBeenUpdated])
 
   // Function to fetch latest product data
   const fetchLatestProductData = async () => {
@@ -253,6 +267,147 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
     }
   };
 
+  // Handle image file selection
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select a valid image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    
+    setError(''); // Clear any existing errors
+  };
+
+  // Handle image upload to Firebase Storage
+  const handleImageUpload = async () => {
+    if (!selectedFile || !user || !product.sku) {
+      setError('Missing required data for upload');
+      return;
+    }
+
+    setUploadingImage(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      console.log(`🔄 Uploading image for product SKU: ${product.sku}`);
+      
+      // Upload the image with SKU as filename (returns URL string directly)
+      const downloadURL = await uploadProductImage(selectedFile, product.sku);
+      
+      setSuccess(`Image uploaded successfully! New image will appear shortly.`);
+      
+      // Clear the selected file and preview
+      setSelectedFile(null);
+      setImagePreview(null);
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Mark as updated
+      setHasBeenUpdated(true);
+      
+      // Trigger parent refresh to show updated image
+      if (onUpdate) {
+        setTimeout(() => {
+          onUpdate();
+        }, 1000); // Give some time for Firebase Storage to propagate
+      }
+      
+      console.log('✅ Image upload completed successfully:', downloadURL);
+    } catch (error) {
+      console.error('❌ Image upload error:', error);
+      setError('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  // Handle product deletion
+  const handleDeleteProduct = async () => {
+    if (!user || !product.id || !product.sku) {
+      setError('Missing required data for deletion');
+      return;
+    }
+
+    setDeleting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      console.log(`🗑️ Deleting product: ${product.name} (SKU: ${product.sku})`);
+      
+      const token = await user.getIdToken();
+      
+      // Step 1: Delete product from database
+      const response = await fetch(`/api/products/${product.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete product from database');
+      }
+
+      console.log('✅ Product deleted from database successfully');
+      
+      // Step 2: Delete product image from Firebase Storage
+      try {
+        await deleteProductImage(product.sku);
+        console.log('✅ Product image deleted from Firebase Storage successfully');
+      } catch (imageError) {
+        console.warn('⚠️ Failed to delete image from Firebase Storage (image may not exist):', imageError);
+        // Don't fail the entire operation if image deletion fails
+      }
+      
+      setSuccess('Product and image deleted successfully!');
+      
+      // Call parent refresh callback to update the product list
+      if (onUpdate) {
+        console.log('🔄 Triggering product list refresh after deletion...');
+        setTimeout(() => {
+          onUpdate();
+        }, 500);
+      }
+      
+      // Close the modal after a short delay
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+      
+      console.log('✅ Product deletion completed successfully');
+    } catch (error) {
+      console.error('❌ Product deletion error:', error);
+      setError(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -280,22 +435,102 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
           </div>
         )}
         
-        {/* Images */}
-        <div className="flex gap-4 mb-6">
-          {images.map((i, idx) => (
-            <div key={i} className="w-40 h-28 border rounded-lg flex items-center justify-center relative bg-[#F1F2F4]">
+        {/* Product Image Section */}
+        <div className="mb-6">
+          <h3 className="font-semibold text-base mb-3 text-black">Product Image</h3>
+          <div className="flex gap-4 items-start">
+            {/* Current Product Image */}
+            <div className="relative">
+              <ProductImage 
+                sku={product.sku}
+                name={product.name}
+                width={160}
+                height={120}
+                className="object-contain rounded-lg border"
+                showMessage={true}
+              />
               {editMode && (
-                <button
-                  className="absolute -top-2 -right-2 p-0.5 items-center justify-center rounded-full bg-gray-400 cursor-pointer"
-                  onClick={() => setImages(imgs => imgs.filter((_, j) => j !== idx))}
-                  aria-label="Remove"
-                >
-                  <X size={14} />
-                </button>
+                <div className="absolute -top-2 -right-2">
+                  <button
+                    className="p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload new image"
+                  >
+                    <Camera size={14} />
+                  </button>
+                </div>
               )}
-              <span className="text-xs text-gray-400">Image {i}</span>
             </div>
-          ))}
+            
+            {/* Image Preview (when uploading) */}
+            {imagePreview && (
+              <div className="relative">
+                <Image 
+                  src={imagePreview} 
+                  alt="Preview" 
+                  width={160}
+                  height={112}
+                  className="object-contain rounded-lg border"
+                />
+                <div className="absolute -top-2 -right-2">
+                  <button
+                    className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                    onClick={() => {
+                      setSelectedFile(null);
+                      setImagePreview(null);
+                    }}
+                    title="Remove preview"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 rounded-b-lg text-center">
+                  New Image
+                </div>
+              </div>
+            )}
+            
+            {/* Upload Button (Edit Mode) */}
+            {editMode && !imagePreview && (
+              <div 
+                className="w-40 h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload size={24} className="text-gray-400 mb-1" />
+                <span className="text-xs text-gray-500 text-center px-2">Click to upload new image</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Hidden File Input */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          
+          {/* Upload Image Button */}
+          {selectedFile && imagePreview && (
+            <button
+              onClick={handleImageUpload}
+              disabled={uploadingImage}
+              className="mt-3 bg-green-500 text-white px-4 py-2 rounded-md text-sm hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {uploadingImage ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={16} />
+                  Upload Image
+                </>
+              )}
+            </button>
+          )}
         </div>
         {/* Product Info */}
         <form
@@ -433,11 +668,11 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
         {deleteOpen && (
           <DeleteProductPopup
             open={deleteOpen}
+            deleting={deleting}
             onClose={() => setDeleteOpen(false)}
-            onDelete={() => {
+            onDelete={async () => {
               setDeleteOpen(false);
-              onClose();
-              // Add delete logic here
+              await handleDeleteProduct();
             }}
           />
         )}
@@ -448,38 +683,49 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
 
 interface DeleteProductPopupProps {
   open: boolean;
+  deleting: boolean;
   onClose: () => void;
-  onDelete: () => void;
+  onDelete: () => Promise<void>;
 }
 
-function DeleteProductPopup({ open, onClose, onDelete }: DeleteProductPopupProps) {
+function DeleteProductPopup({ open, deleting, onClose, onDelete }: DeleteProductPopupProps) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center">
       <div className="bg-white border-2 border-gray-300 rounded-md p-6 w-full max-w-sm mx-4 relative">
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-black text-xl font-bold"
+          disabled={deleting}
+          className="absolute top-3 right-3 text-gray-400 hover:text-black text-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed"
           aria-label="Close"
         >
           <X />
         </button>
         <div className="font-bold text-lg mb-4">Delete Product</div>
         <div className="text-gray-700 mb-4">
-          Are you sure you want to delete this product? This action cannot be undone.
+          Are you sure you want to delete this product? This will also delete the product image from Firebase Storage. This action cannot be undone.
         </div>
         <div className="flex gap-4 justify-between w-full">
           <button
-            className="border-2 border-[#F1F2F4] text-black px-4 py-2.5 w-1/2 rounded font-semibold"
+            className="border-2 border-[#F1F2F4] text-black px-4 py-2.5 w-1/2 rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={onClose}
+            disabled={deleting}
           >
-            Back
+            Cancel
           </button>
           <button
-            className="bg-red-600 text-white px-4 py-2.5 w-1/2 rounded font-semibold"
+            className="bg-red-600 text-white px-4 py-2.5 w-1/2 rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             onClick={onDelete}
+            disabled={deleting}
           >
-            Delete
+            {deleting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
           </button>
         </div>
       </div>

@@ -52,6 +52,10 @@ export default function ProductDetail({ product, related }: { product: Product, 
   const { token } = useAuth();
   const { addToCart } = useCartActions();
 
+  const formatPrice = (price: number) => {
+    return price.toFixed(2);
+  };
+
   // Handle manual quantity input
   const handleQuantityInput = (value: string) => {
     // Allow empty input for typing
@@ -246,7 +250,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
           <h1 className="text-2xl sm:text-3xl font-bold text-black mt-4 mb-2">{product.name}</h1>
           {token ? (
             <div className="flex items-center gap-3 mb-2">
-              <span className="text-2xl font-bold text-black">${product.price}</span>
+              <span className="text-2xl font-bold text-black">${formatPrice(product.price)}</span>
               <span className="text-lg line-through text-gray-400">${(product.price * 1.33).toFixed(0)}</span>
             </div>
           ) : (
@@ -396,7 +400,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
                     <div className="font-semibold text-base text-black">{rp.name}</div>
                     {token ? (
                       <>
-                        <div className="text-lg font-bold text-black mt-1">${rp.price}</div>
+                        <div className="text-lg font-bold text-black mt-1">${formatPrice(rp.price)}</div>
                         <div className="flex flex-col w-full gap-2 mt-4">
                           <button
                             onClick={() => handleRelatedAddToCart(rp)}

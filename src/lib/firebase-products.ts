@@ -225,7 +225,6 @@ export class PricingService {
         productId,
         sku: sku || '',
         customPrice,
-        currency: 'INR',
         source: source || 'manual',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()

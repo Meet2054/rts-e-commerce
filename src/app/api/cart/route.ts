@@ -48,7 +48,7 @@ async function getUserSpecificPrice(productSku: string, basePrice: number, authH
       
       if (typeof customPriceInCents === 'number') {
         // Convert from cents back to decimal (divide by 100)
-        const customPrice = customPriceInCents / 100;
+        const customPrice = customPriceInCents;
         console.log(`💰 [CART API] Found custom price for ${productSku}: ${basePrice} → ${customPrice} (from ${customPriceInCents} cents)`);
         return customPrice;
       }
@@ -98,7 +98,7 @@ async function applyUserSpecificPricing(cart: Cart, authHeader: string | null, u
       // Convert from cents back to decimal
       const customPriceInCents = data.customPrice;
       if (typeof customPriceInCents === 'number') {
-        customPricing[data.sku] = customPriceInCents / 100;
+        customPricing[data.sku] = customPriceInCents;
       }
     });
 

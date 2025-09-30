@@ -371,7 +371,7 @@ export default function UserDetailsModal({
                               {order.status}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-900">₹{order.totals.total.toLocaleString()}</td>
+                          <td className="px-3 py-2 text-sm text-gray-900">${order.totals.total.toLocaleString()}</td>
                         </tr>
                       ))
                     ) : (

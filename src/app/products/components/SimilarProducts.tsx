@@ -132,7 +132,7 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
 							transition={{ type: "spring", stiffness: 300, damping: 20 }}
 						>                            
                             <div 
-                            className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2"
+                            className="w-full justify-center cursor-pointer overflow-hidden flex flex-col items-center gap-4 mb-2"
                             onClick={() => window.location.href = `/products/${item.sku}`}
                             >
                                 <Link href={`/products/${item.sku}`} className="flex justify-end w-full" title="Open">

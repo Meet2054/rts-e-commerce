@@ -45,7 +45,7 @@ const faqs = [
 			},
 			{
 				q: 'Do you offer free shipping?',
-				a: 'Yes, free shipping is available on orders above ₹1,000.',
+				a: 'Yes, free shipping is available on orders above $1,000.',
 			},
 			{
 				q: 'Do you deliver across India?',

@@ -194,8 +194,8 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 										<tr key={idx}>
 											<td className="py-2 px-4">{item.nameSnap}</td>
 											<td className="py-2 px-4">{item.qty}</td>
-											<td className="py-2 px-4">₹{item.unitPrice.toLocaleString()}</td>
-											<td className="py-2 px-4">₹{item.lineTotal.toLocaleString()}</td>
+											<td className="py-2 px-4">${item.unitPrice.toLocaleString()}</td>
+											<td className="py-2 px-4">${item.lineTotal.toLocaleString()}</td>
 										</tr>
 									))}
 								</tbody>

@@ -176,8 +176,6 @@ export async function POST(request: NextRequest) {
       warnings: []
     };
 
-    const fileName = `pricing-upload-${Date.now()}-${file.name}`;
-
     // Process each data row
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
@@ -278,8 +276,7 @@ export async function POST(request: NextRequest) {
         const customPriceData = {
           productId: productId,
           sku: sku,
-          customPrice: Math.round(price * 100), // Convert to cents/paise
-          currency: 'INR',
+          customPrice: price, // Store as decimal value like regular prices
           source: `excel:${file.name}`,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -289,7 +286,7 @@ export async function POST(request: NextRequest) {
 
         result.successfulUpdates++;
         
-        console.log(`✅ Updated custom pricing for user ${clientEmail}, SKU: ${sku}, Price: ₹${price}`);
+        console.log(`✅ Updated custom pricing for user ${clientEmail}, SKU: ${sku}, Price: ${price}`);
 
       } catch (error) {
         console.error(`Error processing row ${rowNumber}:`, error);

@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     console.log(`Found ${snapshot.docs.length} products in database`);
 
     // Fetch user-specific custom pricing if user is authenticated
-    let customPricing: Record<string, number> = {};
+    const customPricing: Record<string, number> = {};
     if (userId) {
       console.log(`Fetching custom pricing for user: ${userId}`);
       
@@ -68,10 +68,9 @@ export async function GET(request: NextRequest) {
       
       customPricingQuery.forEach(doc => {
         const data = doc.data();
-        // The document ID is the productId, and the data contains customPrice in cents
-        // Convert from cents to decimal
+        // The document ID is the productId, and the data contains customPrice as decimal
         if (typeof data.customPrice === 'number') {
-          customPricing[doc.id] = data.customPrice / 100;
+          customPricing[doc.id] = data.customPrice;
         }
       });
       

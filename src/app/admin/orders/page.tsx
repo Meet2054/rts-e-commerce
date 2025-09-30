@@ -547,7 +547,7 @@ export default function OrdersPage() {
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
                   </td>
-                  <td className="py-2.5 px-4">₹{(order.totals?.total || 0).toLocaleString()}</td>
+                  <td className="py-2.5 px-4">${(order.totals?.total || 0).toLocaleString()}</td>
                   <td className="py-2.5 px-4">{order.items?.length || 0} items</td>
                   <td className="py-2.5 px-4">
                     {formatDate(order.createdAt)}

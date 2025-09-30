@@ -122,8 +122,7 @@ export interface ClientPriceOverride extends BaseDocument {
 export interface CustomPricing extends BaseDocument {
   productId: string;
   sku?: string;
-  customPrice: number; // in cents/paise
-  currency: string;
+  customPrice: number; // as decimal value
   source: string; // e.g., "excel:filename.xlsx" or "manual"
 }
 

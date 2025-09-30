@@ -396,7 +396,7 @@ function ProductList() {
                 whileHover={{ scale: 1.05 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
               >
-                <div className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2">
+                <div className="w-full justify-center cursor-pointer flex flex-col overflow-hidden items-center gap-4 mb-2">
                   <span className="flex justify-end w-full" title="Open">
                     <ArrowRight size={20} className='-rotate-45' />
                   </span>
@@ -422,7 +422,7 @@ function ProductList() {
                     >
                       {order.name}
                     </div>
-                    {token && <div className="text-lg font-bold text-black">{formatPrice(order.price)}</div>}
+                    {token && <div className="text-lg font-bold text-black">${formatPrice(order.price)}</div>}
                     {!token && <div className="text-sm text-gray-500">Sign in to view pricing</div>}
           
                   </div>

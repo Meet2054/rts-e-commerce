@@ -172,7 +172,7 @@ const RecommendedProducts: React.FC = () => {
                         >
                             <div 
                                 onClick={() => window.location.href = `/products/${item.sku}`}
-                                className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2"
+                                className="w-full justify-center cursor-pointer flex flex-col overflow-hidden items-center gap-4 mb-2"
                             >
                                 <Link href={`/products/${item.sku}`} className="flex justify-end w-full" title="Open">
                                     <ArrowRight size={20} className='-rotate-45' />

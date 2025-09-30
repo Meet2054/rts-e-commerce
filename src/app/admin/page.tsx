@@ -376,7 +376,7 @@ export default function Dashboard() {
         <div className="bg-white w-[70%] border border-gray-200 rounded-lg shadow-sm p-6 flex flex-col justify-between">
           <div className="flex justify-between items-center mb-4">
             <div className="font-bold text-lg">Monthly Overview</div>
-            <div className="text-sm text-gray-800">Total Revenue: ₹{stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-sm text-gray-800">Total Revenue: ${stats.totalRevenue.toLocaleString()}</div>
           </div>
           <div className="flex items-end justify-between h-52 px-2">
             {chartData.map((bar, idx) => (
@@ -476,7 +476,7 @@ export default function Dashboard() {
                     </span>
                   </td>
                   <td className="py-3 px-2 font-medium text-xs">
-                    ₹{order.totalAmount.toLocaleString()}
+                    ${order.totalAmount.toLocaleString()}
                   </td>
                   <td className="py-3 px-2 text-xs">
                     {order.itemCount} items

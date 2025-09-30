@@ -275,7 +275,7 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
                 </span>
                 <div className="text-right">
                   <div className="text-lg font-bold">
-                    {order.currency === 'USD' ? '$' : '₹'}{order.totals.total.toFixed(2)}
+                    {order.currency === 'USD' ? '$' : '$'}{order.totals.total.toFixed(2)}
                   </div>
                   <div className="text-sm text-gray-600">
                     {order.totals.itemCount} {order.totals.itemCount === 1 ? 'item' : 'items'}
@@ -329,7 +329,7 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
                     )}
                   </div>
                   <div className="text-sm font-medium">
-                    {order.currency === 'USD' ? '$' : '₹'}{item.lineTotal.toFixed(2)}
+                    {order.currency === 'USD' ? '$' : '$'}{item.lineTotal.toFixed(2)}
                   </div>
                 </div>
               ))}
@@ -365,11 +365,11 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
                     <div className="text-sm space-y-1">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Subtotal:</span>
-                        <span>{order.currency === 'USD' ? '$' : '₹'}{order.totals.subtotal.toFixed(2)}</span>
+                        <span>{order.currency === 'USD' ? '$' : '$'}{order.totals.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Tax:</span>
-                        <span>{order.currency === 'USD' ? '$' : '₹'}{order.totals.tax.toFixed(2)}</span>
+                        <span>{order.currency === 'USD' ? '$' : '$'}{order.totals.tax.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Shipping:</span>
@@ -377,13 +377,13 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
                           {order.totals.shipping === 0 ? (
                             <span className="text-green-600 font-medium">FREE</span>
                           ) : (
-                            `${order.currency === 'USD' ? '$' : '₹'}${order.totals.shipping.toFixed(2)}`
+                            `${order.currency === 'USD' ? '$' : '$'}${order.totals.shipping.toFixed(2)}`
                           )}
                         </span>
                       </div>
                       <div className="flex justify-between font-semibold pt-1 border-t">
                         <span>Total:</span>
-                        <span>{order.currency === 'USD' ? '$' : '₹'}{order.totals.total.toFixed(2)}</span>
+                        <span>{order.currency === 'USD' ? '$' : '$'}{order.totals.total.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

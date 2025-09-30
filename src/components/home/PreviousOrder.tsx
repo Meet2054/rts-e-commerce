@@ -23,6 +23,10 @@ const PreviousOrders = () => {
 	const [quantities, setQuantities] = useState<Record<string, number>>({});
 	const [addingToCart, setAddingToCart] = useState<Record<string, boolean>>({});
 
+	const formatPrice = (price: number) => {
+		return price.toFixed(2);
+	};
+
 	// Fetch previous orders - Using same logic as userDetails
 	useEffect(() => {
 		console.log('🔍 [Previous Orders] useEffect triggered');
@@ -316,7 +320,7 @@ const PreviousOrders = () => {
 								whileHover={{ scale: 1.05 }}
 								transition={{ type: "spring", stiffness: 300, damping: 20 }}
 							>
-								<div className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2">
+								<div className="w-full justify-center cursor-pointer flex flex-col items-center overflow-hidden gap-4 mb-2">
 									<button 
 										className="flex justify-end w-full hover:text-[#2E318E] transition-colors" 
 										title="View Details"
@@ -341,7 +345,7 @@ const PreviousOrders = () => {
 								<div className='flex flex-row justify-between'>
 									<div className='flex flex-col w-[60%] gap-1'>
 										<div className="font-semibold text-base text-black line-clamp-2">{order.nameSnap}</div>
-										<div className="text-lg font-bold text-black">${order.unitPrice}</div>
+										<div className="text-lg font-bold text-black">${formatPrice(order.unitPrice)}</div>
 									</div>
 									<div>
 										<div className="flex items-center rounded-md py-1.5 bg-[#F1F2F4] justify-between px-2">

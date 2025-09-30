@@ -91,7 +91,7 @@ export async function GET(
           const customPriceInCents = pricingData?.customPrice;
           if (typeof customPriceInCents === 'number') {
             // Convert from cents to decimal
-            customPrice = customPriceInCents / 100;
+            customPrice = customPriceInCents;
             console.log(`Found custom price for user ${userId}: ${customPrice} (from ${customPriceInCents} cents)`);
           }
         }

@@ -333,7 +333,7 @@ const BestSelling = () => {
 								transition={{ type: "spring", stiffness: 300, damping: 20 }}
 							>
 							<div 
-							className="w-full justify-center cursor-pointer flex flex-col items-center gap-4 mb-2"
+							className="w-full justify-center cursor-pointer overflow-hidden flex flex-col items-center gap-4 mb-2"
 							onClick={() => window.location.href = `/products/${product.sku}`}
 							>
 								<button className="flex justify-end w-full hover:text-[#2E318E] transition-colors" title="Open">
@@ -352,7 +352,7 @@ const BestSelling = () => {
 								<div className='flex flex-col w-[60%] gap-1'>
 									<div className="font-semibold text-base text-black line-clamp-2">{product.name}</div>
 									{token ? (
-										<div className="text-lg font-bold text-black">₹{product.price.toLocaleString()}</div>
+										<div className="text-lg font-bold text-black">${product.price.toFixed(2)}</div>
 									) : (
 										<div className="text-sm text-gray-500">Sign in to view pricing</div>
 									)}

@@ -46,6 +46,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Delete states
@@ -89,6 +90,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
       setHasBeenUpdated(false); // Reset for next modal session
       setSelectedFile(null);
       setImagePreview(null);
+      setIsDragOver(false);
     }
   }, [open, product.id, product.name, product.description, product.category, product.price, product.stock, product.status, hasBeenUpdated])
 
@@ -267,20 +269,26 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
     }
   };
 
-  // Handle image file selection
-  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  // Validate image file
+  const validateImageFile = (file: File): string | null => {
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file');
-      return;
+      return 'Please select a valid image file';
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image size must be less than 5MB');
+      return 'Image size must be less than 5MB';
+    }
+
+    return null;
+  };
+
+  // Process selected image file
+  const processImageFile = (file: File) => {
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -294,6 +302,38 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
     reader.readAsDataURL(file);
     
     setError(''); // Clear any existing errors
+  };
+
+  // Handle image file selection from input
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    processImageFile(file);
+  };
+
+  // Handle drag and drop events
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      processImageFile(file);
+    }
   };
 
   // Handle image upload to Firebase Storage
@@ -318,6 +358,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
       // Clear the selected file and preview
       setSelectedFile(null);
       setImagePreview(null);
+      setIsDragOver(false);
       
       // Reset file input
       if (fileInputRef.current) {
@@ -478,6 +519,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
                     onClick={() => {
                       setSelectedFile(null);
                       setImagePreview(null);
+                      setIsDragOver(false);
                     }}
                     title="Remove preview"
                   >
@@ -493,11 +535,20 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
             {/* Upload Button (Edit Mode) */}
             {editMode && !imagePreview && (
               <div 
-                className="w-40 h-28 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-blue-500 transition-colors"
+                className={`w-40 h-28 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                  isDragOver 
+                    ? 'border-blue-500 bg-blue-50' 
+                    : 'border-gray-300 hover:border-blue-500'
+                }`}
                 onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
-                <Upload size={24} className="text-gray-400 mb-1" />
-                <span className="text-xs text-gray-500 text-center px-2">Click to upload new image</span>
+                <Upload size={24} className={`mb-1 ${isDragOver ? 'text-blue-500' : 'text-gray-400'}`} />
+                <span className={`text-xs text-center px-2 ${isDragOver ? 'text-blue-600' : 'text-gray-500'}`}>
+                  {isDragOver ? 'Drop image here' : 'Click or drag to upload'}
+                </span>
               </div>
             )}
           </div>

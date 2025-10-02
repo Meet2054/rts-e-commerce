@@ -296,7 +296,7 @@ const BestSelling = () => {
 			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6 gap-10">
 				<div className='flex flex-col w-full'>
 					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-2xl pl-3 font-bold text-black">Our Best-Selling Products</h2>
+						<h2 className="text-2xl pl-3 font-bold border-l-8 border-[#2E318E] p-0.5 text-black">Our Best-Selling Products</h2>
 					</div>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 						{[...Array(4)].map((_, i) => (
@@ -311,8 +311,8 @@ const BestSelling = () => {
 	return (
 		<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6 gap-10">
 			<div className='flex flex-col w-full'>
-				<div className="flex items-center justify-between mb-4">
-					<h2 className="text-2xl pl-3 font-bold text-black">Our Best-Selling Products</h2>
+				<div className="flex items-center justify-between mb-10">
+					<h2 className="text-2xl pl-3 font-bold border-l-8 border-[#2E318E] p-0.5 text-black">Our Best-Selling Products</h2>
 					<Link href="/products" className="flex items-center admin-button">
 						View more
 						<ArrowRight size={20} />

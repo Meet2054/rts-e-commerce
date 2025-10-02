@@ -104,9 +104,9 @@ export default function MobileHeader() {
 					)}
 					<Image src="/logo.svg" alt="RTS Logo" width={170} height={32} />
 				</div>
-				<Image src="/logo2.svg" alt="Katun Logo" className='hidden md:block' width={150} height={32} />
-				<Image src="/logo3.svg" alt="Katun Logo" className='hidden md:block' width={150} height={32} />
-				<Image src="/logo4.svg" alt="Katun Logo" className='hidden md:block' width={150} height={32} />
+				<Image src="/logo2.svg" alt="Katun Logo" className='hidden md:block' width={100} height={32} />
+				<Image src="/logo3.svg" alt="Katun Logo" className='hidden md:block' width={100} height={32} />
+				<Image src="/logo4.svg" alt="Katun Logo" className='hidden md:block' width={100} height={32} />
 			</div>
 			{/* Search bar */}
 			<div className="flex items-center justify-between bg-white px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-3">

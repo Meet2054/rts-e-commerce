@@ -71,7 +71,7 @@ const Header = () => {
       <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-4">
         <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3">
+          <Link href="/" className="flex items-center">
             <Image 
              src="/logo.svg" 
              alt="RTS Logo" 
@@ -83,21 +83,21 @@ const Header = () => {
           <Image 
              src="/logo2.svg" 
              alt="RTS Logo" 
-             width={200} 
+             width={150} 
              height={60} 
           />
 
           <Image 
              src="/logo3.svg" 
              alt="RTS Logo" 
-             width={200} 
+             width={150} 
              height={60} 
           />
 
           <Image 
              src="/logo4.svg" 
              alt="RTS Logo" 
-             width={200} 
+             width={150} 
              height={60} 
           />
           {/* If user is not logged in, show login/signup */}
@@ -116,7 +116,7 @@ const Header = () => {
               </Link>
             </div>
           ) : (
-            <div className="flex items-center text-black gap-2 sm:gap-5 relative">
+            <div className="flex items-center text-black gap-2 sm:gap-2 relative">
               {/* Search Bar */}
               <div className="flex items-center gap-2 relative">
                 <button

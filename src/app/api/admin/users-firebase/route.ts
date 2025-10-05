@@ -1,26 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { adminLogger, LogCategory, withPerformanceLogging } from '@/lib/admin-logger';
 
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  const url = new URL(request.url);
+  
   try {
-    console.log('Admin users API called (Firebase version with role filtering)');
+    adminLogger.info(LogCategory.API, 'Admin users API called (Firebase version)', {
+      endpoint: '/api/admin/users-firebase',
+      method: 'GET',
+      userAgent: request.headers.get('user-agent')
+    });
     
     // Check authentication - simplified version
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('No valid authorization header found');
+      adminLogger.warn(LogCategory.AUTH, 'No valid authorization header found', {
+        endpoint: '/api/admin/users-firebase',
+        ip: request.headers.get('x-forwarded-for') || 'unknown'
+      });
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const token = authHeader.split('Bearer ')[1];
     if (!token) {
-      console.log('No token provided');
+      adminLogger.warn(LogCategory.AUTH, 'No token provided in authorization header', {
+        endpoint: '/api/admin/users-firebase'
+      });
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    console.log('Token found, fetching Firebase data');
+    adminLogger.debug(LogCategory.AUTH, 'Token found, fetching Firebase data', {
+      tokenLength: token.length
+    });
 
-    const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const status = url.searchParams.get('status'); // 'active', 'requested', 'inactive'
@@ -30,12 +44,21 @@ export async function GET(request: NextRequest) {
     const endDate = url.searchParams.get('endDate');
     const offset = (page - 1) * limit;
 
-    console.log('Query params:', { page, limit, status, role, search, startDate, endDate, offset });
+    adminLogger.debug(LogCategory.USER_MANAGEMENT, 'Processing user query with parameters', {
+      page, limit, status, role, search, startDate, endDate, offset
+    });
 
     // Fetch users from Firebase Firestore
     try {
-      const usersSnapshot = await adminDb.collection('users').get();
-      console.log('Fetched users from Firebase:', usersSnapshot.size);
+      const usersSnapshot = await withPerformanceLogging(
+        LogCategory.FIREBASE,
+        'Fetch users from Firestore',
+        () => adminDb.collection('users').get()
+      );
+      
+      adminLogger.success(LogCategory.FIREBASE, `Fetched ${usersSnapshot.size} users from Firebase`, {
+        totalUsers: usersSnapshot.size
+      });
 
       const allUsers: any[] = [];
       usersSnapshot.forEach((doc) => {
@@ -73,7 +96,9 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      console.log('All users found:', allUsers.length);
+      adminLogger.info(LogCategory.USER_MANAGEMENT, `Processed ${allUsers.length} user records`, {
+        totalUsers: allUsers.length
+      });
 
       // Get order counts for each user (if you have orders collection)
       const usersWithOrderCounts = await Promise.all(
@@ -89,7 +114,10 @@ export async function GET(request: NextRequest) {
             
             totalOrders = ordersSnapshot.size;
           } catch (orderError) {
-            console.log('No orders collection or error fetching orders:', orderError);
+            adminLogger.debug(LogCategory.ORDERS, 'No orders found for user or orders collection error', {
+              userEmail: user.email,
+              error: orderError instanceof Error ? orderError.message : String(orderError)
+            });
             // Default to 0 if no orders collection exists
             totalOrders = 0;
           }
@@ -170,7 +198,9 @@ export async function GET(request: NextRequest) {
       // Filter by role if provided
       if (role) {
         filteredUsers = filteredUsers.filter(u => u.role === role);
-        console.log(`After role filter '${role}':`, filteredUsers.length);
+        adminLogger.debug(LogCategory.USER_MANAGEMENT, `Applied role filter '${role}'`, {
+          filteredCount: filteredUsers.length
+        });
       }
 
       // Filter by search term if provided (search in name, email, company)
@@ -182,7 +212,9 @@ export async function GET(request: NextRequest) {
           (u.companyName || '').toLowerCase().includes(searchLower) ||
           (u.displayName || '').toLowerCase().includes(searchLower)
         );
-        console.log(`After search filter '${search}':`, filteredUsers.length);
+        adminLogger.debug(LogCategory.USER_MANAGEMENT, `Applied search filter '${search}'`, {
+          filteredCount: filteredUsers.length
+        });
       }
 
       // Filter by date range if provided
@@ -203,17 +235,23 @@ export async function GET(request: NextRequest) {
 
           return true;
         });
-        console.log(`After date range filter (${startDate} to ${endDate}):`, filteredUsers.length);
+        adminLogger.debug(LogCategory.USER_MANAGEMENT, `Applied date range filter (${startDate} to ${endDate})`, {
+          filteredCount: filteredUsers.length
+        });
       }
 
-      console.log(`Final filtered users:`, filteredUsers.length);
-      console.log('All user statuses with roles:', usersWithOrderCounts.map(u => ({ 
-        id: u.id, 
-        name: u.name, 
-        status: u.status, 
-        role: u.role, 
-        approved: u.approved 
-      })));
+      adminLogger.info(LogCategory.USER_MANAGEMENT, `Final user filtering completed`, {
+        totalFiltered: filteredUsers.length,
+        filters: { status, role, search, startDate, endDate }
+      });
+      
+      adminLogger.debug(LogCategory.USER_MANAGEMENT, 'User summary data', {
+        userCount: usersWithOrderCounts.length,
+        statusBreakdown: usersWithOrderCounts.reduce((acc, u) => {
+          acc[u.status] = (acc[u.status] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
 
       // Apply pagination
       const paginatedUsers = filteredUsers.slice(offset, offset + limit);
@@ -222,7 +260,16 @@ export async function GET(request: NextRequest) {
       const totalCount = filteredUsers.length;
       const totalPages = Math.ceil(totalCount / limit);
 
-      console.log('Returning response:', { userCount: paginatedUsers.length, totalCount, totalPages });
+      const duration = Date.now() - startTime;
+      adminLogger.success(LogCategory.API, 'Users API request completed', {
+        endpoint: '/api/admin/users-firebase',
+        method: 'GET',
+        duration,
+        userCount: paginatedUsers.length,
+        totalCount,
+        totalPages,
+        statusCode: 200
+      });
 
       return NextResponse.json({
         users: paginatedUsers,
@@ -235,7 +282,15 @@ export async function GET(request: NextRequest) {
       });
 
     } catch (firebaseError) {
-      console.error('Firebase error:', firebaseError);
+      const duration = Date.now() - startTime;
+      adminLogger.error(LogCategory.FIREBASE, 'Firebase error in users API', {
+        endpoint: '/api/admin/users-firebase',
+        method: 'GET',
+        duration,
+        error: firebaseError instanceof Error ? firebaseError.message : String(firebaseError),
+        statusCode: 500
+      });
+      
       return NextResponse.json({
         error: 'Failed to fetch users from Firebase',
         details: firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error'
@@ -243,7 +298,15 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error fetching users:', error);
+    const duration = Date.now() - startTime;
+    adminLogger.error(LogCategory.API, 'Unexpected error in users API', {
+      endpoint: '/api/admin/users-firebase',
+      method: 'GET',
+      duration,
+      error: error instanceof Error ? error.message : String(error),
+      statusCode: 500
+    });
+    
     return NextResponse.json(
       { error: 'Failed to fetch users', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -252,28 +315,43 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
+    adminLogger.info(LogCategory.API, 'User update API called', {
+      endpoint: '/api/admin/users-firebase',
+      method: 'PUT'
+    });
+    
     // Simplified auth check
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      adminLogger.warn(LogCategory.AUTH, 'No authorization header in user update request');
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const body = await request.json();
     const { userId, action, role } = body;
     
+    adminLogger.debug(LogCategory.USER_MANAGEMENT, 'Processing user update request', {
+      userId, action, role
+    });
+    
     if (!userId) {
+      adminLogger.warn(LogCategory.USER_MANAGEMENT, 'User update request missing userId');
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     // Validate action type
     if (action && !['approve', 'reject', 'changeRole'].includes(action)) {
+      adminLogger.warn(LogCategory.USER_MANAGEMENT, 'Invalid action in user update request', { action });
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
     // Validate role for role change action
     if (action === 'changeRole') {
       if (!role || !['admin', 'client', 'employee'].includes(role)) {
+        adminLogger.warn(LogCategory.USER_MANAGEMENT, 'Invalid role in changeRole request', { role });
         return NextResponse.json({ error: 'Invalid role. Must be admin, client, or employee' }, { status: 400 });
       }
     }
@@ -284,8 +362,17 @@ export async function PUT(request: NextRequest) {
       const userDoc = await userRef.get();
       
       if (!userDoc.exists) {
+        adminLogger.warn(LogCategory.USER_MANAGEMENT, 'User not found for update', { userId });
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
+      
+      const userData = userDoc.data();
+      adminLogger.debug(LogCategory.USER_MANAGEMENT, 'User document retrieved for update', {
+        userId,
+        currentStatus: userData?.status,
+        currentRole: userData?.role,
+        currentApproval: userData?.approved
+      });
 
       // Update user based on action
       const updateData: any = {
@@ -296,23 +383,37 @@ export async function PUT(request: NextRequest) {
         updateData.status = 'active';
         updateData.approved = true;
         updateData.approvedAt = new Date();
+        adminLogger.info(LogCategory.USER_MANAGEMENT, 'Approving user', { userId });
       } else if (action === 'reject') {
         updateData.status = 'inactive';
         updateData.approved = false;
         updateData.rejectedAt = new Date();
+        adminLogger.info(LogCategory.USER_MANAGEMENT, 'Rejecting user', { userId });
       } else if (action === 'changeRole') {
         updateData.role = role;
-        console.log(`Changing role for user ${userId} to ${role}`);
+        adminLogger.info(LogCategory.USER_MANAGEMENT, 'Changing user role', {
+          userId,
+          fromRole: userData?.role,
+          toRole: role
+        });
       } else {
         // Handle legacy requests that don't specify an action but have approve/reject
         if (!action && !role) {
+          adminLogger.warn(LogCategory.USER_MANAGEMENT, 'No action or role specified in update request', { userId });
           return NextResponse.json({ error: 'Action or role is required' }, { status: 400 });
         }
       }
 
       await userRef.update(updateData);
 
-      console.log(`User ${userId} updated successfully:`, updateData);
+      const duration = Date.now() - startTime;
+      adminLogger.info(LogCategory.USER_MANAGEMENT, 'User updated successfully', {
+        userId,
+        action,
+        role: action === 'changeRole' ? role : undefined,
+        updateFields: Object.keys(updateData).filter(key => key !== 'updatedAt'),
+        duration: `${duration}ms`
+      });
 
       return NextResponse.json({ 
         message: action === 'changeRole' 
@@ -324,7 +425,15 @@ export async function PUT(request: NextRequest) {
       });
 
     } catch (firebaseError) {
-      console.error('Firebase update error:', firebaseError);
+      const duration = Date.now() - startTime;
+      adminLogger.error(LogCategory.USER_MANAGEMENT, 'Firebase update error', {
+        userId,
+        action,
+        error: firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error',
+        duration: `${duration}ms`,
+        stack: firebaseError instanceof Error ? firebaseError.stack : undefined
+      });
+      
       return NextResponse.json({
         error: 'Failed to update user in Firebase',
         details: firebaseError instanceof Error ? firebaseError.message : 'Unknown Firebase error'
@@ -332,7 +441,13 @@ export async function PUT(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error updating user:', error);
+    const duration = Date.now() - startTime;
+    adminLogger.error(LogCategory.USER_MANAGEMENT, 'Error updating user', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: `${duration}ms`,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return NextResponse.json(
       { error: 'Failed to update user', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }

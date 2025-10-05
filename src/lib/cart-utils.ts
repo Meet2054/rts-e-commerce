@@ -1,5 +1,6 @@
 // src/lib/cart-utils.ts
 import { Cart, CartItem } from './cart-types';
+import { clientLogger } from './client-logger';
 
 export class CartCalculations {
   static calculateSubtotal(items: CartItem[]): number {
@@ -107,7 +108,7 @@ export class CartStorage {
     try {
       localStorage.setItem(this.CART_KEY, JSON.stringify(cart));
     } catch (error) {
-      console.error('Failed to save cart to localStorage:', error);
+      clientLogger.error('Failed to save cart to localStorage:', error);
     }
   }
 
@@ -127,7 +128,7 @@ export class CartStorage {
       
       return cart;
     } catch (error) {
-      console.error('Failed to load cart from localStorage:', error);
+      clientLogger.error('Failed to load cart from localStorage:', error);
       this.clearCart();
       return null;
     }

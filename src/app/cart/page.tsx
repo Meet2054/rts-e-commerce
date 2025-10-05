@@ -6,7 +6,7 @@ import RecommendedProducts from "./components/RecommendedProducts";
 export default function CartPage() {
 	return (
 		<ApprovalGuard>
-			<div className="space-y-3">
+			<div className="space-y-10">
 				<Cart />
 				<RecommendedProducts />
 			</div>

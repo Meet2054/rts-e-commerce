@@ -404,7 +404,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
         </div>
         {/* Related Products */}
         <div className="w-full xl:w-2/5">
-          <div className="text-xl font-bold text-black mb-4">
+          <div className="text-xl font-bold border-l-8 border-[#2E318E] p-0.5 pl-4 text-black mb-4">
             Related Products
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-1 gap-5">

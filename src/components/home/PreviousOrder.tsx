@@ -238,7 +238,7 @@ const PreviousOrders = () => {
 			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6">
 				<div className='flex flex-col w-full'>
 					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-2xl pl-3 font-bold text-black">Previous Orders</h2>
+						<h2 className="text-2xl pl-3 font-bold border-l-8 border-[#2E318E] p-0.5 text-black">Previous Orders</h2>
 					</div>
 					<div className="flex items-center justify-center py-12">
 						<Loader2 className="animate-spin w-8 h-8 text-[#2E318E]" />
@@ -262,7 +262,7 @@ const PreviousOrders = () => {
 			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6">
 				<div className='flex flex-col w-full'>
 					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-2xl pl-3 font-bold text-black">Previous Orders</h2>
+						<h2 className="text-2xl pl-3 font-bold border-l-8 border-[#2E318E] p-0.5 text-black">Previous Orders</h2>
 					</div>
 					<div className="text-center py-12">
 						<p className="text-gray-600 mb-2">No previous orders found</p>
@@ -280,7 +280,7 @@ const PreviousOrders = () => {
 			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6">
 				<div className='flex flex-col w-full'>
 					<div className="flex items-center justify-between mb-4">
-						<h2 className="text-2xl pl-3 font-bold text-black">Previous Orders</h2>
+						<h2 className="text-2xl pl-3 font-bold border-l-8 border-[#2E318E] p-0.5 text-black">Previous Orders</h2>
 					</div>
 					<div className="text-center py-12">
 						<p className="text-red-600 mb-4">Failed to load previous orders</p>
@@ -299,8 +299,8 @@ const PreviousOrders = () => {
 	return (
 		<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6 gap-10">
 			<div className='flex flex-col w-full'>
-				<div className="flex items-center justify-between mb-4">
-					<h2 className="text-2xl pl-3 font-bold text-black">Previous Orders</h2>
+				<div className="flex items-center justify-between mb-10">
+					<h2 className="text-2xl pl-3 font-bold border-l-8 border-[#2E318E] p-0.5 text-black">Previous Orders</h2>
 					<Link href="/orders" className="flex items-center admin-button">
 						View more
 						<ArrowRight size={20} />

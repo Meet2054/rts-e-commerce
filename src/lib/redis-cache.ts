@@ -273,7 +273,7 @@ export class RedisCache {
             adminLogger.debug(LogCategory.CACHE, 'Successfully set multiple keys', {
         keyCount: keyValuePairs.length
       });
-      return true;
+      // return true;
     } catch (error) {
       console.error('❌ [REDIS] MSET error:', error);
     }

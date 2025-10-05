@@ -1,5 +1,6 @@
 // src/lib/redis-cache.ts
 import { getRedisClient } from './redis-config';
+import { adminLogger, LogCategory } from './admin-logger';
 
 export interface CacheOptions {
   ttl?: number; // Time to live in seconds
@@ -37,31 +38,40 @@ export class RedisCache {
       if (!await this.checkHealth()) return null;
       
       const fullKey = prefix ? `${prefix}:${key}` : key;
-      console.log(`🔍 [REDIS] Attempting to fetch from cache: ${fullKey}`);
+      adminLogger.debug(LogCategory.CACHE, `🔍 [REDIS] Attempting to fetch from cache: ${fullKey}`);
       
       const rawValue = await this.redis.get(fullKey);
       
       if (rawValue === null || rawValue === undefined) {
-        console.log(`❌ [REDIS] Cache MISS - Key not found: ${fullKey}`);
+        adminLogger.debug(LogCategory.CACHE, `❌ [REDIS] Cache MISS - Key not found: ${fullKey}`);
         return null;
       }
 
-      console.log(`✅ [REDIS] Cache HIT - Data found in Redis: ${fullKey}`);
+      adminLogger.debug(LogCategory.CACHE, `✅ [REDIS] Cache HIT - Data found in Redis: ${fullKey}`);
       
       // Handle different types of responses from Upstash Redis
       if (typeof rawValue === 'string') {
         try {
           const parsed = JSON.parse(rawValue);
-          console.log(`📊 [REDIS] Parsed JSON data (${rawValue.length} chars)`);
+          adminLogger.debug(LogCategory.CACHE, 'Parsed JSON data from cache', {
+            key: fullKey,
+            dataSize: `${rawValue.length} chars`
+          });
           return parsed;
         } catch (parseError) {
-          console.error('❌ [REDIS] JSON parse error:', 
-            parseError instanceof Error ? parseError.message : 'Parse failed');
-          return null;
+          adminLogger.warn(LogCategory.CACHE, 'Failed to parse JSON from cache', {
+            key: fullKey,
+            error: parseError instanceof Error ? parseError.message : 'Unknown error'
+          });
+          // Return raw value if JSON parsing fails
+          return rawValue as T;
         }
       } else {
-        // For non-string values, Upstash might return objects directly
-        console.log(`📊 [REDIS] Direct object return (${typeof rawValue})`);
+        // Return as-is (likely a string or primitive)
+        adminLogger.debug(LogCategory.CACHE, 'Direct object return from cache', {
+          key: fullKey,
+          dataType: typeof rawValue
+        });
         return rawValue as T;
       }
     } catch (error) {
@@ -86,18 +96,24 @@ export class RedisCache {
       const fullKey = prefix ? `${prefix}:${key}` : key;
       const serializedValue = JSON.stringify(value);
 
-      console.log(`💾 [REDIS] Caching data to Redis: ${fullKey}`);
-      console.log(`📊 [REDIS] Data size: ${serializedValue.length} characters, TTL: ${ttl}s`);
-
+      adminLogger.debug(LogCategory.CACHE, 'Caching data to Redis', {
+        key: fullKey,
+        dataSize: `${serializedValue.length} characters`,
+        ttl: ttl > 0 ? `${ttl}s` : 'no expiration'
+      });
+      
       if (ttl > 0) {
         await this.redis.setex(fullKey, ttl, serializedValue);
-        console.log(`✅ [REDIS] Successfully cached with TTL: ${fullKey} (expires in ${ttl}s)`);
+        adminLogger.debug(LogCategory.CACHE, 'Successfully cached with TTL', {
+          key: fullKey,
+          ttl: `${ttl}s`
+        });
       } else {
         await this.redis.set(fullKey, serializedValue);
-        console.log(`✅ [REDIS] Successfully cached (no expiration): ${fullKey}`);
-      }
-      
-      return true;
+        adminLogger.debug(LogCategory.CACHE, 'Successfully cached (no expiration)', {
+          key: fullKey
+        });
+      }      return true;
     } catch (error) {
       console.error('❌ [REDIS] SET error:', 
         error instanceof Error ? error.message : 'Unknown error');
@@ -254,7 +270,10 @@ export class RedisCache {
       });
 
       await Promise.all(promises);
-      console.log(`✅ [REDIS] Successfully set ${keyValuePairs.length} keys`);
+            adminLogger.debug(LogCategory.CACHE, 'Successfully set multiple keys', {
+        keyCount: keyValuePairs.length
+      });
+      return true;
     } catch (error) {
       console.error('❌ [REDIS] MSET error:', error);
     }

@@ -9,7 +9,8 @@ import {
   FileText,
   Users,
   Bell,
-  LogOut
+  LogOut,
+  Activity
 } from 'lucide-react';
 
 const navLinks = [
@@ -18,6 +19,7 @@ const navLinks = [
   { name: 'Orders', href: '/admin/orders', icon: <BarChart2 size={20} /> },
   { name: 'Reports List', href: '/admin/report-list', icon: <FileText size={20} /> },
   { name: 'User/Client', href: '/admin/client', icon: <Users size={20} /> },
+  { name: 'Analytics & Logs', href: '/admin/analytics', icon: <Activity size={20} /> },
   { name: 'Notification', href: '/admin/notification', icon: <Bell size={20} /> },
 ];
 

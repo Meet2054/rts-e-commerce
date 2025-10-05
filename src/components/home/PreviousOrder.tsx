@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { getProductImageUrlQuick } from '@/lib/product-image-utils';
 import { OrderItem } from '@/lib/firebase-types';
 import ProductImage from '@/components/ui/product-image';
+import { clientLogger } from '@/lib/client-logger';
 
 interface PreviousOrderItem extends OrderItem {
   orderId: string;
@@ -29,13 +30,13 @@ const PreviousOrders = () => {
 
 	// Fetch previous orders - Using same logic as userDetails
 	useEffect(() => {
-		console.log('🔍 [Previous Orders] useEffect triggered');
-		console.log('🔍 [Previous Orders] user:', user);
-		console.log('🔍 [Previous Orders] user.uid:', user?.uid);
-		console.log('🔍 [Previous Orders] token:', token ? 'present' : 'missing');
+		clientLogger.debug('🔍 [Previous Orders] useEffect triggered');
+		clientLogger.debug('🔍 [Previous Orders] user:', user);
+		clientLogger.debug('🔍 [Previous Orders] user.uid:', user?.uid);
+		clientLogger.debug('🔍 [Previous Orders] token:', token ? 'present' : 'missing');
 
 		if (!user?.uid || !token) {
-			console.log('⚠️ [Previous Orders] Missing user ID or token, skipping fetch');
+			clientLogger.debug('⚠️ [Previous Orders] Missing user ID or token, skipping fetch');
 			setLoading(false);
 			return;
 		}
@@ -44,7 +45,7 @@ const PreviousOrders = () => {
 			try {
 				setLoading(true);
 				setError(null);
-				console.log('🔍 [Previous Orders] Starting API call for user:', user.uid);
+				clientLogger.debug('🔍 [Previous Orders] Starting API call for user:', user.uid);
 
 				// Try different identifiers to match orders (same as userDetails)
 				const identifiers = [
@@ -52,7 +53,7 @@ const PreviousOrders = () => {
 					user.email
 				].filter(Boolean);
 				
-				console.log('🔍 [Previous Orders] Trying identifiers:', identifiers);
+				clientLogger.debug('🔍 [Previous Orders] Trying identifiers:', identifiers);
 				
 				let foundOrders: Array<{
 					id: string;
@@ -71,27 +72,27 @@ const PreviousOrders = () => {
 				
 				// Try each identifier until we find orders (same as userDetails)
 				for (const identifier of identifiers) {
-					console.log(`🔍 [Previous Orders] Trying identifier: ${identifier}`);
+					clientLogger.debug(`🔍 [Previous Orders] Trying identifier: ${identifier}`);
 					
 					const response = await fetch(`/api/orders?userId=${identifier}`);
-					console.log(`📡 [Previous Orders] API Response status for ${identifier}:`, response.status);
+					clientLogger.debug(`📡 [Previous Orders] API Response status for ${identifier}:`, response.status);
 					
 					if (response.ok) {
 						const result = await response.json();
-						console.log(`� [Previous Orders] API Response for ${identifier}:`, result);
+						clientLogger.debug(`� [Previous Orders] API Response for ${identifier}:`, result);
 						
 						if (result.success && result.orders && result.orders.length > 0) {
 							foundOrders = result.orders;
-							console.log(`✅ [Previous Orders] Found ${foundOrders.length} orders for identifier: ${identifier}`);
+							clientLogger.debug(`✅ [Previous Orders] Found ${foundOrders.length} orders for identifier: ${identifier}`);
 							break; // Stop trying once we find orders
 						}
 					} else {
-						console.error(`❌ [Previous Orders] API failed for ${identifier} with status:`, response.status);
+						clientLogger.error(`❌ [Previous Orders] API failed for ${identifier} with status:`, response.status);
 					}
 				}
 				
 				if (foundOrders.length === 0) {
-					console.log('� [Previous Orders] No orders found for any identifier');
+					clientLogger.debug('� [Previous Orders] No orders found for any identifier');
 					setPreviousOrders([]);
 					setQuantities({});
 					return;
@@ -101,16 +102,16 @@ const PreviousOrders = () => {
 				const recentItems: PreviousOrderItem[] = [];
 				const seenProducts = new Set<string>();
 				
-				// Sort orders by date (newest first) and only include delivered/completed orders
+				// Sort orders by date (newest first) and include all order statuses
 				const eligibleOrders = foundOrders
-					.filter(order => ['delivered', 'confirmed', 'processing'].includes(order.status))
+					.filter(order => ['delivered', 'confirmed', 'processing', 'pending'].includes(order.status))
 					.sort((a, b) => {
 						const aTime = new Date(a.createdAt).getTime();
 						const bTime = new Date(b.createdAt).getTime();
 						return bTime - aTime;
 					});
 
-				console.log(`🎯 [Previous Orders] Processing ${eligibleOrders.length} eligible orders`);
+				clientLogger.debug(`🎯 [Previous Orders] Processing ${eligibleOrders.length} eligible orders`);
 
 				for (const order of eligibleOrders) {
 					if (recentItems.length >= 4) break; // Limit to 4 items
@@ -128,7 +129,7 @@ const PreviousOrders = () => {
                                     qty: 0,
                                     lineTotal: 0
                                 });
-								console.log(`✅ [Previous Orders] Added item: ${item.nameSnap} from order ${order.orderId}`);
+								clientLogger.debug(`✅ [Previous Orders] Added item: ${item.nameSnap} from order ${order.orderId}`);
 							}
 						}
 					}
@@ -144,11 +145,11 @@ const PreviousOrders = () => {
 				});
 				setQuantities(initialQuantities);
 				
-				console.log(`✅ [Previous Orders] Final result: ${recentItems.length} unique recent items`);
+				clientLogger.debug(`✅ [Previous Orders] Final result: ${recentItems.length} unique recent items`);
 
 			} catch (err) {
 				const errorMessage = err instanceof Error ? err.message : 'Failed to fetch previous orders';
-				console.error('❌ [Previous Orders] Error:', errorMessage);
+				clientLogger.error('❌ [Previous Orders] Error:', errorMessage);
 				setError(errorMessage);
 			} finally {
 				setLoading(false);
@@ -223,9 +224,9 @@ const PreviousOrders = () => {
 				image: getProductImageUrlQuick(item.sku),
 			}, quantity);
 
-			console.log(`✅ [Previous Orders] Added ${item.nameSnap} x${quantity} to cart`);
+			clientLogger.debug(`✅ [Previous Orders] Added ${item.nameSnap} x${quantity} to cart`);
 		} catch (error) {
-			console.error('❌ [Previous Orders] Add to cart error:', error);
+			clientLogger.error('❌ [Previous Orders] Add to cart error:', error);
 		} finally {
 			setAddingToCart(prev => ({ ...prev, [itemKey]: false }));
 		}
@@ -250,13 +251,13 @@ const PreviousOrders = () => {
 
 	// Only show previous orders if user is authenticated and has orders
 	if (!token || !user?.uid) {
-		console.log('🚫 [Previous Orders] Not showing component - no token or user');
+		clientLogger.debug('🚫 [Previous Orders] Not showing component - no token or user');
 		return null;
 	}
 
 	// Show empty state if no orders (for debugging)
 	if (previousOrders.length === 0 && !loading) {
-		console.log('📭 [Previous Orders] No previous orders found, showing debug info');
+		clientLogger.debug('📭 [Previous Orders] No previous orders found, showing debug info');
 		return (
 			<div className="flex flex-col lg:flex-row max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-6">
 				<div className='flex flex-col w-full'>

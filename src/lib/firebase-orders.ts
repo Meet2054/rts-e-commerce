@@ -10,6 +10,7 @@ import {
 import { db } from './firebase-config';
 import { Order, OrderItem, CartItem } from './firebase-types';
 import CachedFirebaseService from './firebase-cache';
+import { adminLogger, LogCategory } from './admin-logger';
 
 export class OrderService {
   static async createOrder(orderData: {
@@ -62,7 +63,7 @@ export class OrderService {
       
       return orderRef.id;
     } catch (error) {
-      console.error('Error creating order:', error);
+      adminLogger.error(LogCategory.ORDERS, 'Error creating order:', error);
       throw error;
     }
   }
@@ -72,7 +73,7 @@ export class OrderService {
       // Use cached service for better performance
       return await CachedFirebaseService.getUserOrders(clientId);
     } catch (error) {
-      console.error('Error fetching client orders:', error);
+      adminLogger.error(LogCategory.ORDERS, 'Error fetching client orders:', error);
       throw error;
     }
   }
@@ -88,7 +89,7 @@ export class OrderService {
       await CachedFirebaseService.invalidateOrder(orderId);
       
     } catch (error) {
-      console.error('Error updating order status:', error);
+      adminLogger.error(LogCategory.ORDERS, 'Error updating order status:', error);
       throw error;
     }
   }
@@ -111,7 +112,7 @@ export class OrderService {
         } as OrderItem;
       });
     } catch (error) {
-      console.error('Error fetching order items:', error);
+      adminLogger.error(LogCategory.ORDERS, 'Error fetching order items:', error);
       throw error;
     }
   }

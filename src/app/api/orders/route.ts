@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { Order, OrderItem } from '@/lib/firebase-types';
 import { RedisCache } from '@/lib/redis-cache';
+import { adminLogger, LogCategory, withPerformanceLogging } from '@/lib/admin-logger';
 
 // Generate unique order ID
 function generateOrderId(): string {
@@ -12,8 +13,13 @@ function generateOrderId(): string {
 
 // POST /api/orders - Create a new order
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+  
   try {
-    console.log('🛒 [API] Processing new order request...');
+    adminLogger.info(LogCategory.ORDERS, 'Processing new order request', {
+      endpoint: '/api/orders',
+      method: 'POST'
+    });
     
     const body = await request.json();
     const {
@@ -101,7 +107,7 @@ export async function POST(request: NextRequest) {
       updatedAt: now as any
     };
 
-    console.log(`📝 [API] Creating order ${orderId} with ${orderItems.length} items`);
+    adminLogger.info(LogCategory.ORDERS, "Creating new order", { orderId, itemCount: orderItems.length });
 
     // Save to Firestore
     const orderRef = await adminDb.collection('orders').add(orderData);
@@ -110,7 +116,7 @@ export async function POST(request: NextRequest) {
       ...orderData 
     };
 
-    console.log(`✅ [API] Order ${orderId} created successfully with ID: ${orderRef.id}`);
+    adminLogger.info(LogCategory.ORDERS, 'Order created successfully', { orderId, firestoreId: orderRef.id });
 
     // Cache the order
     await RedisCache.set(`order:${orderRef.id}`, orderWithId, { ttl: 3600 });
@@ -121,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send confirmation (in real app, send email/SMS here)
-    console.log(`📧 [API] Order confirmation would be sent for ${orderId}`);
+    adminLogger.info(LogCategory.ORDERS, 'Order confirmation ready', { orderId });
 
     return NextResponse.json({
       success: true,
@@ -139,7 +145,13 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ [API] Order creation error:', error);
+    const duration = Date.now() - startTime;
+    adminLogger.error(LogCategory.ORDERS, 'Order creation error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: `${duration}ms`,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return NextResponse.json(
       { 
         success: false, 
@@ -153,14 +165,26 @@ export async function POST(request: NextRequest) {
 
 // GET /api/orders - Get user's orders or all orders (admin)
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+  let userId: string | null = null;
+  let orderId: string | null = null;
+  let status: string | null = null;
+  
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const orderId = searchParams.get('orderId');
-    const status = searchParams.get('status');
+    userId = searchParams.get('userId');
+    orderId = searchParams.get('orderId');
+    status = searchParams.get('status');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    console.log(`🔍 [API] Orders request - UserId: ${userId}, OrderId: ${orderId}, Status: ${status}`);
+    adminLogger.info(LogCategory.ORDERS, 'Orders request received', {
+      userId,
+      orderId,
+      status,
+      limit,
+      endpoint: '/api/orders',
+      method: 'GET'
+    });
 
     // Get specific order
     if (orderId) {
@@ -168,7 +192,7 @@ export async function GET(request: NextRequest) {
       let order = await RedisCache.get<Order>(cacheKey);
 
       if (!order) {
-        console.log('❌ [REDIS] Order not in cache, fetching from Firebase...');
+        adminLogger.debug(LogCategory.ORDERS, 'Order not in cache, fetching from Firebase', { orderId });
         const orderDoc = await adminDb.collection('orders').doc(orderId).get();
         
         if (!orderDoc.exists) {
@@ -194,7 +218,7 @@ export async function GET(request: NextRequest) {
       let orders = await RedisCache.get<Order[]>(cacheKey);
 
       if (!orders) {
-        console.log(`❌ [REDIS] User orders not in cache for userId: ${userId}, fetching from Firebase...`);
+        adminLogger.debug(LogCategory.ORDERS, 'User orders not in cache, fetching from Firebase', { userId });
         
         // For now, get all orders and filter by clientId to avoid index requirements
         // In production, you should create the proper Firestore indexes
@@ -223,7 +247,7 @@ export async function GET(request: NextRequest) {
           .slice(0, limit);
 
         await RedisCache.set(cacheKey, orders, { ttl: 600 });
-        console.log(`✅ [REDIS] Cached ${orders.length} orders for userId: ${userId}`);
+        adminLogger.debug(LogCategory.ORDERS, 'Cached user orders', { userId, orderCount: orders.length });
       }
 
       return NextResponse.json({
@@ -238,7 +262,7 @@ export async function GET(request: NextRequest) {
     let orders = await RedisCache.get<Order[]>(cacheKey);
 
     if (!orders) {
-      console.log('❌ [REDIS] All orders not in cache, fetching from Firebase...');
+      adminLogger.debug(LogCategory.ORDERS, 'All orders not in cache, fetching from Firebase');
       let query = adminDb.collection('orders')
         .orderBy('createdAt', 'desc')
         .limit(limit);
@@ -256,7 +280,14 @@ export async function GET(request: NextRequest) {
       await RedisCache.set(cacheKey, orders, { ttl: 300 });
     }
 
-    console.log(`✅ [API] Retrieved ${orders.length} orders`);
+    const duration = Date.now() - startTime;
+    adminLogger.info(LogCategory.ORDERS, 'Orders retrieved successfully', {
+      orderCount: orders.length,
+      duration: `${duration}ms`,
+      userId,
+      orderId,
+      status
+    });
 
     return NextResponse.json({
       success: true,
@@ -265,7 +296,16 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ [API] Orders fetch error:', error);
+    const duration = Date.now() - startTime;
+    adminLogger.error(LogCategory.ORDERS, 'Orders fetch error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      duration: `${duration}ms`,
+      userId,
+      orderId,
+      status,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return NextResponse.json(
       { 
         success: false, 
@@ -298,7 +338,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    console.log(`📝 [API] Updating order ${orderId} status to ${status}`);
+    adminLogger.info(LogCategory.ORDERS, 'Updating order status', { orderId, status });
 
     // Update in Firestore
     const updateData: any = {
@@ -334,7 +374,7 @@ export async function PUT(request: NextRequest) {
       await RedisCache.delete(`orders:user:${updatedOrder.clientId}`);
     }
 
-    console.log(`✅ [API] Order ${orderId} updated successfully`);
+    adminLogger.info(LogCategory.ORDERS, 'Order updated successfully', { orderId });
 
     return NextResponse.json({
       success: true,

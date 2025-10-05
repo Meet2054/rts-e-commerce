@@ -8,18 +8,17 @@ import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { FcGoogle } from "react-icons/fc";
-import { signIn, checkUserApproval, getUserData } from '@/lib/firebase-auth';
+import { signIn, signInWithGoogle, resetPassword, checkUserApproval, getUserData } from '@/lib/firebase-auth';
 
 
 
 export default function AuthForms() {
-  const [step, setStep] = useState<'signin' | 'reset' | 'newpass'>('signin');
+  const [step, setStep] = useState<'signin' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPass, setConfirmPass] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -80,19 +79,78 @@ export default function AuthForms() {
     }
   };
 
-  const handleResetPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: trigger reset email
-    setStep('newpass');
-  };
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setLoading(true);
 
-  const handleNewPassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === confirmPass) {
-      // TODO: save new password
-      setStep('signin');
+    try {
+      const { user, error } = await signInWithGoogle();
+      if (error) {
+        setError(error);
+      } else if (user) {
+        // Check user role and approval status
+        const userData = await getUserData(user.uid);
+        
+        if (userData?.role === 'admin') {
+          // Admin users go to admin panel
+          router.push('/');
+        } else {
+          // Check if regular user is approved
+          const { approved, status } = await checkUserApproval(user.uid);
+          
+          if (!approved) {
+            if (status === 'requested') {
+              setError('Your account is pending admin approval. Please wait for approval before signing in.');
+            } else if (status === 'inactive') {
+              setError('Your account has been deactivated. Please contact support.');
+            } else {
+              setError('Your account is not approved for access. Please contact support.');
+            }
+            // Sign out the user since they're not approved
+            const { signOut } = await import('@/lib/firebase-auth');
+            await signOut();
+          } else {
+            // Approved user - redirect to home
+            router.push('/');
+          }
+        }
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      console.error('Google sign-in error:', err);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!email) {
+      setError('Please enter your email address');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { success, error } = await resetPassword(email);
+      if (error) {
+        setError(error);
+      } else if (success) {
+        setSuccess('Password reset email sent! Check your inbox and follow the instructions to reset your password.');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Reset password error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   return (
     <div className="min-h-[900px] max-w-[1550px] flex">
@@ -167,7 +225,11 @@ export default function AuthForms() {
                   {/* Forgot Password */}
                   <button
                     type="button"
-                    onClick={() => setStep('reset')}
+                    onClick={() => {
+                      setStep('reset');
+                      setError('');
+                      setSuccess('');
+                    }}
                     className="text-black hover:underline text-base mt-2 hover:text-blue-400"
                   >
                     Forgot Password?
@@ -208,10 +270,12 @@ export default function AuthForms() {
                   {/* Google Sign in */}
                   <button
                     type="button"
-                    className="w-full flex items-center justify-center gap-2 border border-black py-3 px-4 rounded-lg hover:bg-gray-50"
+                    onClick={handleGoogleSignIn}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 border border-black py-3 px-4 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <FcGoogle size={20} />
-                    Continue with Google
+                    {loading ? 'Signing in...' : 'Continue with Google'}
                   </button>
                 </form>
               </motion.div>
@@ -229,10 +293,23 @@ export default function AuthForms() {
               >
                 <div className="flex flex-col items-center">
                   <h2 className="text-2xl font-bold text-black">Reset Password</h2>
-                  <p className="text-sm text-black">Get a link to reset your password.</p>
+                  <p className="text-sm text-black">Enter your email to receive a password reset link.</p>
                 </div>
 
                 <form onSubmit={handleResetPassword} className="space-y-4">
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                      <span className="text-red-600 text-sm">{error}</span>
+                    </div>
+                  )}
+                  
+                  {success && (
+                    <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                      <span className="text-green-600 text-sm">{success}</span>
+                    </div>
+                  )}
+
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
                     <input
@@ -240,97 +317,38 @@ export default function AuthForms() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg"
+                      disabled={loading}
+                      className="w-full pl-10 pr-4 py-3 bg-[#F1F2F4] rounded-lg disabled:opacity-50"
                       placeholder="Enter registered email *"
                     />
                   </div>
 
-                  {/* RE Send */}
-                  <div className="flex justify-between py-2 text-sm">
-                    <button
-                      type="button"
-                      onClick={() => setStep('reset')}
-                      className="text-black hover:underline"
-                    >
-                      Re-send
-                    </button>
-                  </div>
-
-                  <button className="w-full bg-black text-white py-3 rounded-lg">
-                    Send Reset Link
-                  </button>
-                </form>
-              </motion.div>
-            )}
-
-            {step === 'newpass' && (
-              <motion.div
-                key="newpass"
-                variants={variants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={{ duration: 0.4 }}
-                className="space-y-10"
-              >
-                <div className="flex flex-col items-center">
-                  <h2 className="text-2xl font-bold text-black">New Password</h2>
-                  <p className="text-sm text-black">Set a new password for your account.</p>
-                </div>
-
-                <form onSubmit={handleNewPassword} className="space-y-4">
-                  {/* New Password */}
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="w-full pl-10 pr-12 py-3 bg-[#F1F2F4] rounded-lg"
-                      placeholder="New Password *"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                    >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-
-                  {/* Confirm Password */}
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-800" />
-                    <input
-                      type={showConfirm ? 'text' : 'password'}
-                      value={confirmPass}
-                      onChange={(e) => setConfirmPass(e.target.value)}
-                      required
-                      className="w-full pl-10 pr-12 py-3 bg-[#F1F2F4] rounded-lg"
-                      placeholder="Confirm Password *"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
-                    >
-                      {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-
-                  <button className="w-full bg-black text-white py-3 rounded-lg">
-                    Edit Password
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-black hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center"
+                  >
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Sending...
+                      </div>
+                    ) : (
+                      'Send Reset Link'
+                    )}
                   </button>
 
-                  <div className="text-start text-sm text-black">
-                    Already have an account?{' '}
+                  <div className="text-center">
                     <button
                       type="button"
-                      onClick={() => setStep('signin')}
-                      className="text-blue-600 hover:underline"
+                      onClick={() => {
+                        setStep('signin');
+                        setError('');
+                        setSuccess('');
+                      }}
+                      className="text-blue-600 hover:text-blue-500 font-medium text-sm"
                     >
-                      Sign in
+                      Back to Sign In
                     </button>
                   </div>
                 </form>

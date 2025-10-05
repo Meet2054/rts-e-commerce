@@ -4,7 +4,10 @@ import {
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
   onAuthStateChanged,
-  User as FirebaseUser
+  User as FirebaseUser,
+  GoogleAuthProvider,
+  signInWithPopup,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { auth, db } from './firebase-config';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -17,6 +20,71 @@ export const signIn = async (email: string, password: string) => {
     return { user: result.user, error: null };
   } catch (error: any) {
     return { user: null, error: error.message };
+  }
+};
+
+export const signInWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    // Optional: Add additional scopes if needed
+    // provider.addScope('profile');
+    // provider.addScope('email');
+    
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    
+    // Check if user document exists, if not create one
+    const userRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      // Determine if user should be admin (you can customize this logic)
+      const isAdmin = user.email?.endsWith('@admin.com') || user.email === 'admin@yourdomain.com';
+      
+      // Create user document for new Google sign-in users
+      const userDocData: any = {
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL,
+        role: isAdmin ? 'admin' as const : 'client' as const,
+        status: isAdmin ? 'active' as const : 'requested' as const,
+        approved: isAdmin ? true : false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        authProvider: 'google'
+      };
+      
+      if (isAdmin) {
+        userDocData.approvedAt = serverTimestamp();
+        userDocData.approvedBy = 'system';
+      }
+      
+      await setDoc(userRef, userDocData);
+    }
+    
+    return { user, error: null };
+  } catch (error: any) {
+    return { user: null, error: error.message };
+  }
+};
+
+export const resetPassword = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return { success: true, error: null };
+  } catch (error: any) {
+    let errorMessage = error.message;
+    
+    // Provide user-friendly error messages
+    if (error.code === 'auth/user-not-found') {
+      errorMessage = 'No account found with this email address.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Please enter a valid email address.';
+    } else if (error.code === 'auth/too-many-requests') {
+      errorMessage = 'Too many requests. Please try again later.';
+    }
+    
+    return { success: false, error: errorMessage };
   }
 };
 

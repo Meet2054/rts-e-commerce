@@ -158,7 +158,7 @@ export default function AuthForms() {
       {/* Right side - Image */}
       <div className="hidden lg:flex relative w-1/2 p-4 bg-white">
         <div className='w-full h-full'>
-        <Image src="/login2.svg" alt="Background" width={1000} height={500} className="object-cover" />
+        <Image src="/login2.svg" alt="Background" fill className="object-contain" />
         </div>
       </div>
 

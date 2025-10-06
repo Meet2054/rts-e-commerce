@@ -326,31 +326,200 @@ export default function OrdersPage() {
     return text.substring(0, maxLength) + '...';
   };
 
-  const exportOrders = () => {
-    // Create CSV content
-    const headers = ['Order ID', 'Customer Name', 'Email', 'Phone', 'Company', 'Status', 'Amount', 'Items', 'Date'];
-    const csvContent = [
-      headers.join(','),
-      ...orders.map(order => [
-        order.orderId || order.id,
-        order.user?.displayName || order.shippingInfo?.fullName || 'Unknown',
-        order.user?.email || order.clientEmail || '',
-        order.user?.phoneNumber || order.shippingInfo?.phone || '',
-        order.user?.companyName || '',
-        order.status,
-        order.totals?.total || 0,
-        order.items?.length || 0,
-        formatDate(order.createdAt)
-      ].join(','))
-    ].join('\n');
-    // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `orders-${activeTab.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportOrders = async () => {
+    if (!token || isExporting) return;
+    
+    setIsExporting(true);
+    try {
+      // Build query parameters for fetching ALL orders with current filters
+      const queryParams = new URLSearchParams({
+        page: '1',
+        limit: '10000' // Large limit to get all orders
+      });
+
+      // Add status filter if not 'All'
+      if (activeTab !== 'All') {
+        let statusValue = '';
+        if (activeTab === 'Complete') statusValue = 'delivered';
+        else if (activeTab === 'Pending') statusValue = 'pending';
+        else if (activeTab === 'Cancelled') statusValue = 'cancelled';
+        
+        if (statusValue) {
+          queryParams.append('status', statusValue);
+        }
+      }
+
+      // Add date range filters if present
+      if (dateRange.startDate) {
+        queryParams.append('startDate', dateRange.startDate);
+      }
+      if (dateRange.endDate) {
+        queryParams.append('endDate', dateRange.endDate);
+      }
+
+      console.log('Exporting orders with filters:', queryParams.toString());
+
+      const response = await fetch(`/api/admin/orders?${queryParams.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders for export');
+      }
+
+      const data = await response.json();
+      const allFilteredOrders = data.orders || [];
+
+      console.log(`Exporting ${allFilteredOrders.length} orders`);
+
+      // Helper function to safely format date
+      const formatDateForCSV = (dateField: any) => {
+        try {
+          if (!dateField) return '';
+          
+          // Handle Firebase Timestamp format
+          if (dateField && typeof dateField === 'object' && dateField._seconds) {
+            return new Date(dateField._seconds * 1000).toLocaleDateString();
+          }
+          
+          // Handle regular date
+          if (dateField.toDate && typeof dateField.toDate === 'function') {
+            return dateField.toDate().toLocaleDateString();
+          }
+          
+          return new Date(dateField).toLocaleDateString();
+        } catch (error) {
+          console.error('Date formatting error:', error);
+          return '';
+        }
+      };
+
+      // Helper function to escape CSV values
+      const escapeCSV = (value: any) => {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      // Create structured CSV content with section-based format for each order
+      const csvRows: string[] = [];
+      
+      allFilteredOrders.forEach((order: Order, orderIndex: number) => {
+        // Add separator between orders (except for first order)
+        if (orderIndex > 0) {
+          csvRows.push(''); // Empty row for separation
+          csvRows.push(''); // Extra empty row for better separation
+        }
+        
+        // ORDER INFORMATION Section
+        csvRows.push('*** ORDER INFORMATION ***');
+        csvRows.push(`Order ID,${escapeCSV(order.orderId || order.id)}`);
+        csvRows.push(`Status,${escapeCSV(order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : '')}`);
+        csvRows.push(`Created Date,${escapeCSV(formatDateForCSV(order.createdAt))}`);
+        csvRows.push(`Currency,${escapeCSV(order.currency || 'USD')}`);
+        
+        // Empty row
+        csvRows.push('');
+        
+        // CUSTOMER INFORMATION Section
+        csvRows.push('CUSTOMER INFORMATION');
+        csvRows.push(`Name,${escapeCSV(order.user?.displayName || order.shippingInfo?.fullName || 'Unknown')}`);
+        csvRows.push(`Email,${escapeCSV(order.user?.email || order.clientEmail || '')}`);
+        csvRows.push(`Phone,${escapeCSV(order.user?.phoneNumber || order.shippingInfo?.phone || '')}`);
+        csvRows.push(`Company,${escapeCSV(order.user?.companyName || '')}`);
+        
+        // Empty row
+        csvRows.push('');
+        
+        // SHIPPING ADDRESS Section
+        csvRows.push('SHIPPING ADDRESS');
+        csvRows.push(`Street,${escapeCSV(order.shippingInfo?.address?.street || '')}`);
+        csvRows.push(`City,${escapeCSV(order.shippingInfo?.address?.city || '')},${escapeCSV(order.shippingInfo?.address?.state || '')}`);
+        csvRows.push(`State,${escapeCSV(order.shippingInfo?.address?.state || '')}`);
+        csvRows.push(`ZIP Code,${escapeCSV(order.shippingInfo?.address?.zipCode || '')}`);
+        csvRows.push(`Country,${escapeCSV(order.shippingInfo?.address?.country || '')}`);
+        
+        // Empty row
+        csvRows.push('');
+        
+        // ORDER ITEMS Section
+        csvRows.push('ORDER ITEMS');
+        csvRows.push('SKU,Product Name,Brand,Quantity,Unit Price,Line Total');
+        
+        if (order.items && order.items.length > 0) {
+          order.items.forEach((item) => {
+            csvRows.push(`${escapeCSV(item.sku || '')},${escapeCSV(item.nameSnap || 'Unknown Product')},${escapeCSV(item.brandSnap || '')},${escapeCSV(item.qty || 0)},${escapeCSV(item.unitPrice || 0)},${escapeCSV(item.lineTotal || 0)}`);
+          });
+        } else {
+          csvRows.push('No items in this order');
+        }
+        
+        // Empty row
+        csvRows.push('');
+        
+        // ORDER TOTALS Section
+        csvRows.push('ORDER TOTALS');
+        csvRows.push(`Item Count,${escapeCSV(order.items?.length || 0)}`);
+        csvRows.push(`Subtotal,${escapeCSV(order.totals?.subtotal || 0)}`);
+        csvRows.push(`Tax,${escapeCSV(order.totals?.tax || 0)}`);
+        csvRows.push(`Shipping,${escapeCSV(order.totals?.shipping || 0)}`);
+        csvRows.push(`Total,${escapeCSV(order.totals?.total || 0)}`);
+        
+        // Add payment information if available
+        if (order.paymentInfo?.method || order.paymentInfo?.status) {
+          csvRows.push('');
+          csvRows.push('PAYMENT INFORMATION');
+          csvRows.push(`Payment Method,${escapeCSV(order.paymentInfo?.method || '')}`);
+          csvRows.push(`Payment Status,${escapeCSV(order.paymentInfo?.status || '')}`);
+        }
+        
+        // Add notes if available
+        if (order.notes) {
+          csvRows.push('');
+          csvRows.push('ORDER NOTES');
+          csvRows.push(`Notes,${escapeCSV(order.notes)}`);
+        }
+      });
+
+      const csvContent = csvRows.join('\n');
+
+      // Create and download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Create filename with filter info
+      let filename = 'orders';
+      if (activeTab !== 'All') {
+        filename += `-${activeTab.toLowerCase()}`;
+      }
+      if (dateRange.startDate || dateRange.endDate) {
+        filename += '-filtered';
+      }
+      filename += `-${new Date().toISOString().split('T')[0]}.csv`;
+      
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      console.log('Orders export completed successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      setError('Failed to export orders. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -369,10 +538,13 @@ export default function OrdersPage() {
         </div>
         <button 
           onClick={exportOrders}
-          className="flex items-center gap-2 admin-button hover:bg-[#2E318E]"
+          disabled={isExporting}
+          className={`flex items-center gap-2 admin-button hover:bg-[#2E318E] ${
+            isExporting ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
           <Upload size={16} />
-          Export Orders List
+          {isExporting ? 'Exporting...' : 'Export Orders List'}
         </button>
       </div>
       {error && (

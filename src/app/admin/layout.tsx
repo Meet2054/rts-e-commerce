@@ -1,5 +1,6 @@
 "use client";
 import { useAuth } from "@/components/auth/auth-provider";
+import { NotificationProvider } from "@/components/admin/notification-provider";
 import AdminHeader from "./components/Admin-header";
 import SideNavbar from "./components/Side-Navbar";
 
@@ -12,7 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     function handleResize() {
-      setIsSmallScreen(window.innerWidth < 1280);
+      setIsSmallScreen(window.innerWidth < 1024);
     }
     handleResize();
     window.addEventListener("resize", handleResize);
@@ -57,12 +58,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="bg-[#F1F2F4] min-h-screen">
-      <SideNavbar />
-      <AdminHeader />
-      <main className="ml-[300px] mt-[64px]">
-          {children}
-      </main>
-    </div>
+    <NotificationProvider>
+      <div className="bg-[#F1F2F4] min-h-screen">
+        <SideNavbar />
+        <AdminHeader />
+        <main className="ml-[300px] mt-[64px]">
+            {children}
+        </main>
+      </div>
+    </NotificationProvider>
   );
 }

@@ -61,6 +61,7 @@ export default function ProductsPage() {
   const [availableOEMs, setAvailableOEMs] = useState<string[]>([]);
   const [selectedOEMs, setSelectedOEMs] = useState<string[]>([]);
   const [showOEMDropdown, setShowOEMDropdown] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const oemDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -178,6 +179,115 @@ export default function ProductsPage() {
     }
   };
 
+  // Export all products to CSV
+  const exportProducts = async () => {
+    try {
+      setExportLoading(true);
+      console.log('🔄 Starting product export...');
+      
+      // Fetch all products without pagination or filters
+      const response = await fetch('/api/products?pageSize=10000&t=' + Date.now());
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('📦 API Response:', data);
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch products for export');
+      }
+      
+      const allProducts = data.products;
+      console.log(`✅ Fetched ${allProducts.length} products for export`);
+      
+      if (!allProducts || allProducts.length === 0) {
+        throw new Error('No products found to export');
+      }
+      
+      // Define CSV headers
+      const headers = [
+        'SKU',
+        'Name',
+        'Description',
+        'Brand',
+        'Price',
+        'Base Price',
+        'OEM',
+        'OEM Part Number',
+        'Katun Part Number',
+        'Category',
+        'Status',
+        'Comments',
+        'For Use In',
+        'Created At',
+        'Updated At'
+      ];
+      
+      // Convert products to CSV format
+      const csvRows = [headers.join(',')];
+      
+      allProducts.forEach((product: Product) => {
+        // Helper function to format Firebase timestamps
+        const formatDate = (timestamp: any): string => {
+          if (!timestamp) return '';
+          try {
+            // Handle Firebase timestamp format with _seconds and _nanoseconds
+            if (timestamp._seconds) {
+              return new Date(timestamp._seconds * 1000).toISOString();
+            }
+            // Handle regular date string/object
+            return new Date(timestamp).toISOString();
+          } catch (error) {
+            console.warn('Error formatting date:', timestamp, error);
+            return '';
+          }
+        };
+
+        const row = [
+          `"${product.sku || ''}"`,
+          `"${(product.name || '').replace(/"/g, '""')}"`,
+          `"${(product.description || '').replace(/"/g, '""')}"`,
+          `"${product.brand || ''}"`,
+          `"${product.price || 0}"`,
+          `"${(product as any).basePrice || product.price || 0}"`,
+          `"${product.oem || ''}"`,
+          `"${product.oemPN || ''}"`,
+          `"${product.katunPN || ''}"`,
+          `"${product.category || ''}"`,
+          `"${product.isActive ? 'Active' : 'Inactive'}"`,
+          `"${((product as any).comments || '').replace(/"/g, '""')}"`,
+          `"${((product as any).forUseIn || '').replace(/"/g, '""')}"`,
+          `"${formatDate(product.createdAt)}"`,
+          `"${formatDate(product.updatedAt)}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+      
+      const csvContent = csvRows.join('\n');
+      
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `products-export-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log(`✅ Successfully exported ${allProducts.length} products to CSV`);
+    } catch (error) {
+      console.error('❌ Error exporting products:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to export products: ${errorMessage}`);
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   // Handle search with debouncing to avoid too many API calls
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -276,8 +386,13 @@ export default function ProductsPage() {
           )}
         </div>
         <div className="flex gap-3 relative" ref={dropdownRef}>
-          <button className="flex items-center gap-2 admin-button">
-            <Upload size={16} /> Export Product
+          <button 
+            className="flex items-center gap-2 admin-button disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={exportProducts}
+            disabled={exportLoading}
+          >
+            <Upload size={16} /> 
+            {exportLoading ? 'Exporting...' : 'Export Products'}
           </button>
           <button
             className="flex items-center gap-2 admin-button"

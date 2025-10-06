@@ -51,20 +51,7 @@ interface RecentOrder {
   items?: { id: string; name: string; qty: number }[];
 }
 
-const chartData = [
-  { month: "Jan", value: 35 },
-  { month: "Feb", value: 28 },
-  { month: "Mar", value: 55 },
-  { month: "Apr", value: 62 },
-  { month: "May", value: 67 },
-  { month: "Jun", value: 22 },
-  { month: "Jul", value: 18 },
-  { month: "Aug", value: 80 }, // highlight
-  { month: "Sep", value: 60 },
-  { month: "Oct", value: 65 },
-  { month: "Nov", value: 25 },
-  { month: "Dec", value: 40 },
-];
+
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
@@ -75,6 +62,7 @@ export default function Dashboard() {
   });
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [chartData, setChartData] = useState<{ month: string; value: number; revenue: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const { token } = useAuth();
   const router = useRouter();
@@ -205,6 +193,102 @@ export default function Dashboard() {
             }));
 
           setTopProducts(sortedProducts);
+
+          // Process monthly revenue data for chart
+          const currentYear = new Date().getFullYear();
+          const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+          const monthlyData = Array.from({ length: 12 }, (_, index) => ({
+            month: monthNames[index],
+            value: 0,
+            revenue: 0
+          }));
+
+          console.log(`Processing ${orders.length} orders for chart data...`);
+          console.log('Sample order for debugging:', orders[0]);
+
+          // Calculate monthly revenue from orders
+          orders.forEach((order: RecentOrder, orderIndex: number) => {
+            try {
+              let orderDate: Date;
+              let orderRevenue = 0;
+              
+              // Debug first few orders
+              if (orderIndex < 3) {
+                console.log(`Order ${orderIndex}:`, {
+                  createdAt: order.createdAt,
+                  totals: order.totals,
+                  totalAmount: order.totalAmount
+                });
+              }
+              
+              // Handle different date formats
+              if (order.createdAt && typeof order.createdAt === 'object' && 'seconds' in order.createdAt) {
+                orderDate = new Date((order.createdAt as any).seconds * 1000);
+              } else if (order.createdAt && typeof order.createdAt === 'object' && '_seconds' in order.createdAt) {
+                orderDate = new Date((order.createdAt as any)._seconds * 1000);
+              } else if (order.createdAt && typeof order.createdAt === 'object' && 'toDate' in order.createdAt) {
+                orderDate = (order.createdAt as any).toDate();
+              } else if (order.createdAt) {
+                orderDate = new Date(order.createdAt);
+              } else {
+                console.warn('Order has no createdAt date:', order.id);
+                return;
+              }
+              
+              // Get order revenue with multiple fallbacks
+              if (order.totals?.total) {
+                orderRevenue = Number(order.totals.total);
+              } else if (order.totalAmount) {
+                orderRevenue = Number(order.totalAmount);
+              } else {
+                console.warn('Order has no revenue data:', order.id);
+                return;
+              }
+              
+              if (orderIndex < 3) {
+                console.log(`Processed order ${orderIndex}:`, {
+                  date: orderDate,
+                  year: orderDate.getFullYear(),
+                  month: orderDate.getMonth(),
+                  revenue: orderRevenue
+                });
+              }
+              
+              // Include all orders, not just current year for better visualization
+              if (orderDate && !isNaN(orderDate.getTime()) && orderRevenue > 0) {
+                const monthIndex = orderDate.getMonth();
+                const year = orderDate.getFullYear();
+                
+                // Include orders from current and previous year for better chart
+                if (year >= currentYear - 1) {
+                  monthlyData[monthIndex].revenue += orderRevenue;
+                }
+              }
+            } catch (error) {
+              console.error('Error processing order:', order.id, error);
+            }
+          });
+
+          // Calculate display values after processing all orders
+          monthlyData.forEach((data, index) => {
+            if (data.revenue > 0) {
+              // Scale revenue to bar height (min 15px, max 80px)
+              data.value = Math.min(80, Math.max(15, (data.revenue / 100) + 10));
+            } else {
+              data.value = 5; // Minimum height for empty months
+            }
+          });
+
+          console.log('Final monthly data:', monthlyData);
+
+          // Find current month to highlight
+          const currentMonth = new Date().getMonth();
+          const processedChartData = monthlyData.map((data, index) => ({
+            ...data,
+            isCurrentMonth: index === currentMonth
+          }));
+
+          setChartData(processedChartData);
         }
 
         // Fallback to mock products if no order data
@@ -380,12 +464,20 @@ export default function Dashboard() {
           </div>
           <div className="flex items-end justify-between h-52 px-2">
             {chartData.map((bar, idx) => (
-              <div key={bar.month} className="flex flex-col items-center">
+              <div key={bar.month} className="flex flex-col items-center group relative">
+                {/* Tooltip */}
+                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                  {bar.month}: ${bar.revenue.toLocaleString()}
+                </div>
                 <div
-                  className={`w-8 rounded-t ${idx === 7 ? "bg-black" : "bg-gray-300"}`}
-                  style={{ height: `${bar.value * 1.5}px` }}
+                  className={`w-8 rounded-t transition-colors hover:opacity-80 ${
+                    (bar as any).isCurrentMonth ? "bg-black" : "bg-gray-300"
+                  }`}
+                  style={{ height: `${Math.max(bar.value, 5)}px` }}
                 ></div>
-                <div className={`mt-2 text-xs ${idx === 7 ? "font-bold text-black" : "text-gray-500"}`}>
+                <div className={`mt-2 text-xs ${
+                  (bar as any).isCurrentMonth ? "font-bold text-black" : "text-gray-500"
+                }`}>
                   {bar.month}
                 </div>
               </div>

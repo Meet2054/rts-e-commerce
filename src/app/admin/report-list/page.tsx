@@ -12,7 +12,6 @@ import {
   BarChart3,
   PieChart,
   FileText,
-  Filter
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 

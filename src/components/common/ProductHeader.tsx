@@ -47,7 +47,13 @@ const megaMenuData = {
         items: [
           'All Printers', 'Laser Printers', 'Inkjet Printers', 'Label Makers',
           'Colour Label Printers', 'Direct Thermal Label Printers',
-          'Thermal Transfer Printers & Supplies', 'Thermal Receipt Printers',
+          'Thermal Transfer Printers & Supplies', 
+        ]
+      },
+      {
+        title: 'Printers',
+        items: [
+           'Thermal Receipt Printers',
           'ID Card Printers & Supplies', '3D Printers', 'Handheld Label Printers',
           'Portable Printers', 'Dot Matrix Printers', 'Wide Format & Large Format Printers'
         ]
@@ -338,7 +344,7 @@ export default function ProductHeader() {
   return (
     <div className="bg-white shadow-sm mt-40 xl:mt-3 mb-2">
       <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex justify-between items-start xl:items-center py-2">
-        <div className="flex flex-col xl:flex-row xl:items-center gap-16 w-full xl:w-auto">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:gap-16 w-full xl:w-auto">
           {categories.map((cat, idx) => (
             <div 
               key={cat.label + '-' + idx} 
@@ -349,13 +355,8 @@ export default function ProductHeader() {
               <button
                 className="py-2 text-base text-black font-medium rounded hover:text-blue-400 cursor-pointer flex items-center justify-between xl:justify-start gap-1 w-full xl:w-auto border-b xl:border-b-0 border-gray-200 xl:border-none"
                 onClick={(e) => {
-                  if (isDesktop) {
-                    // Mobile/Tablet: Toggle dropdown
-                    handleMobileToggle(cat.label, e);
-                  } else {
-                    // Desktop: Navigate to products
-                    handleNavigateToProducts();
-                  }
+                  // Both Desktop and Mobile: Toggle dropdown with click
+                  handleMobileToggle(cat.label, e);
                 }}
               >
                 {cat.label}
@@ -373,7 +374,7 @@ export default function ProductHeader() {
                 >
                   {/* Invisible buffer zone to prevent menu switching */}
                   <div className="h-4 w-full" onMouseEnter={handleMenuMouseEnter}></div>
-                  <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16">
+                  <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 mt-3">
                     <div className="flex shadow-md border border-gray-200">
                       {megaMenuData[activeMenu as keyof typeof megaMenuData]?.sections.map((section, sectionIdx) => (
                         <div 
@@ -418,7 +419,7 @@ export default function ProductHeader() {
                     <h3 className="text-base font-semibold text-blue-600 border-b border-gray-300 pb-2 sticky top-0 bg-gray-50 z-10">
                       {cat.label}
                     </h3>
-                    <div className="grid grid-cols-2 gap-2 pb-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 pb-2">
                       {megaMenuData[cat.label as keyof typeof megaMenuData]?.sections.map((section) => 
                         section.items
                       ).flat().map((item, itemIdx) => (

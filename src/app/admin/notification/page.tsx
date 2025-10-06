@@ -114,9 +114,113 @@ export default function NotificationPage() {
 		}
 	};
 
-	const markAllAsRead = () => {
-		// In a real app, this would mark all support queries as "read"
-		console.log('Marking all support queries as read');
+	const markAllAsRead = async () => {
+		const pendingQueries = supportQueries.filter(query => query.status === 'pending');
+		
+		if (pendingQueries.length === 0) {
+			return;
+		}
+
+		const confirmMarkRead = confirm(`Are you sure you want to mark ${pendingQueries.length} pending queries as read (processing)?`);
+		
+		if (!confirmMarkRead) return;
+
+		setLoading(true);
+		try {
+			// Update each pending query to processing status
+			const updatePromises = pendingQueries.map(async (query) => {
+				const response = await fetch('/api/support', {
+					method: 'PUT',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						queryId: query.id,
+						status: 'processing',
+						updatedBy: 'Admin'
+					})
+				});
+				
+				if (!response.ok) {
+					throw new Error(`Failed to update query ${query.id}`);
+				}
+				
+				return response.json();
+			});
+
+			await Promise.all(updatePromises);
+			
+			// Update all pending queries to processing in local state
+			setSupportQueries(prev => 
+				prev.map(query => 
+					query.status === 'pending' 
+						? { 
+							...query, 
+							status: 'processing' as const,
+							updatedAt: new Date().toLocaleString('en-US', {
+								day: '2-digit',
+								month: 'short',
+								hour: '2-digit',
+								minute: '2-digit',
+								hour12: true
+							}),
+							updatedBy: 'Admin'
+						}
+						: query
+				)
+			);
+			
+		} catch (error) {
+			console.error('Error marking queries as read:', error);
+			alert('Failed to mark some queries as read. Please try again.');
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const clearSolvedQueries = async () => {
+		const solvedQueries = supportQueries.filter(query => query.status === 'solved');
+		
+		if (solvedQueries.length === 0) {
+			return;
+		}
+
+		const confirmClear = confirm(`Are you sure you want to delete ${solvedQueries.length} solved queries? This action cannot be undone.`);
+		
+		if (!confirmClear) return;
+
+		setLoading(true);
+		try {
+			// Delete each solved query
+			const deletePromises = solvedQueries.map(async (query) => {
+				const response = await fetch('/api/support', {
+					method: 'DELETE',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						queryId: query.id
+					})
+				});
+				
+				if (!response.ok) {
+					throw new Error(`Failed to delete query ${query.id}`);
+				}
+				
+				return response.json();
+			});
+
+			await Promise.all(deletePromises);
+			
+			// Remove solved queries from local state
+			setSupportQueries(prev => prev.filter(query => query.status !== 'solved'));
+			
+		} catch (error) {
+			console.error('Error clearing solved queries:', error);
+			alert('Failed to clear some queries. Please try again.');
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	return (
@@ -138,12 +242,24 @@ export default function NotificationPage() {
 				>
 					Stock Alerts
 				</button>
-				<button 
-					onClick={markAllAsRead}
-					className="ml-auto px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium bg-white hover:bg-gray-50"
-				>
-					Mark All as Read
-				</button>
+				<div className="ml-auto flex gap-2">
+					{tab === 'support' && (
+						<button 
+							onClick={clearSolvedQueries}
+							disabled={loading || supportQueries.filter(q => q.status === 'solved').length === 0}
+							className="px-4 py-2 rounded-lg border cursor-pointer border-red-500 text-sm font-medium text-red-600 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							Clear Solved ({supportQueries.filter(q => q.status === 'solved').length})
+						</button>
+					)}
+					<button 
+						onClick={markAllAsRead}
+						disabled={loading || supportQueries.filter(q => q.status === 'pending').length === 0}
+						className="px-4 py-2 rounded-lg border border-blue-300 text-sm font-medium text-blue-600 bg-white hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						Mark All as Read ({supportQueries.filter(q => q.status === 'pending').length})
+					</button>
+				</div>
 			</div>
 
 			<div className="bg-white rounded-xl shadow-sm border p-2">
@@ -344,13 +460,20 @@ export default function NotificationPage() {
 									Close
 								</button>
 								<button
-									onClick={() => {
-										// Mark as read logic here
+									onClick={async () => {
+										if (selectedQuery && selectedQuery.status === 'pending') {
+											await handleStatusUpdate(selectedQuery.id, 'processing');
+										}
 										setShowQueryModal(false);
 									}}
-									className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+									disabled={loading || selectedQuery?.status !== 'pending'}
+									className={`px-4 py-2 rounded-md focus:outline-none focus:ring-2 ${
+										selectedQuery?.status === 'pending' 
+											? 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500' 
+											: 'bg-gray-400 text-gray-200 cursor-not-allowed'
+									} ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
 								>
-									Mark as Read
+									{selectedQuery?.status === 'pending' ? 'Mark as Read' : 'Already Read'}
 								</button>
 							</div>
 						</div>

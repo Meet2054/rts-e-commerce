@@ -62,7 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="bg-[#F1F2F4] min-h-screen">
         <SideNavbar />
         <AdminHeader />
-        <main className="ml-[300px] mt-[64px]">
+        <main className="xl:ml-[300px] ml-0 mt-[64px] transition-all duration-300">
             {children}
         </main>
       </div>

@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
-interface SupportQuery {
-  id: string;
-  userId?: string;
-  fullName: string;
-  email: string;
-  phone?: string;
-  message: string;
-  status: 'pending' | 'processing' | 'solved';
-  createdAt: string;
-  updatedAt?: string;
-  updatedBy?: string;
-}
 
-// In-memory storage for demo purposes
-// In a real application, this would be stored in a database
-const supportQueries: SupportQuery[] = [];
+
+// Collection reference
+const SUPPORT_COLLECTION = 'supportQueries';
 
 // Generate a unique ID for new queries
 function generateQueryId(): string {
@@ -38,15 +28,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new support query
-    const newQuery: SupportQuery = {
-      id: generateQueryId(),
+    const queryId = generateQueryId();
+    const now = Timestamp.now();
+    
+    const newQuery = {
+      id: queryId,
       userId: userId || `USER-${Date.now()}`,
       fullName,
       email,
       phone,
       message,
-      status: 'pending',
-      createdAt: new Date().toLocaleString('en-US', {
+      status: 'pending' as const,
+      createdAt: now,
+      createdAtFormatted: new Date().toLocaleString('en-US', {
         day: '2-digit',
         month: 'short',
         hour: '2-digit',
@@ -55,15 +49,15 @@ export async function POST(request: NextRequest) {
       })
     };
 
-    // Add to storage
-    supportQueries.unshift(newQuery); // Add to beginning of array
+    // Save to Firestore
+    await adminDb.collection(SUPPORT_COLLECTION).doc(queryId).set(newQuery);
 
-    console.log('Support query created:', newQuery);
+    console.log('Support query created:', queryId);
 
     return NextResponse.json({
       success: true,
       message: 'Support query submitted successfully',
-      queryId: newQuery.id
+      queryId: queryId
     }, { status: 201 });
 
   } catch (error) {
@@ -80,17 +74,41 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     
-    let filteredQueries = supportQueries;
+    // Get queries from Firestore
+    let query = adminDb.collection(SUPPORT_COLLECTION).orderBy('createdAt', 'desc');
     
     // Filter by status if provided
     if (status && status !== 'all') {
-      filteredQueries = supportQueries.filter(query => query.status === status);
+      query = query.where('status', '==', status);
     }
+
+    const snapshot = await query.get();
+    const queries = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        // Convert Firestore timestamp to formatted string for frontend
+        createdAt: data.createdAtFormatted || data.createdAt.toDate().toLocaleString('en-US', {
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }),
+        updatedAt: data.updatedAt ? (data.updatedAtFormatted || data.updatedAt.toDate().toLocaleString('en-US', {
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        })) : undefined
+      };
+    });
 
     return NextResponse.json({
       success: true,
-      queries: filteredQueries,
-      total: filteredQueries.length
+      queries: queries,
+      total: queries.length
     });
 
   } catch (error) {
@@ -114,40 +132,100 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Find and update the query
-    const queryIndex = supportQueries.findIndex(q => q.id === queryId);
+    // Check if query exists
+    const queryDoc = await adminDb.collection(SUPPORT_COLLECTION).doc(queryId).get();
     
-    if (queryIndex === -1) {
+    if (!queryDoc.exists) {
       return NextResponse.json(
         { error: 'Support query not found' },
         { status: 404 }
       );
     }
 
+    const now = Timestamp.now();
+    const updatedAtFormatted = new Date().toLocaleString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
     // Update the query
-    supportQueries[queryIndex] = {
-      ...supportQueries[queryIndex],
+    const updateData = {
       status,
-      updatedAt: new Date().toLocaleString('en-US', {
+      updatedAt: now,
+      updatedAtFormatted,
+      updatedBy: updatedBy || 'Admin'
+    };
+
+    await adminDb.collection(SUPPORT_COLLECTION).doc(queryId).update(updateData);
+
+    // Get updated query for response
+    const updatedDoc = await adminDb.collection(SUPPORT_COLLECTION).doc(queryId).get();
+    const updatedQuery = {
+      ...updatedDoc.data(),
+      createdAt: updatedDoc.data()?.createdAtFormatted || updatedDoc.data()?.createdAt.toDate().toLocaleString('en-US', {
         day: '2-digit',
         month: 'short',
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
       }),
-      updatedBy: updatedBy || 'Admin'
+      updatedAt: updatedAtFormatted
     };
 
-    console.log('Support query updated:', supportQueries[queryIndex]);
+    console.log('Support query updated:', queryId);
 
     return NextResponse.json({
       success: true,
       message: 'Support query updated successfully',
-      query: supportQueries[queryIndex]
+      query: updatedQuery
     });
 
   } catch (error) {
     console.error('Error updating support query:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { queryId } = body;
+
+    if (!queryId) {
+      return NextResponse.json(
+        { error: 'Missing required field: queryId' },
+        { status: 400 }
+      );
+    }
+
+    // Check if query exists
+    const queryDoc = await adminDb.collection(SUPPORT_COLLECTION).doc(queryId).get();
+    
+    if (!queryDoc.exists) {
+      return NextResponse.json(
+        { error: 'Support query not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the query
+    await adminDb.collection(SUPPORT_COLLECTION).doc(queryId).delete();
+
+    console.log('Support query deleted:', queryId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Support query deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting support query:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

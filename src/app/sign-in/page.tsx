@@ -153,17 +153,9 @@ export default function AuthForms() {
 
 
   return (
-    <div className="min-h-screen max-w-screen flex">
-
-      {/* Right side - Image */}
-      <div className="hidden lg:flex relative w-1/2 p-4 bg-white">
-        <div className='w-full h-full'>
-        <Image src="/login2.svg" alt="Background" fill className="object-contain" />
-        </div>
-      </div>
-
+    <div className="min-h-[900px] max-w-[1550px] flex">
       {/* Left side - Forms */}
-      <div className="flex flex-col justify-center items-center w-1/2 px-8 sm:px-12 lg:px-16 bg-white">
+      <div className="flex flex-col justify-center items-center w-full lg:w-[40%] xl:w-[30%] px-8 sm:px-12 lg:px-16 bg-white">
         
         {/* Top Logo */}
         <div className="mb-6 flex justify-center lg:justify-start">
@@ -366,6 +358,13 @@ export default function AuthForms() {
         </div>
       </div>
 
+      {/* Right side - Image */}
+      <div className="hidden lg:flex relative w-[70%] bg-gray-100">
+        <Image src="/login.svg" alt="Background" fill className="object-cover" />
+        {/* <div className="absolute bottom-10 right-10">
+          <Image src="/bottom-logo.svg" alt="Katun Logo" width={900} height={40} className="opacity-90" />
+        </div> */}
+      </div>
     </div>
   );
 }

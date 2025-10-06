@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Mail, Bell, CircleUserRound, Link, LogOut, Settings } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '@/components/auth/auth-provider';
+import { useNotifications } from '@/components/admin/notification-provider';
 import { signOut } from '@/lib/firebase-auth';
 import { useRouter } from 'next/navigation';
 
@@ -12,6 +13,7 @@ import { useRouter } from 'next/navigation';
 export default function AdminHeader() {
 
     const { userData, isAdmin } = useAuth();
+    const { unreadCount } = useNotifications();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showMenuDropdown, setShowMenuDropdown] = useState(false);
     const userDropdownRef = useRef<HTMLDivElement>(null);
@@ -24,6 +26,10 @@ export default function AdminHeader() {
       } catch (error) {
         console.error('Error signing out:', error);
       }
+    };
+
+    const handleNotificationClick = () => {
+      router.push('/admin/notification');
     };
   
   return (
@@ -48,8 +54,17 @@ export default function AdminHeader() {
               2
             </span>
           </div>
-          {/* Notification Icon */}
-          <Bell className="w-6 h-6 text-black" />
+          {/* Notification Icon with Badge */}
+          <div className="relative cursor-pointer" onClick={handleNotificationClick} title="View Notifications">
+            <Bell className={`w-6 h-6 text-black hover:text-[#2E318E] transition-colors ${
+              unreadCount > 0 ? 'animate-pulse' : ''
+            }`} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[20px] text-center animate-pulse">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </div>
           
           {/* User Icon with Dropdown */}
               <div className="relative text-black" ref={userDropdownRef}>

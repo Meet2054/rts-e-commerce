@@ -76,6 +76,7 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 	const [notes, setNotes] = useState(order?.notes || '');
 	const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 	const [updateMessage, setUpdateMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
+	const [isExporting, setIsExporting] = useState(false);
 	const { token } = useAuth();
 
 	useEffect(() => {
@@ -126,6 +127,105 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 			setUpdateMessage({ type: 'error', text: 'Error updating order status. Please try again.' });
 		} finally {
 			setIsUpdatingStatus(false);
+		}
+	};
+
+	// Export order to CSV
+	const exportOrder = async () => {
+		if (!order) return;
+		
+		try {
+			setIsExporting(true);
+			console.log('🔄 Starting order export for:', order.orderId);
+			
+			// Helper function to format Firebase timestamps
+			const formatDate = (timestamp: any): string => {
+				if (!timestamp) return '';
+				try {
+					if (timestamp._seconds) {
+						return new Date(timestamp._seconds * 1000).toLocaleString();
+					}
+					return new Date(timestamp).toLocaleString();
+				} catch (error) {
+					console.warn('Error formatting date:', timestamp, error);
+					return '';
+				}
+			};
+			
+			// Create CSV content
+			const csvContent = [];
+			
+			// Order Information Section
+			csvContent.push('ORDER INFORMATION');
+			csvContent.push(`Order ID,${order.orderId}`);
+			csvContent.push(`Status,${order.status}`);
+			csvContent.push(`Created Date,${formatDate(order.createdAt)}`);
+			csvContent.push(`Currency,${order.currency}`);
+			csvContent.push(''); // Empty line
+			
+			// Customer Information Section
+			csvContent.push('CUSTOMER INFORMATION');
+			csvContent.push(`Name,"${order.shippingInfo?.fullName || order.user?.displayName || ''}"`); 
+			csvContent.push(`Email,${order.clientEmail || order.user?.email || ''}`);
+			csvContent.push(`Phone,${order.shippingInfo?.phone || order.user?.phoneNumber || ''}`);
+			if (order.user?.companyName) {
+				csvContent.push(`Company,"${order.user.companyName}"`);
+			}
+			csvContent.push(''); // Empty line
+			
+			// Shipping Address Section
+			if (order.shippingInfo?.address) {
+				csvContent.push('SHIPPING ADDRESS');
+				csvContent.push(`Street,"${order.shippingInfo.address.street || ''}"`);
+				csvContent.push(`City,${order.shippingInfo.address.city || ''}`);
+				csvContent.push(`State,${order.shippingInfo.address.state || ''}`);
+				csvContent.push(`ZIP Code,${order.shippingInfo.address.zipCode || ''}`);
+				csvContent.push(`Country,${order.shippingInfo.address.country || ''}`);
+				csvContent.push(''); // Empty line
+			}
+			
+			// Order Items Section
+			csvContent.push('ORDER ITEMS');
+			csvContent.push('SKU,Product Name,Brand,Quantity,Unit Price,Line Total');
+			order.items.forEach(item => {
+				csvContent.push(`${item.sku},"${item.nameSnap.replace(/"/g, '""')}","${item.brandSnap || ''}",${item.qty},${item.unitPrice},${item.lineTotal}`);
+			});
+			csvContent.push(''); // Empty line
+			
+			// Order Totals Section
+			csvContent.push('ORDER TOTALS');
+			csvContent.push(`Item Count,${order.totals.itemCount}`);
+			csvContent.push(`Subtotal,${order.totals.subtotal}`);
+			csvContent.push(`Tax,${order.totals.tax}`);
+			csvContent.push(`Shipping,${order.totals.shipping}`);
+			csvContent.push(`Total,${order.totals.total}`);
+			csvContent.push(''); // Empty line
+			
+			// Notes Section
+			if (order.notes) {
+				csvContent.push('NOTES');
+				csvContent.push(`"${order.notes.replace(/"/g, '""')}"`);
+			}
+			
+			// Create and download the file
+			const csv = csvContent.join('\n');
+			const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+			const link = document.createElement('a');
+			const url = URL.createObjectURL(blob);
+			link.setAttribute('href', url);
+			link.setAttribute('download', `order-${order.orderId}-${new Date().toISOString().split('T')[0]}.csv`);
+			link.style.visibility = 'hidden';
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			
+			console.log(`✅ Successfully exported order ${order.orderId}`);
+		} catch (error) {
+			console.error('❌ Error exporting order:', error);
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+			setUpdateMessage({ type: 'error', text: `Failed to export order: ${errorMessage}` });
+		} finally {
+			setIsExporting(false);
 		}
 	};
 
@@ -224,7 +324,13 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 							/>
 						</div>
 						<div className="flex gap-3 mt-4">
-							<button className="admin-button w-1/3">Export</button>
+							<button 
+								className={`admin-button w-1/3 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+								onClick={exportOrder}
+								disabled={isExporting}
+							>
+								{isExporting ? 'Exporting...' : 'Export'}
+							</button>
 							<div className="relative ">
 								<button
 									className={`admin-button ${isUpdatingStatus ? 'opacity-50 cursor-not-allowed' : ''}`}

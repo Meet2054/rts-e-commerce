@@ -39,6 +39,7 @@ interface StandardProductRow {
 interface UploadResult {
   totalRows: number;
   successfulAdds: number;
+  successfulUpdates: number;
   failedAdds: number;
   duplicatesSkipped: number;
   errors: Array<{ row: number; error: string }>;
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
     const totalResult: UploadResult = {
       totalRows: 0,
       successfulAdds: 0,
+      successfulUpdates: 0,
       failedAdds: 0,
       duplicatesSkipped: 0,
       errors: [],
@@ -232,23 +234,44 @@ export async function POST(request: NextRequest) {
           .where('sku', '==', cleanedSku)
           .get();
 
-        if (!existingProductSnapshot.empty) {
-          totalResult.duplicatesSkipped++;
-          totalResult.warnings.push({
-            row: rowNumber,
-            warning: `Product with SKU '${cleanedSku}' already exists. Skipped.`
-          });
-          continue;
-        }
+        // Helper function to compare product data
+        const compareProductData = (existing: any, newData: Record<string, unknown>): boolean => {
+          const fieldsToCompare = ['name', 'description', 'brand', 'price', 'image', 'imageUrl', 'rating', 'reviews', 'oem', 'oemPN', 'katunPN', 'comments', 'forUseIn', 'specifications'];
+          
+          for (const field of fieldsToCompare) {
+            const existingValue = existing[field];
+            const newValue = newData[field];
+            
+            // Handle undefined/null values
+            if ((existingValue === undefined || existingValue === null) && (newValue === undefined || newValue === null)) {
+              continue;
+            }
+            
+            // If one is undefined and other has value, they're different
+            if ((existingValue === undefined || existingValue === null) !== (newValue === undefined || newValue === null)) {
+              return true;
+            }
+            
+            // Compare values (convert to string for comparison to handle type differences)
+            if (String(existingValue || '').trim() !== String(newValue || '').trim()) {
+              return true;
+            }
+          }
+          return false;
+        };
 
         // Prepare product data (removed category field completely)
         const productData: Record<string, unknown> = {
           sku: cleanedSku,
           name: cleanedName,
-          createdAt: new Date(),
           updatedAt: new Date(),
           isActive: true
         };
+        
+        // Only set createdAt for new products
+        if (existingProductSnapshot.empty) {
+          productData.createdAt = new Date();
+        }
 
         // Add optional fields if provided
         if (row.id) {
@@ -352,9 +375,33 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Add product to Firestore
-        await adminDb.collection('products').add(productData);
-        totalResult.successfulAdds++;
+        // Handle existing vs new products
+        if (!existingProductSnapshot.empty) {
+          // Product exists - check if update is needed
+          const existingDoc = existingProductSnapshot.docs[0];
+          const existingData = existingDoc.data();
+          
+          if (compareProductData(existingData, productData)) {
+            // Data is different - update the product
+            await existingDoc.ref.update(productData);
+            totalResult.successfulUpdates++;
+            totalResult.warnings.push({
+              row: rowNumber,
+              warning: `Product with SKU '${cleanedSku}' updated with new data.`
+            });
+          } else {
+            // Data is identical - skip
+            totalResult.duplicatesSkipped++;
+            totalResult.warnings.push({
+              row: rowNumber,
+              warning: `Product with SKU '${cleanedSku}' already exists with identical data. Skipped.`
+            });
+          }
+        } else {
+          // New product - add to Firestore
+          await adminDb.collection('products').add(productData);
+          totalResult.successfulAdds++;
+        }
 
       } catch (error) {
         console.error(`Error processing row ${rowNumber}:`, error);
@@ -369,7 +416,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`\n✅ Processing complete across all worksheets:`);
     console.log(`📊 Processed ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}`);
-    console.log(`📊 Total: ${totalResult.totalRows} rows, ${totalResult.successfulAdds} successful, ${totalResult.failedAdds} failed, ${totalResult.duplicatesSkipped} duplicates`);
+    console.log(`📊 Total: ${totalResult.totalRows} rows, ${totalResult.successfulAdds} added, ${totalResult.successfulUpdates} updated, ${totalResult.failedAdds} failed, ${totalResult.duplicatesSkipped} duplicates`);
 
     return NextResponse.json({
       success: true,

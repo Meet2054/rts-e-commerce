@@ -4,6 +4,7 @@ import {
   Activity, 
   AlertTriangle, 
   CheckCircle, 
+  Clock, 
   Filter, 
   Download, 
   Trash2,
@@ -554,7 +555,7 @@ export default function AdminAnalytics() {
 
       {/* Log Detail Modal */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black bg-opacity-50">
           <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold">Log Details</h3>

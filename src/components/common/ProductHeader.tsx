@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect} from 'react';
 import { ChevronDown, Phone, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 
 // Comprehensive mega menu data structure
 const megaMenuData = {
@@ -28,13 +27,18 @@ const megaMenuData = {
         items: [
           'Sawgrass', 'Sharp', 'Star Micronics', 'Toshiba', 'Brady'
         ]
+      },
+      {
+        title: '',
+        items: [
+        ]
+      },
+      {
+        title: '',
+        items: [
+        ]
       }
     ],
-    featured: {
-      image: '/hero1.png',
-      title: 'Ink & Toner',
-      description: 'Premium ink and toner cartridges'
-    }
   },
   'Printers': {
     sections: [
@@ -66,13 +70,13 @@ const megaMenuData = {
         items: [
           'Wide Format Printers', 'Wide Format Paper'
         ]
-      }
+      },
+      {
+        title: '',
+        items: [
+        ]
+      },
     ],
-    featured: {
-      image: '/hero2.png',
-      title: 'NEW Pantum Printers',
-      description: 'Latest printer technology'
-    }
   },
   '3D Printing': {
     sections: [
@@ -93,13 +97,18 @@ const megaMenuData = {
         items: [
           '3D Printers', '3D Pens & Supplies', 'Accessories'
         ]
+      },
+      {
+        title: '',
+        items: [
+        ]
+      },
+      {
+        title: '',
+        items: [
+        ]
       }
     ],
-    featured: {
-      image: '/hero3.png',
-      title: '3D Printers',
-      description: 'Advanced 3D printing solutions'
-    }
   },
   'Labels': {
     sections: [
@@ -126,13 +135,13 @@ const megaMenuData = {
         items: [
           'Inkjet Label Rolls', 'Laser Label Rolls'
         ]
+      },
+      {
+        title: '',
+        items: [
+        ]
       }
     ],
-    featured: {
-      image: '/hero4.png',
-      title: 'Label Solutions',
-      description: 'Complete labeling systems'
-    }
   },
   'Warehouse Supplies': {
     sections: [
@@ -150,7 +159,7 @@ const megaMenuData = {
         ]
       },
       {
-        title: 'Other Warehouse Supplies',
+        title: 'Warehouse Supplies',
         items: [
           'Barcode Scanners', 'Price Guns & Labels', 'Postal Scales',
           'Knives & Cutters', 'Personal Protection (PPE)', 'Bin Liners & Garbage Bags',
@@ -172,11 +181,6 @@ const megaMenuData = {
         ]
       }
     ],
-    featured: {
-      image: '/product.png',
-      title: 'Warehouse & Retail',
-      description: 'Complete warehouse solutions'
-    }
   },
   'Office Supplies': {
     sections: [
@@ -204,13 +208,18 @@ const megaMenuData = {
           'Computer USB Cables', 'Power Cables', 'Mounts & Brackets',
           'Computer Accessories'
         ]
+      },
+      {
+        title: '',
+        items: [
+        ]
+      },
+      {
+        title: '',
+        items: [
+        ]
       }
     ],
-    featured: {
-      image: '/katun.svg',
-      title: 'Office Solutions',
-      description: 'Everything for your office'
-    }
   }
 };
 
@@ -230,19 +239,11 @@ export default function ProductHeader() {
   const [isDesktop, setIsDesktop] = useState(false);
   const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Handle mouse enter with delay
-  const handleMouseEnter = (menuLabel: string) => {
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-    }
-    setActiveMenu(menuLabel);
-  };
-
   // Handle mouse leave with delay
   const handleMouseLeave = () => {
     const timeout = setTimeout(() => {
       setActiveMenu(null);
-    }, 150); // Small delay to prevent flickering
+    }, 300); // Longer delay to allow mouse movement to mega menu
     setHoverTimeout(timeout);
   };
 
@@ -265,10 +266,30 @@ export default function ProductHeader() {
   };
 
   // Navigate to products page with filters
-  const handleNavigateToProducts = (filter?: string, filterType: 'oem' | 'productType' = 'oem') => {
-    if (filter) {
+  const handleNavigateToProducts = (filter?: string, categoryLabel?: string) => {
+    if (filter && categoryLabel) {
       const params = new URLSearchParams();
-      params.set(filterType, filter);
+      
+      // For Ink & Toner category, filter by OEM (brand names)
+      if (categoryLabel === 'Ink & Toner') {
+        params.set('oem', filter);
+      } else {
+        // For other categories, handle multi-word searches
+        const keywords = filter.split(/\s+/).filter(word => word.length > 0);
+        
+        if (keywords.length > 1) {
+          // For multi-word terms like "Photo Paper", search for the most specific keyword first
+          // Usually the second word is more specific (e.g., "Paper" in "Photo Paper")
+          const primaryKeyword = keywords[keywords.length - 1]; // Last word is usually most specific
+          params.set('search', primaryKeyword);
+          // Pass all keywords for frontend filtering
+          params.set('keywords', keywords.join(','));
+        } else {
+          // For single words, use regular search
+          params.set('search', filter);
+        }
+      }
+      
       router.push(`/products?${params.toString()}`);
     } else {
       router.push('/products');
@@ -317,19 +338,18 @@ export default function ProductHeader() {
   return (
     <div className="bg-white shadow-sm mt-40 xl:mt-3 mb-2">
       <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex justify-between items-start xl:items-center py-2">
-        <div className="flex flex-col xl:flex-row xl:items-center xl:gap-16 w-full xl:w-auto">
+        <div className="flex flex-col xl:flex-row xl:items-center gap-16 w-full xl:w-auto">
           {categories.map((cat, idx) => (
             <div 
               key={cat.label + '-' + idx} 
               className="relative w-full xl:w-auto" 
               ref={el => { dropdownRefs.current[idx] = el; }}
-              onMouseEnter={() => isDesktop && handleMouseEnter(cat.label)}
-              onMouseLeave={() => isDesktop && handleMouseLeave()}
+              onMouseLeave={() => isDesktop && activeMenu !== cat.label && handleMouseLeave()}
             >
               <button
                 className="py-2 text-base text-black font-medium rounded hover:text-blue-400 cursor-pointer flex items-center justify-between xl:justify-start gap-1 w-full xl:w-auto border-b xl:border-b-0 border-gray-200 xl:border-none"
                 onClick={(e) => {
-                  if (!isDesktop) {
+                  if (isDesktop) {
                     // Mobile/Tablet: Toggle dropdown
                     handleMobileToggle(cat.label, e);
                   } else {
@@ -345,64 +365,45 @@ export default function ProductHeader() {
               </button>
               
               {/* Mega Menu - Desktop Only */}
-              {activeMenu === cat.label && megaMenuData[cat.label as keyof typeof megaMenuData] && (
+              {activeMenu && (
                 <div 
-                  className="hidden xl:block absolute top-full mt-2 bg-white shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-lg z-50 p-6 min-w-[1000px] max-w-[1600px] border border-gray-100"
+                  className="hidden xl:block fixed left-0 top-44 w-full z-10"
                   onMouseEnter={handleMenuMouseEnter}
                   onMouseLeave={handleMouseLeave}
-                  style={{
-                    left: idx > 2 ? '-50%' : '0',
-                    transform: idx > 2 ? 'translateX(-50%)' : 'translateX(0)',
-                  }}
                 >
-                  <div className="grid grid-cols-12 gap-6">
-                    {/* Menu Sections */}
-                    <div className="col-span-9">
-                      <div className="flex flex-wrap gap-x-8 gap-y-6">
-                        {megaMenuData[cat.label as keyof typeof megaMenuData].sections.map((section, sectionIdx) => (
-                          <div key={sectionIdx} className="min-w-[180px] space-y-3">
-                            {section.title && (
-                              <h3 className="text-base font-semibold text-blue-600 border-b border-gray-200 pb-2 whitespace-nowrap">
-                                {section.title}
-                              </h3>
-                            )}
-                            <div className="space-y-1">
-                              {section.items.map((item, itemIdx) => (
-                                <button
-                                  key={itemIdx}
-                                  className="block text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50 px-2 py-0.5 rounded-md text-left w-full transition-colors duration-150 whitespace-nowrap"
-                                  onClick={() => handleNavigateToProducts(item, 'oem')}
-                                >
-                                  {item}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Featured Section */}
-                    <div className="col-span-3">
-                      <div className="p-4 rounded-lg h-full">
-                        <div className="text-center h-full flex flex-col justify-between">
-                          <div>
-                            <Image 
-                              src={megaMenuData[cat.label as keyof typeof megaMenuData].featured.image} 
-                              alt={megaMenuData[cat.label as keyof typeof megaMenuData].featured.title}
-                              width={200}
-                              height={120}
-                              className="w-full h-28 object-contain mb-3"
-                            />
-                            <h4 className="font-bold text-lg text-gray-800 mb-2">
-                              {megaMenuData[cat.label as keyof typeof megaMenuData].featured.title}
-                            </h4>
-                            <p className="text-sm text-gray-600 mb-4">
-                              {megaMenuData[cat.label as keyof typeof megaMenuData].featured.description}
-                            </p>
+                  {/* Invisible buffer zone to prevent menu switching */}
+                  <div className="h-4 w-full" onMouseEnter={handleMenuMouseEnter}></div>
+                  <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16">
+                    <div className="flex shadow-md border border-gray-200">
+                      {megaMenuData[activeMenu as keyof typeof megaMenuData]?.sections.map((section, sectionIdx) => (
+                        <div 
+                          key={sectionIdx} 
+                          className={`flex-1 p-6 border-r border-gray-200 last:border-r-0 ${
+                            sectionIdx % 6 === 0 ? 'bg-white' :
+                            sectionIdx % 6 === 1 ? 'bg-[#F6F6F6]' :
+                            sectionIdx % 6 === 2 ? 'bg-white' :
+                            sectionIdx % 6 === 3 ? 'bg-[#F6F6F6]' :
+                            sectionIdx % 6 === 4 ? 'bg-white' : 'bg-[#F6F6F6]'
+                          }`}
+                        >
+                          {section.title && (
+                            <h3 className="text-lg font-semibold text-gray-900 px-2 mb-4">
+                              {section.title}
+                            </h3>
+                          )}
+                          <div className="space-y-2">
+                            {section.items.map((item, itemIdx) => (
+                              <button
+                                key={itemIdx}
+                                className="block text-sm font-medium text-left w-full py-0.5 cursor-pointer px-2 text-gray-400 hover:text-gray-800 rounded transition-colors duration-150" 
+                                onClick={() => handleNavigateToProducts(item, activeMenu || undefined)}
+                              >
+                                {item}
+                              </button>
+                            ))}
                           </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -424,7 +425,7 @@ export default function ProductHeader() {
                         <button
                           key={itemIdx}
                           className="block text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-100 px-3 py-0.5 rounded-md text-left transition-colors duration-150 border border-transparent hover:border-blue-200"
-                          onClick={() => handleNavigateToProducts(item, 'oem')}
+                          onClick={() => handleNavigateToProducts(item, cat.label)}
                         >
                           {item}
                         </button>

@@ -412,7 +412,7 @@ export default function ProductHeader() {
 
               {/* Mobile/Tablet Sliding Dropdown */}
               <div className={`xl:hidden overflow-hidden transition-all duration-300 ease-in-out ${
-                activeMenu === cat.label ? 'max-h-[80vh] opacity-100' : 'max-h-0 opacity-0'
+                activeMenu === cat.label ? 'max-h-[60vh] opacity-100' : 'max-h-0 opacity-0'
               }`}>
                 <div className="bg-gray-50 rounded-lg mt-2 p-4 border border-gray-200 max-h-[70vh] overflow-y-auto">
                   <div className="space-y-3">

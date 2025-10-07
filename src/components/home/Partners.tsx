@@ -37,11 +37,11 @@ const Partners = () => {
   };
 
   return (
-    <section className="w-full pt-10 xl:pt-0 flex justify-center">
-      <div className="relative max-w-[1550px] mx-auto w-full h-full px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex flex-col py-12">
+    <section className="w-full pt-4 md:pt-10 xl:pt-0 flex justify-center">
+      <div className="relative max-w-[1550px] mx-auto w-full h-full px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex flex-col py-0 xl:py-12 ">
         {/* Section Title */}
         <div className="mb-8 border-l-8 border-[#2E318E] flex items-center p-0.5 pl-2">
-          <h2 className="text-2xl font-bold text-gray-800 ">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 ">
             Printer Inks and Toners
           </h2>
         </div>

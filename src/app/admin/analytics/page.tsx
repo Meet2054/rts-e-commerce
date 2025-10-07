@@ -146,12 +146,12 @@ export default function AdminAnalytics() {
     }
   };
 
-  // Clear old logs
-  const clearOldLogs = async (olderThanDays: number = 30) => {
-    if (!token || !confirm(`Are you sure you want to delete logs older than ${olderThanDays} days?`)) return;
+  // Clear all logs
+  const clearAllLogs = async () => {
+    if (!token || !confirm('Are you sure you want to delete ALL logs from the database? This action cannot be undone!')) return;
     
     try {
-      const response = await fetch(`/api/admin/logs?olderThanDays=${olderThanDays}`, {
+      const response = await fetch('/api/admin/logs?clearAll=true', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -294,11 +294,11 @@ export default function AdminAnalytics() {
             </button>
             
             <button
-              onClick={() => clearOldLogs(30)}
+              onClick={clearAllLogs}
               className="px-3 py-2 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100"
             >
               <Trash2 className="h-4 w-4 mr-1" />
-              Clear Old
+              Clear All Logs
             </button>
           </div>
         </div>

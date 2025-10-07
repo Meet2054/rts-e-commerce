@@ -2,15 +2,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, ChevronDown, X, MessageCircle } from 'lucide-react';
 
+interface Message {
+  text: string;
+  sender: 'user' | 'bot';
+  timestamp: Date;
+}
+
+interface TicketData {
+  name?: string;
+  email?: string;
+  orderId?: string;
+  summary?: string;
+}
+
 const EcommerceChatbot = () => {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [currentStep, setCurrentStep] = useState('greeting');
   const [aiResponseCount, setAiResponseCount] = useState(0);
-  const [ticketData, setTicketData] = useState({});
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [ticketData, setTicketData] = useState<TicketData>({});
+  const [isMinimized, setIsMinimized] = useState(true); // Start minimized by default
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const categories = [
     'Order Status',
@@ -18,9 +31,11 @@ const EcommerceChatbot = () => {
     'Payment Issues',
     'Shipping Information',
     'Other'
-  ];
+  ] as const;
 
-  const presetSolutions = {
+  type CategoryType = typeof categories[number];
+
+  const presetSolutions: Record<Exclude<CategoryType, 'Other'>, string> = {
     'Order Status': 'To check your order status, please log into your account and navigate to "My Orders" section. There you can track your order using the tracking number provided in your confirmation email. Orders typically process within 24-48 hours.',
     'Returns & Refunds': 'We offer a 30-day return policy for all items. To initiate a return, please visit our Returns Center and enter your order number and email. Once approved, you\'ll receive a prepaid shipping label. Refunds are processed within 5-7 business days after we receive the item.',
     'Payment Issues': 'If you\'re experiencing payment issues, please ensure your card details are correct and you have sufficient funds. We accept Visa, MasterCard, American Express, and PayPal. If the problem persists, try clearing your browser cache or using a different payment method.',
@@ -32,16 +47,16 @@ const EcommerceChatbot = () => {
   }, [messages]);
 
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && !isMinimized) {
       addBotMessage("Hey there 👋\nHow can I help you today?", true);
     }
-  }, []);
+  }, [messages.length, isMinimized]); // Trigger when minimized state changes or messages update
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const addBotMessage = (text, isInitial = false) => {
+  const addBotMessage = (text: string, isInitial = false) => {
     if (!isInitial) {
       setIsTyping(true);
       setTimeout(() => {
@@ -53,11 +68,11 @@ const EcommerceChatbot = () => {
     }
   };
 
-  const addUserMessage = (text) => {
+  const addUserMessage = (text: string) => {
     setMessages(prev => [...prev, { text, sender: 'user', timestamp: new Date() }]);
   };
 
-  const handleCategorySelect = (category) => {
+  const handleCategorySelect = (category: CategoryType) => {
     addUserMessage(category);
     
     if (category === 'Other') {
@@ -65,7 +80,7 @@ const EcommerceChatbot = () => {
       addBotMessage("I understand you have a different issue. Please describe your problem in your own words, and I'll do my best to help you.");
     } else {
       setCurrentStep('solution');
-      addBotMessage(presetSolutions[category]);
+      addBotMessage(presetSolutions[category as Exclude<CategoryType, 'Other'>]);
       setTimeout(() => {
         addBotMessage("Did this solve your problem? (Please type 'yes' or 'no')");
       }, 2000);
@@ -134,7 +149,7 @@ const EcommerceChatbot = () => {
     }
   };
 
-  const generateAIResponse = (query) => {
+  const generateAIResponse = (query: string): string => {
     const lowerQuery = query.toLowerCase();
     
     if (lowerQuery.includes('coffee') || lowerQuery.includes('beans')) {
@@ -148,7 +163,7 @@ const EcommerceChatbot = () => {
     }
   };
 
-  const collectTicketInfo = (value) => {
+  const collectTicketInfo = (value: string) => {
     if (!ticketData.name) {
       setTicketData({ ...ticketData, name: value });
       addBotMessage("Thank you. Please provide your email address:");
@@ -170,7 +185,10 @@ const EcommerceChatbot = () => {
     setCurrentStep('greeting');
     setAiResponseCount(0);
     setTicketData({});
-    addBotMessage("Hey there 👋\nHow can I help you today?", true);
+    // Only add initial message if chat is open
+    if (!isMinimized) {
+      addBotMessage("Hey there 👋\nHow can I help you today?", true);
+    }
   };
 
   return (
@@ -181,7 +199,16 @@ const EcommerceChatbot = () => {
         {/* Header */}
         <div 
           className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 flex items-center justify-between cursor-pointer"
-          onClick={() => setIsMinimized(!isMinimized)}
+          onClick={() => {
+            const willBeMinimized = !isMinimized;
+            setIsMinimized(willBeMinimized);
+            // Initialize chat when opening for the first time
+            if (isMinimized && messages.length === 0) {
+              setTimeout(() => {
+                addBotMessage("Hey there 👋\nHow can I help you today?", true);
+              }, 100);
+            }
+          }}
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
@@ -189,7 +216,7 @@ const EcommerceChatbot = () => {
             </div>
             <div>
               {!isMinimized && <h3 className="font-semibold text-lg">Chatbot</h3>}
-              {!isMinimized && <p className="text-xs opacity-90">We're here to help</p>}
+              {!isMinimized && <p className="text-xs opacity-90">We&apos;re here to help</p>}
             </div>
           </div>
           <button className="p-1 hover:bg-white/20 rounded transition-colors">

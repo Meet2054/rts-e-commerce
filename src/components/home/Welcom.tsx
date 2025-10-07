@@ -2,6 +2,7 @@
 import React from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import Image from 'next/image';
+import { User } from 'lucide-react';
 
 const Welcom = () => {
 	const { user, userData, loading } = useAuth();
@@ -22,13 +23,9 @@ const Welcom = () => {
 				{user && (
 					<div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-0 lg:justify-between bg-white rounded-xs shadow-sm p-4">
                         <div className='flex gap-4'>
-                            <Image
-                                src={'/login.svg'}
-                                alt={username}
-                                width={55}
-                                height={55}
-                                className="rounded-full object-cover border border-gray-200"
-                            />
+                            <div className="w-[55px] h-[55px] rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
+                                <User className="w-8 h-8 text-gray-600" />
+                            </div>
                             <div className="font-semibold text-lg text-black flex items-center">
                                 Hi {username}, <br /> Welcome Back 👋
                             </div>
@@ -48,13 +45,9 @@ const Welcom = () => {
 				{!user && (
                 <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-0 lg:justify-between bg-white rounded-xs shadow-sm p-4">
                         <div className='flex gap-4'>
-                            <Image
-                                src={'/login.svg'}
-                                alt={username}
-                                width={55}
-                                height={55}
-                                className="rounded-full object-cover border border-gray-200"
-                            />
+                            <div className="w-[55px] h-[55px] rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center">
+                                <User className="w-8 h-8 text-gray-600" />
+                            </div>
                             <div className="font-semibold text-lg text-black flex items-center">
                                 Hi There, <br /> Welcome to RTS Imaging 👋
                             </div>

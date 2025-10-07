@@ -74,9 +74,9 @@ async function fetchProduct(sku: string, token?: string): Promise<Product | null
   }
 }
 
-async function fetchRelatedProducts(brand: string, excludeSku: string, token?: string): Promise<RelatedProduct[]> {
+async function fetchRelatedProducts(oem: string, excludeSku: string, token?: string): Promise<RelatedProduct[]> {
   try {
-    console.log(`🔍 [Page] Fetching related products for brand: ${brand}`);
+    console.log(`🔍 [Page] Fetching related products for oem: ${oem}`);
     
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -87,25 +87,25 @@ async function fetchRelatedProducts(brand: string, excludeSku: string, token?: s
     }
     
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/products/related/${encodeURIComponent(brand)}?exclude=${excludeSku}&limit=6`,
+      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/products/related/${encodeURIComponent(oem)}?exclude=${excludeSku}&limit=6`,
       { headers }
     );
     
     if (!response.ok) {
-      console.error(`❌ [Page] Failed to fetch related products for ${brand}: ${response.status}`);
+      console.error(`❌ [Page] Failed to fetch related products for ${oem}: ${response.status}`);
       return [];
     }
     
     const data = await response.json();
     
     if (data.success && data.products) {
-      console.log(`✅ [Page] Related products for ${brand} fetched from ${data.source}: ${data.products.length} products`);
+      console.log(`✅ [Page] Related products for ${oem} fetched from ${data.source}: ${data.products.length} products`);
       return data.products;
     }
     
     return [];
   } catch (error) {
-    console.error(`❌ [Page] Error fetching related products for ${brand}:`, error);
+    console.error(`❌ [Page] Error fetching related products for ${oem}:`, error);
     return [];
   }
 }
@@ -138,7 +138,7 @@ export default function ProductDescriptionPage({ params }: { params: { slug: str
         setProduct(fetchedProduct);
         
         // Fetch related products
-        const related = await fetchRelatedProducts(fetchedProduct.brand, fetchedProduct.sku, token || undefined);
+        const related = await fetchRelatedProducts(fetchedProduct.oem, fetchedProduct.sku, token || undefined);
         setRelatedProducts(related);
         
       } catch (error) {

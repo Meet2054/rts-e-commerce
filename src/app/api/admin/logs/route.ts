@@ -27,7 +27,19 @@ export async function GET(request: NextRequest) {
       .orderBy('timestamp', 'desc')
       .limit(Math.max(500, limit * 3)) // Get more to allow for filtering
       .get();
-    let logs = snapshot.docs.map(doc => {
+    interface LogEntry {
+      id: string;
+      timestamp: string;
+      level: string;
+      category: string;
+      message: string;
+      userId?: string;
+      userEmail?: string;
+      duration?: number;
+      details?: Record<string, unknown>;
+    }
+
+    let logs: LogEntry[] = snapshot.docs.map(doc => {
       const data = doc.data();
       
       // Safe timestamp conversion
@@ -55,10 +67,16 @@ export async function GET(request: NextRequest) {
       
       return {
         id: doc.id,
-        ...data,
-        timestamp: timestamp.toISOString() // Convert to ISO string for consistent JSON serialization
+        timestamp: timestamp.toISOString(), // Convert to ISO string for consistent JSON serialization
+        level: data.level || 'info',
+        category: data.category || 'system',
+        message: data.message || '',
+        userId: data.userId,
+        userEmail: data.userEmail,
+        duration: data.duration,
+        details: data.details
       };
-    }) as any[];
+    });
 
     // Apply level filtering
     if (level) {
@@ -152,7 +170,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// DELETE endpoint for clearing old logs
+// DELETE endpoint for clearing logs
 export async function DELETE(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -161,36 +179,59 @@ export async function DELETE(request: NextRequest) {
     }
 
     const url = new URL(request.url);
+    const clearAll = url.searchParams.get('clearAll') === 'true';
     const olderThanDays = parseInt(url.searchParams.get('olderThanDays') || '30');
     const category = url.searchParams.get('category') as LogCategory;
     const level = url.searchParams.get('level') as LogLevel;
 
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+    let query;
+    let message: string;
 
-    let query = adminDb.collection('admin_logs')
-      .where('timestamp', '<', cutoffDate);
+    if (clearAll) {
+      // Clear ALL logs from the database
+      query = adminDb.collection('admin_logs');
+      message = 'Deleted all log entries from the database';
+    } else {
+      // Clear logs older than specified days (existing functionality)
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
-    if (category) {
-      query = query.where('category', '==', category);
-    }
-    if (level) {
-      query = query.where('level', '==', level);
+      query = adminDb.collection('admin_logs')
+        .where('timestamp', '<', cutoffDate);
+
+      if (category) {
+        query = query.where('category', '==', category);
+      }
+      if (level) {
+        query = query.where('level', '==', level);
+      }
+
+      message = `Deleted log entries older than ${olderThanDays} days`;
     }
 
     const snapshot = await query.get();
-    const batch = adminDb.batch();
     
-    snapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
+    // For large collections, we need to delete in batches
+    const batchSize = 500;
+    let deletedCount = 0;
+    const totalDocs = snapshot.docs.length;
 
-    await batch.commit();
+    for (let i = 0; i < totalDocs; i += batchSize) {
+      const batch = adminDb.batch();
+      const batchDocs = snapshot.docs.slice(i, i + batchSize);
+      
+      batchDocs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+
+      await batch.commit();
+      deletedCount += batchDocs.length;
+    }
 
     return NextResponse.json({
       success: true,
-      deletedCount: snapshot.docs.length,
-      message: `Deleted ${snapshot.docs.length} log entries older than ${olderThanDays} days`
+      deletedCount,
+      message: `${message} (${deletedCount} entries deleted)`
     });
 
   } catch (error) {

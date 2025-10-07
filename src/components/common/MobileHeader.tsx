@@ -2,9 +2,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Tally3, Search, ShoppingCart, Boxes, ListOrdered, FileText, ShieldCheck, Headphones, LayoutDashboard, LogIn, UserPlus, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Tally3, Search, ShoppingCart, Boxes, ListOrdered, FileText, ShieldCheck, Headphones, LayoutDashboard, LogIn, UserPlus, LogOut, X } from 'lucide-react';
 import { useCartSummary } from '@/hooks/use-cart';
 import { useAuth } from '@/components/auth/auth-provider';
+import { signOut } from '@/lib/firebase-auth';
 import SearchDropdown from './SearchDropdown';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -16,6 +18,17 @@ export default function MobileHeader() {
 	const [showHeader, setShowHeader] = useState(true);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const lastScrollY = useRef(0);
+	const router = useRouter();
+
+	const handleSignOut = async () => {
+		try {
+			await signOut();
+			setShowDropdown(false);
+			router.push('/');
+		} catch (error) {
+			console.error('Error signing out:', error);
+		}
+	};
 
 	useEffect(() => {
 		function handleClick(e: MouseEvent) {
@@ -92,17 +105,20 @@ export default function MobileHeader() {
 							<Link href="/privacy-policy" className="flex items-center gap-2 px-4 py-2 rounded text-black font-medium hover:bg-[#F0F5FF]">
 								<ShieldCheck size={18} /> Privacy Policy
 							</Link>
-							<span className="flex items-center gap-2 px-4 py-2 rounded text-black font-medium hover:bg-[#F0F5FF] cursor-pointer">
+							<Link href="/support" className="flex items-center gap-2 px-4 py-2 rounded text-black font-medium hover:bg-[#F0F5FF] cursor-pointer">
 								<Headphones size={18} /> 24 × 7 Customer Care
-							</span>
+							</Link>
 							{isAdmin && (
 								<Link href="/admin" className="flex items-center gap-2 px-4 py-2 rounded text-purple-700 font-medium hover:bg-purple-50">
 									<LayoutDashboard size={18} /> Dashboard
 								</Link>
 							)}
+							<button onClick={handleSignOut} className="flex items-center gap-2 px-4 py-2 rounded text-red-700 font-medium hover:bg-red-50 w-full text-left">
+								<LogOut size={18} /> Logout
+							</button>
 						</div>
 					)}
-					<Image src="/logo.svg" alt="RTS Logo" width={170} height={32} />
+					<Image onClick={() => router.push("/")} src="/logo.svg" alt="RTS Logo" width={170} height={32} />
 				</div>
 				<Image src="/logo2.svg" alt="Katun Logo" className='hidden md:block' width={100} height={32} />
 				<Image src="/logo3.svg" alt="Katun Logo" className='hidden md:block' width={100} height={32} />

@@ -3,13 +3,7 @@ import React from 'react';
 import Image from 'next/image';
 
 const companyLinks = [
-    { name: 'About', href: '/about' },
-    { name: 'Features', href: '/features' },
     { name: 'Products', href: '/products' },
-    { name: 'Career', href: '/career' },
-];
-
-const helpLinks = [
     { name: 'Customer Support', href: '/support' },
     { name: 'Delivery Details', href: '/delivery' },
     { name: 'Terms & Conditions', href: '/terms-conditions' },
@@ -42,9 +36,9 @@ const Footer = () => {
                     </div>
                 </div>
                 {/* Company */}
-                <div className='grid grid-cols-2 sm:grid-cols-3 gap-10'>
+                <div className='grid grid-cols-2 gap-10'>
                 <div>
-                    <div className="text-sm font-bold text-gray-400 mb-3 tracking-widest">COMPANY</div>
+                    <div className="text-sm font-bold text-black mb-3 tracking-widest">COMPANY</div>
                     <ul className="space-y-2">
                         {companyLinks.map(link => (
                             <li key={link.name}>
@@ -53,20 +47,9 @@ const Footer = () => {
                         ))}
                     </ul>
                 </div>
-                {/* Help */}
-                <div>
-                    <div className="text-sm font-bold text-gray-400 mb-3 tracking-widest">HELP</div>
-                    <ul className="space-y-2">
-                        {helpLinks.map(link => (
-                            <li key={link.name}>
-                                <a href={link.href} className="text-sm text-gray-700 hover:text-[#2E318E] font-medium transition-colors">{link.name}</a>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
                 {/* Popular Products */}
                 <div>
-                    <div className="text-sm font-bold text-gray-400 mb-3 tracking-widest">POPULAR PRODUCTS</div>
+                    <div className="text-sm font-bold text-black mb-3 tracking-widest">POPULAR PRODUCTS</div>
                     <ul className="space-y-2">
                         {popularLinks.map(link => (
                             <li key={link.name}>

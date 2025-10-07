@@ -24,7 +24,7 @@ export default function HeroSection() {
     <div className="w-full pt-10 xl:pt-0 flex justify-center">
       <div className="relative max-w-[1550px] mx-auto w-full h-full px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 flex items-center justify-center overflow-hidden">
         {/* Stack Card Images */}
-        <div className="w-full h-[600px] relative flex items-center justify-center">
+        <div className="w-full h-[180px] sm:h-[250px] md:h-[300px] lg:h-[500px] xl:h-[600px] relative flex items-center justify-center">
           {slides.map((slide, idx) => {
             // Calculate stack position
             const isActive = idx === current;

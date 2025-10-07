@@ -11,7 +11,6 @@ import { motion } from "framer-motion";
 import { getProductImageUrlQuick } from '@/lib/product-image-utils';
 import ProductImage from '@/components/ui/product-image';
 
-const COLORS = ["#2D9CDB", "#27AE60", "#F2994A", "#EB5757", "#4F4F4F"];
 
 interface Product {
   image: string;
@@ -40,8 +39,6 @@ interface RelatedProduct {
 }
 
 export default function ProductDetail({ product, related }: { product: Product, related: RelatedProduct[] }) {
-  const [selectedImg, setSelectedImg] = useState(0);
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
   const [tab, setTab] = useState("description");
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
@@ -195,7 +192,6 @@ export default function ProductDetail({ product, related }: { product: Product, 
   };
 
   // Gallery images - ProductImage component handles URL generation
-  const gallery = [0, 1, 2, 3]; // Just for iteration
 
   return (
     <div className="max-w-[1550px] mx-auto px-4 sm:px-6 md:px-10 lg:px-14 xl:px-16 py-2">
@@ -211,21 +207,10 @@ export default function ProductDetail({ product, related }: { product: Product, 
       <div className="flex flex-col lg:flex-row gap-20 py-6">
         {/* Gallery */}
         <div className="flex flex-row gap-4 w-full lg:w-3/5 items-start">
-            <div className="flex flex-col gap-4">
-                {gallery.map((img, i) => (
-                <button
-                    key={i}
-                    onClick={() => setSelectedImg(i)}
-                    className={`border bg-white rounded-md p-1 ${selectedImg === i ? "border-black" : ""}`}
-                >
-                    <ProductImage sku={product.sku} name={product.name} width={100} height={50} className="object-contain" />
-                </button>
-                ))}
-            </div>
 
             <div className="flex flex-col gap-5">
                 {/* Main image */}
-                <div className="bg-white rounded-md p-4 flex-1 flex justify-center">
+                <div className="bg-white rounded-md flex-1 flex justify-center">
                     <ProductImage sku={product.sku} name={product.name} width={650} height={500} className="rounded-md" />
                 </div>
 
@@ -269,7 +254,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
           {token && (
             <>
               <div className="mb-2">
-                <div className="font-semibold mb-1">Quantity:</div>
+                <div className="font-semibold mb-3">Quantity:</div>
                 <div className="flex items-center gap-3">
                   <button 
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -302,14 +287,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
                   </button>
                 </div>
               </div>
-              <div className="mb-2">
-                <div className="font-semibold mb-1">Colors:</div>
-                <div className="flex gap-2">
-                  {COLORS.map((c) => (
-                    <button key={c} className={`w-6 h-6 rounded border-2 ${selectedColor === c ? "border-blue-600" : "border-gray-300"}`} style={{ background: c }} onClick={() => setSelectedColor(c)} />
-                  ))}
-                </div>
-              </div>
+             
               <div className="flex flex-col w-full gap-3 mt-4">
                 <button 
                   onClick={handleAddToCart}
@@ -369,13 +347,13 @@ export default function ProductDetail({ product, related }: { product: Product, 
               {product.oem && (
                 <div className="space-y-2">
                   <div className="text-base font-bold text-black">OEM:</div>
-                  <div className="text-sm text-gray-700 pl-2">{product.oem} ({product.oemPN})</div>
+                  <div className="text-sm text-gray-700 pl-2">{product.oem}</div>
                 </div>
               )}
               
               {product.katunPN && (
                 <div className="space-y-2">
-                  <div className="text-base font-bold text-black">Katun PN:</div>
+                  <div className="text-base font-bold text-black">Product ID:</div>
                   <div className="text-sm text-gray-700 pl-2">{product.katunPN}</div>
                 </div>
               )}

@@ -7,6 +7,7 @@ import ProductHeader from "@/components/common/ProductHeader";
 import SubFooter from "@/components/common/SubFooter";
 import Footer from "@/components/common/Footer";
 import MobileHeader from "@/components/common/MobileHeader";
+import SupportChat from "@/components/chat/support-chat";
 
 function HydrateClient({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
@@ -40,6 +41,7 @@ export default function LayoutShell({ children }: { children: React.ReactNode })
         <>
           {isMobile ? <MobileHeader /> : <Header />}
           <ProductHeader />
+          <SupportChat />
         </>
       )}
       {children}

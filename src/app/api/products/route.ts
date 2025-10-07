@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
 import { RedisCache, CacheKeys, CacheTTL } from '@/lib/redis-cache';
-import { adminLogger, LogCategory } from '@/lib/admin-logger';
 
 export async function GET(request: NextRequest) {
   try {

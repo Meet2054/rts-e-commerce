@@ -5,10 +5,10 @@ import { RedisCache } from '@/lib/redis-cache';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { brand: string } }
+  { params }: { params: { oem: string } }
 ) {
   try {
-    const { brand } = await params;
+    const { oem } = await params;
     const { searchParams } = new URL(request.url);
     const excludeSku = searchParams.get('exclude');
     const limit = parseInt(searchParams.get('limit') || '4');
@@ -29,18 +29,18 @@ export async function GET(
       }
     }
     
-    console.log(`🔍 [API] Related products request - Brand: "${brand}", Exclude: "${excludeSku}", Limit: ${limit}, User: ${userId || 'anonymous'}`);
+    console.log(`🔍 [API] Related products request - OEM: "${oem}", Exclude: "${excludeSku}", Limit: ${limit}, User: ${userId || 'anonymous'}`);
     
     // Include user ID in cache key for personalized pricing
     const cacheKey = userId 
-      ? `related-products:${brand}:${excludeSku || 'none'}:${limit}_user_${userId}`
-      : `related-products:${brand}:${excludeSku || 'none'}:${limit}`;
+      ? `related-products:${oem}:${excludeSku || 'none'}:${limit}_user_${userId}`
+      : `related-products:${oem}:${excludeSku || 'none'}:${limit}`;
     
     // Try to get from Redis cache first
     const cachedProducts = await RedisCache.get(cacheKey, 'api');
     
     if (cachedProducts) {
-      console.log(`✅ [REDIS] Related products for "${brand}" served from cache (${cachedProducts.length} products)`);
+      console.log(`✅ [REDIS] Related products for "${oem}" served from cache (${cachedProducts.length} products)`);
       return NextResponse.json({
         success: true,
         products: cachedProducts,
@@ -49,20 +49,20 @@ export async function GET(
       });
     }
     
-    console.log(`❌ [REDIS] Related products for "${brand}" not in cache, fetching from Firebase...`);
+    console.log(`❌ [REDIS] Related products for "${oem}" not in cache, fetching from Firebase...`);
     console.log('📊 [FIREBASE] Querying Firestore database...');
     
-    // Query Firebase for related products by brand
-    let query = adminDb.collection('products')
-      .where('brand', '==', brand)
+    // Query Firebase for related products by oem
+    const query = adminDb.collection('products')
+      .where('oem', '==', oem)
       .where('isActive', '==', true)
       .limit(limit + (excludeSku ? 1 : 0)); // Get one extra if we need to exclude one
 
     const snapshot = await query.get();
-    console.log(`✅ [FIREBASE] Found ${snapshot.docs.length} related products for "${brand}"`);
+    console.log(`✅ [FIREBASE] Found ${snapshot.docs.length} related products for "${oem}"`);
 
     // Fetch user-specific custom pricing if user is authenticated
-    let customPricing: Record<string, number> = {};
+    const customPricing: Record<string, number> = {};
     if (userId) {
       console.log(`Fetching custom pricing for user: ${userId}`);
       
@@ -113,7 +113,7 @@ export async function GET(
     // Limit the results
     products = products.slice(0, limit);
 
-    console.log(`📊 [FIREBASE] Returning ${products.length} related products for "${brand}"`);
+    console.log(`📊 [FIREBASE] Returning ${products.length} related products for "${oem}"`);
     
     // Cache the results
     await RedisCache.set(cacheKey, products, { 
@@ -121,7 +121,7 @@ export async function GET(
       prefix: 'api' 
     });
     
-    console.log(`💾 [CACHE UPDATE] Related products for "${brand}" cached from Firebase to Redis: ${products.length} products`);
+    console.log(`💾 [CACHE UPDATE] Related products for "${oem}" cached from Firebase to Redis: ${products.length} products`);
 
     return NextResponse.json({
       success: true,
@@ -131,7 +131,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error(`Error fetching related products for brand "${(await params).brand}":`, error);
+    console.error(`Error fetching related products for oem "${(await params).oem}":`, error);
     return NextResponse.json(
       { 
         success: false, 

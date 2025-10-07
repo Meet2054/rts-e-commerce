@@ -112,7 +112,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
         // Update form fields with latest data from API
         setName(latestProduct.name);
         setDesc(latestProduct.description || '');
-        setCat(latestProduct.brand || 'Ink & Toner');
+        setCat(latestProduct.category || latestProduct.brand || 'General');
         setPrice(`$${latestProduct.price.toLocaleString()}`);
         setStock(0); // API doesn't provide stock
         setStatus(latestProduct.isActive ? 'Active' : 'Inactive');

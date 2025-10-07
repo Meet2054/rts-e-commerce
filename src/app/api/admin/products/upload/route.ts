@@ -145,10 +145,18 @@ export async function POST(request: NextRequest) {
       
       for (let i = 0; i < rawData.length; i++) {
         const row = rawData[i] as unknown[];
-        if (row && row.length > 0 && row[0] && String(row[0]).includes('OEM')) {
-          headerRowIndex = i;
-          headers = row.map(h => String(h || '').trim());
-          break;
+        if (row && row.length > 0) {
+          // Check if this row contains typical header keywords
+          const rowString = row.map(cell => String(cell || '').toLowerCase()).join(' ');
+          if (rowString.includes('oem') || 
+              rowString.includes('katun') || 
+              rowString.includes('description') ||
+              rowString.includes('name') ||
+              rowString.includes('category')) {
+            headerRowIndex = i;
+            headers = row.map(h => String(h || '').trim());
+            break;
+          }
         }
       }
       
@@ -235,7 +243,7 @@ export async function POST(request: NextRequest) {
           .get();
 
         // Helper function to compare product data
-        const compareProductData = (existing: any, newData: Record<string, unknown>): boolean => {
+        const compareProductData = (existing: Record<string, unknown>, newData: Record<string, unknown>): boolean => {
           const fieldsToCompare = ['name', 'description', 'brand', 'price', 'image', 'imageUrl', 'rating', 'reviews', 'oem', 'oemPN', 'katunPN', 'comments', 'forUseIn', 'specifications'];
           
           for (const field of fieldsToCompare) {

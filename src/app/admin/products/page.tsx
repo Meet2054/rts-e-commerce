@@ -319,7 +319,7 @@ export default function ProductsPage() {
       sku: product.sku, // Include SKU field for image handling
       name: product.name,
       description: product.description,
-      category: product.category || 'Ink & Toner',
+      category: product.category || product.brand || 'General',
       price: `$${product.price.toLocaleString()}`,
       stock: 0, // API doesn't provide stock info
       status: product.isActive ? 'Active' : 'Inactive',
@@ -667,24 +667,17 @@ export default function ProductsPage() {
         onClose={() => setDetailOpen(false)}
         onUpdate={refreshProducts}
         product={
-          selectedProduct
-            ? {
-                ...selectedProduct,
-                description:
-                  "High-quality toner cartridge compatible with HP LaserJet printers. Long-lasting and reliable print performance.",
-                images: [],
-              }
-            : {
-                id: "",
-                sku: "",
-                name: "",
-                description: "",
-                category: "",
-                price: "",
-                stock: 0,
-                status: "",
-                images: [],
-              }
+          selectedProduct || {
+            id: "",
+            sku: "",
+            name: "",
+            description: "",
+            category: "",
+            price: "",
+            stock: 0,
+            status: "",
+            images: [],
+          }
         }
       />
     </div>

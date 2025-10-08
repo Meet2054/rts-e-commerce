@@ -7,11 +7,11 @@ export class CartCalculations {
     return items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   }
 
-  static calculateTax(subtotal: number, taxRate: number = 0.08): number {
+  static calculateTax(subtotal: number, taxRate: number = 0.10): number {
     return subtotal * taxRate;
   }
 
-  static calculateShipping(subtotal: number, freeShippingThreshold: number = 100): number {
+  static calculateShipping(subtotal: number, freeShippingThreshold: number = 1000): number {
     return subtotal >= freeShippingThreshold ? 0 : 10.00;
   }
 

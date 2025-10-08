@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     const {
       name,
       description = '',
-      category = 'Ink & Toner',
+      category = '',
       price,
       stock = 0,
       sku,

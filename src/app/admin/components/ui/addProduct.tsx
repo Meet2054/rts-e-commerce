@@ -14,7 +14,6 @@ interface FormData {
   description: string;
   category: string;
   price: string;
-  stock: string;
   sku: string;
   brand: string;
   oem: string;
@@ -32,7 +31,6 @@ export default function AddProductModal({ open, onClose }: AddProductProps) {
     description: '',
     category: 'Ink & Toner',
     price: '',
-    stock: '',
     sku: '',
     brand: '',
     oem: '',
@@ -99,7 +97,6 @@ export default function AddProductModal({ open, onClose }: AddProductProps) {
       const productData = {
         ...formData,
         price: parseFloat(formData.price),
-        stock: parseInt(formData.stock) || 0,
         image: imageUrl,
         isActive: true
       };
@@ -125,7 +122,6 @@ export default function AddProductModal({ open, onClose }: AddProductProps) {
           description: '',
           category: 'Ink & Toner',
           price: '',
-          stock: '',
           sku: '',
           brand: '',
           oem: '',
@@ -298,16 +294,17 @@ export default function AddProductModal({ open, onClose }: AddProductProps) {
               />
             </div>
             <div className="flex-1">
-              <label className="block font-semibold mb-1 text-black">Stock</label>
+              <label className="block font-semibold mb-1 text-black">Katun Part Number</label>
               <input 
-                type="number" 
-                name="stock"
-                value={formData.stock}
+                type="text" 
+                name="katunPN"
+                value={formData.katunPN}
                 onChange={handleInputChange}
                 className="w-full text-sm border rounded px-4 py-2 bg-[#F1F2F4]" 
-                placeholder="12"
+                placeholder="KTN-12345"
               />
             </div>
+
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -333,18 +330,6 @@ export default function AddProductModal({ open, onClose }: AddProductProps) {
                 placeholder="OEM-12345"
               />
             </div>
-          </div>
-          
-          <div>
-            <label className="block font-semibold mb-1 text-black">Katun Part Number</label>
-            <input 
-              type="text" 
-              name="katunPN"
-              value={formData.katunPN}
-              onChange={handleInputChange}
-              className="w-full text-sm border rounded px-4 py-2 bg-[#F1F2F4]" 
-              placeholder="KTN-12345"
-            />
           </div>
           
           <button

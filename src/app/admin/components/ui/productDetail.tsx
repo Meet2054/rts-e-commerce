@@ -109,7 +109,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
         // Update form fields with latest data from API
         setName(latestProduct.name);
         setDesc(latestProduct.description || '');
-        setCat(latestProduct.category || latestProduct.brand || 'General');
+        setCat(latestProduct.category || latestProduct.brand || '');
         setPrice(`$${latestProduct.price.toLocaleString()}`);
         setStatus(latestProduct.isActive ? 'Active' : 'Inactive');
         console.log('✅ Refreshed modal with latest product data');

@@ -23,7 +23,7 @@ export function useCartSummary() {
     hasItems: (cart.cart?.items.length || 0) > 0,
     tax: cart.cart?.tax || 0,
     shipping: cart.cart?.shipping || 0,
-    currency: cart.cart?.currency || 'USD'
+    currency: cart.cart?.currency || 'AUD'
   };
 }
 

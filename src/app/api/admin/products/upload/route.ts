@@ -124,12 +124,6 @@ export async function POST(request: NextRequest) {
       warnings: []
     };
 
-    // Get existing categories for validation (once for all sheets)
-    const categoriesSnapshot = await adminDb.collection('categories').get();
-    const existingCategories = new Set(
-      categoriesSnapshot.docs.map(doc => doc.id)
-    );
-
     console.log(`Processing ${workbook.SheetNames.length} worksheets: ${workbook.SheetNames.join(', ')}`);
 
     // Process each worksheet
@@ -229,14 +223,6 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Check if category exists
-        if (!existingCategories.has(cleanedCategory)) {
-          totalResult.warnings.push({
-            row: rowNumber,
-            warning: `Category '${cleanedCategory}' does not exist. Product will be created but category may need to be added separately.`
-          });
-        }
-
         // Check if product already exists
         const existingProductSnapshot = await adminDb
           .collection('products')
@@ -245,7 +231,7 @@ export async function POST(request: NextRequest) {
 
         // Helper function to compare product data
         const compareProductData = (existing: Record<string, unknown>, newData: Record<string, unknown>): boolean => {
-          const fieldsToCompare = ['name', 'description', 'brand', 'price', 'image', 'imageUrl', 'rating', 'reviews', 'oem', 'oemPN', 'katunPN', 'comments', 'forUseIn', 'specifications'];
+          const fieldsToCompare = ['name', 'category', 'description', 'brand', 'price', 'image', 'imageUrl', 'rating', 'reviews', 'oem', 'oemPN', 'katunPN', 'comments', 'forUseIn', 'specifications'];
           
           for (const field of fieldsToCompare) {
             const existingValue = existing[field];
@@ -269,10 +255,11 @@ export async function POST(request: NextRequest) {
           return false;
         };
 
-        // Prepare product data (removed category field completely)
+        // Prepare product data
         const productData: Record<string, unknown> = {
           sku: cleanedSku,
           name: cleanedName,
+          category: cleanedCategory,
           updatedAt: new Date(),
           isActive: true
         };

@@ -319,7 +319,7 @@ export default function ProductsPage() {
       sku: product.sku, // Include SKU field for image handling
       name: product.name,
       description: product.description,
-      category: product.category || product.brand || 'General',
+      category: product.category || product.brand || '',
       price: `$${product.price.toLocaleString()}`,
       stock: 0, // API doesn't provide stock info
       status: product.isActive ? 'Active' : 'Inactive',
@@ -504,7 +504,7 @@ export default function ProductsPage() {
             <tr className="text-left text-black font-semibold border-b">
               <th className="py-3 px-4">SKU</th>
               <th className="py-3 px-4">Name</th>
-              <th className="py-3 px-4">Brand</th>
+              <th className="py-3 px-4">Category</th>
               <th className="py-3 px-4">OEM</th>
               <th className="py-3 px-4">Price</th>
               <th className="py-3 px-4">Status</th>
@@ -552,7 +552,7 @@ export default function ProductsPage() {
                 <tr key={prod.id} className=" text-[#84919A]">
                   <td className="py-2.5 px-4 font-medium">{prod.sku}</td>
                   <td className="py-2.5 px-4 max-w-xs truncate" title={prod.name}>{prod.name}</td>
-                  <td className="py-2.5 px-4">{prod.brand}</td>
+                  <td className="py-2.5 px-4">{prod.category}</td>
                   <td className="py-2.5 px-4">{prod.oem}</td>
                   <td className="py-2.5 px-4 font-semibold">${prod.price.toLocaleString()}</td>
                   <td className="py-2.5 px-4">

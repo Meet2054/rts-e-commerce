@@ -103,6 +103,7 @@ export async function GET(request: NextRequest) {
         name: data.name,
         description: data.description || '',
         brand: data.brand || '',
+        category: data.category || '',
         price: effectivePrice, // This will be the user-specific price or base price  
         basePrice: data.price || 0, // Always include base price for reference
         hasCustomPrice: !!customPricing[productSku], // Flag to indicate if custom pricing is applied

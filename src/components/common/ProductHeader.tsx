@@ -368,7 +368,7 @@ export default function ProductHeader() {
               {/* Mega Menu - Desktop Only */}
               {activeMenu && (
                 <div 
-                  className="hidden xl:block fixed left-0 top-44 w-full z-10"
+                  className="hidden xl:block fixed left-0 top-44 w-full z-50"
                   onMouseEnter={handleMenuMouseEnter}
                   onMouseLeave={handleMouseLeave}
                 >

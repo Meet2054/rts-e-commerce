@@ -14,17 +14,7 @@ interface SupportQuery {
 	updatedBy?: string;
 }
 
-// Mock data for support queries - this will be replaced with API calls
-const stockAlerts = Array.from({ length: 15 }).map((_, i) => ({
-	id: 'STK-ALT-' + (1056 + i),
-	product: 'Canon Toner Cartridge',
-	alert: 'Low Stock (5 left)',
-	date: '06 Sept, 10:30 AM',
-	status: i === 1 ? 'Read' : 'New',
-}));
-
 export default function NotificationPage() {
-	const [tab, setTab] = useState<'support' | 'stock'>('support');
 	const [supportQueries, setSupportQueries] = useState<SupportQuery[]>([]);
 	const [selectedQuery, setSelectedQuery] = useState<SupportQuery | null>(null);
 	const [showQueryModal, setShowQueryModal] = useState(false);
@@ -51,10 +41,8 @@ export default function NotificationPage() {
 			}
 		};
 
-		if (tab === 'support') {
-			fetchSupportQueries();
-		}
-	}, [tab]);
+		fetchSupportQueries();
+	}, []);
 
 	// Status colors for different query states
 	const getStatusColor = (status: string) => {
@@ -229,29 +217,16 @@ export default function NotificationPage() {
 				<div className="text-xl font-bold text-black">Notifications</div>
 				<div className="text-gray-500 text-base">Manage and track all system, order, and stock alerts.</div>
 			</div>
-			<div className="flex gap-2 mb-8">
-				<button
-					className={`px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-sm ${tab === 'support' ? 'bg-black text-white' : 'bg-[#F1F2F4] text-black'}`}
-					onClick={() => setTab('support')}
-				>
-					Support Queries
-				</button>
-				<button
-					className={`px-4 py-2.5 border border-gray-300 rounded-lg font-semibold text-sm ${tab === 'stock' ? 'bg-black text-white' : 'bg-[#F1F2F4] text-black'}`}
-					onClick={() => setTab('stock')}
-				>
-					Stock Alerts
-				</button>
-				<div className="ml-auto flex gap-2">
-					{tab === 'support' && (
-						<button 
-							onClick={clearSolvedQueries}
-							disabled={loading || supportQueries.filter(q => q.status === 'solved').length === 0}
-							className="px-4 py-2 rounded-lg border cursor-pointer border-red-500 text-sm font-medium text-red-600 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							Clear Solved ({supportQueries.filter(q => q.status === 'solved').length})
-						</button>
-					)}
+			<div className="flex justify-between items-center mb-8">
+				<h2 className="text-lg font-semibold text-black">Support Queries</h2>
+				<div className="flex gap-2">
+					<button 
+						onClick={clearSolvedQueries}
+						disabled={loading || supportQueries.filter(q => q.status === 'solved').length === 0}
+						className="px-4 py-2 rounded-lg border cursor-pointer border-red-500 text-sm font-medium text-red-600 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						Clear Solved ({supportQueries.filter(q => q.status === 'solved').length})
+					</button>
 					<button 
 						onClick={markAllAsRead}
 						disabled={loading || supportQueries.filter(q => q.status === 'pending').length === 0}
@@ -263,103 +238,64 @@ export default function NotificationPage() {
 			</div>
 
 			<div className="bg-white rounded-xl shadow-sm border p-2">
-				{tab === 'support' ? (
-					<>
-						{fetchLoading ? (
-							<div className="flex items-center justify-center py-12">
-								<div className="text-gray-500">Loading support queries...</div>
-							</div>
-						) : (
-							<table className="w-full text-sm">
-								<thead>
-									<tr className="text-left text-gray-500 font-semibold border-b">
-										<th className="py-3 px-4">Query ID</th>
-										<th className="py-3 px-4">User Name</th>
-										<th className="py-3 px-4">Email</th>
-										<th className="py-3 px-4">Date &amp; Time</th>
-										<th className="py-3 px-4">Status</th>
-										<th className="py-3 px-4">Action</th>
-									</tr>
-								</thead>
-								<tbody>
-									{fetchLoading ? (
-										<tr>
-											<td colSpan={6} className="py-12 text-center text-gray-500">
-												<div className="flex items-center justify-center">
-													<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black mr-2"></div>
-													Loading support queries...
-												</div>
-											</td>
-										</tr>
-									) : supportQueries.length === 0 ? (
-										<tr>
-											<td colSpan={6} className="py-12 text-center text-gray-500">
-												No support queries found
-											</td>
-										</tr>
-									) : (
-										supportQueries.map((query, idx) => (
-											<tr key={idx} className="border-b last:border-b-0">
-												<td className="py-2 px-4 font-medium">{query.id}</td>
-												<td className="py-2 px-4">{query.fullName}</td>
-												<td className="py-2 px-4">{query.email}</td>
-												<td className="py-2 px-4">{query.createdAt}</td>
-												<td className="py-2 px-4">
-													<span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(query.status)}`}>
-														{query.status === 'pending' && <span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span>}
-														{query.status === 'processing' && <span className="w-2 h-2 rounded-full bg-yellow-600 inline-block"></span>}
-														{query.status === 'solved' && <span className="w-2 h-2 rounded-full bg-green-600 inline-block"></span>}
-														{query.status.charAt(0).toUpperCase() + query.status.slice(1)}
-													</span>
-												</td>
-												<td className="py-2 px-4">
-													<button 
-														onClick={() => handleViewQuery(query)}
-														className="text-[#2E318E] font-semibold hover:underline text-xs"
-													>
-														View Query
-													</button>
-												</td>
-											</tr>
-										))
-									)}
-								</tbody>
-							</table>
-						)}
-					</>
+				{fetchLoading ? (
+					<div className="flex items-center justify-center py-12">
+						<div className="text-gray-500">Loading support queries...</div>
+					</div>
 				) : (
 					<table className="w-full text-sm">
 						<thead>
 							<tr className="text-left text-gray-500 font-semibold border-b">
-								<th className="py-3 px-4">Notification ID</th>
-								<th className="py-3 px-4">Product</th>
-								<th className="py-3 px-4">Alert</th>
+								<th className="py-3 px-4">Query ID</th>
+								<th className="py-3 px-4">User Name</th>
+								<th className="py-3 px-4">Email</th>
 								<th className="py-3 px-4">Date &amp; Time</th>
 								<th className="py-3 px-4">Status</th>
 								<th className="py-3 px-4">Action</th>
 							</tr>
 						</thead>
 						<tbody>
-							{stockAlerts.map((item, idx) => (
-								<tr key={idx} className="border-b last:border-b-0">
-									<td className="py-2 px-4 font-medium">{item.id}</td>
-									<td className="py-2 px-4">{item.product}</td>
-									<td className="py-2 px-4">{item.alert}</td>
-									<td className="py-2 px-4">{item.date}</td>
-									<td className="py-2 px-4">
-										{item.status === 'New' ? (
-											<span className="inline-flex items-center gap-1 text-red-600 font-semibold text-xs">
-												<span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span> New
-											</span>
-										) : (
-											<span className="text-gray-500 text-xs">Read</span>
-										)}
-									</td>
-									<td className="py-2 px-4">
-										<button className="text-[#2E318E] font-semibold hover:underline text-xs">View Inventory</button>
+							{fetchLoading ? (
+								<tr>
+									<td colSpan={6} className="py-12 text-center text-gray-500">
+										<div className="flex items-center justify-center">
+											<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black mr-2"></div>
+											Loading support queries...
+										</div>
 									</td>
 								</tr>
-							))}
+							) : supportQueries.length === 0 ? (
+								<tr>
+									<td colSpan={6} className="py-12 text-center text-gray-500">
+										No support queries found
+									</td>
+								</tr>
+							) : (
+								supportQueries.map((query, idx) => (
+									<tr key={idx} className="border-b last:border-b-0">
+										<td className="py-2 px-4 font-medium">{query.id}</td>
+										<td className="py-2 px-4">{query.fullName}</td>
+										<td className="py-2 px-4">{query.email}</td>
+										<td className="py-2 px-4">{query.createdAt}</td>
+										<td className="py-2 px-4">
+											<span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(query.status)}`}>
+												{query.status === 'pending' && <span className="w-2 h-2 rounded-full bg-red-600 inline-block"></span>}
+												{query.status === 'processing' && <span className="w-2 h-2 rounded-full bg-yellow-600 inline-block"></span>}
+												{query.status === 'solved' && <span className="w-2 h-2 rounded-full bg-green-600 inline-block"></span>}
+												{query.status.charAt(0).toUpperCase() + query.status.slice(1)}
+											</span>
+										</td>
+										<td className="py-2 px-4">
+											<button 
+												onClick={() => handleViewQuery(query)}
+												className="text-[#2E318E] font-semibold hover:underline text-xs"
+											>
+												View Query
+											</button>
+										</td>
+									</tr>
+								))
+							)}
 						</tbody>
 					</table>
 				)}

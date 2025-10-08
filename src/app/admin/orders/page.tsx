@@ -20,7 +20,7 @@ interface Order {
   orderId: string;
   clientId: string;
   clientEmail: string;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'unprocessed' | 'partially_processed' | 'unprocessed_partially' | 'archived' | 'cancelled' | 'merged' | 'delivered';
   items: OrderItem[];
   totals: {
     itemCount: number;
@@ -60,9 +60,13 @@ interface Order {
 
 const tabs = [
   { label: 'All' },
-  { label: 'Complete' },
-  { label: 'Pending' },
+  { label: 'Unprocessed' },
+  { label: 'Partially Processed' },
+  { label: 'Unprocessed & Partially' },
+  { label: 'Archived' },
   { label: 'Cancelled' },
+  { label: 'Merged' },
+  { label: 'Delivered' },
 ];
 
 const OrderDetailsModal = dynamic(() => import('../components/ui/orderDetailsPage'), { ssr: false });
@@ -86,9 +90,13 @@ export default function OrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [tabCounts, setTabCounts] = useState({
     All: 0,
-    Complete: 0,
-    Pending: 0,
-    Cancelled: 0
+    'Unprocessed': 0,
+    'Partially Processed': 0,
+    'Unprocessed & Partially': 0,
+    'Archived': 0,
+    'Cancelled': 0,
+    'Merged': 0,
+    'Delivered': 0
   });
 
   const { token } = useAuth();
@@ -103,13 +111,25 @@ export default function OrdersPage() {
           fetch(`/api/admin/orders?page=1&limit=1`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`/api/admin/orders?page=1&limit=1&status=delivered`, {
+          fetch(`/api/admin/orders?page=1&limit=1&status=unprocessed`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
-          fetch(`/api/admin/orders?page=1&limit=1&status=pending`, {
+          fetch(`/api/admin/orders?page=1&limit=1&status=partially_processed`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`/api/admin/orders?page=1&limit=1&status=unprocessed_partially`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`/api/admin/orders?page=1&limit=1&status=archived`, {
             headers: { 'Authorization': `Bearer ${token}` }
           }),
           fetch(`/api/admin/orders?page=1&limit=1&status=cancelled`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`/api/admin/orders?page=1&limit=1&status=merged`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }),
+          fetch(`/api/admin/orders?page=1&limit=1&status=delivered`, {
             headers: { 'Authorization': `Bearer ${token}` }
           })
         ];
@@ -119,9 +139,13 @@ export default function OrdersPage() {
 
         setTabCounts({
           All: data[0]?.total || 0,
-          Complete: data[1]?.total || 0,
-          Pending: data[2]?.total || 0,
-          Cancelled: data[3]?.total || 0
+          'Unprocessed': data[1]?.total || 0,
+          'Partially Processed': data[2]?.total || 0,
+          'Unprocessed & Partially': data[3]?.total || 0,
+          'Archived': data[4]?.total || 0,
+          'Cancelled': data[5]?.total || 0,
+          'Merged': data[6]?.total || 0,
+          'Delivered': data[7]?.total || 0
         });
       } catch (err) {
         console.error('Error fetching tab counts:', err);
@@ -146,9 +170,13 @@ export default function OrdersPage() {
         // Add status filter if not 'All'
         if (activeTab !== 'All') {
           let statusValue = '';
-          if (activeTab === 'Complete') statusValue = 'delivered';
-          else if (activeTab === 'Pending') statusValue = 'pending';
+          if (activeTab === 'Unprocessed') statusValue = 'unprocessed';
+          else if (activeTab === 'Partially Processed') statusValue = 'partially_processed';
+          else if (activeTab === 'Unprocessed & Partially') statusValue = 'unprocessed_partially';
+          else if (activeTab === 'Archived') statusValue = 'archived';
           else if (activeTab === 'Cancelled') statusValue = 'cancelled';
+          else if (activeTab === 'Merged') statusValue = 'merged';
+          else if (activeTab === 'Delivered') statusValue = 'delivered';
           
           if (statusValue) {
             queryParams.append('status', statusValue);
@@ -204,9 +232,13 @@ export default function OrdersPage() {
       // Add status filter if not 'All'
       if (activeTab !== 'All') {
         let statusValue = '';
-        if (activeTab === 'Complete') statusValue = 'delivered';
-        else if (activeTab === 'Pending') statusValue = 'pending';
+        if (activeTab === 'Unprocessed') statusValue = 'unprocessed';
+        else if (activeTab === 'Partially Processed') statusValue = 'partially_processed';
+        else if (activeTab === 'Unprocessed & Partially') statusValue = 'unprocessed_partially';
+        else if (activeTab === 'Archived') statusValue = 'archived';
         else if (activeTab === 'Cancelled') statusValue = 'cancelled';
+        else if (activeTab === 'Merged') statusValue = 'merged';
+        else if (activeTab === 'Delivered') statusValue = 'delivered';
         
         if (statusValue) {
           queryParams.append('status', statusValue);
@@ -342,9 +374,13 @@ export default function OrdersPage() {
       // Add status filter if not 'All'
       if (activeTab !== 'All') {
         let statusValue = '';
-        if (activeTab === 'Complete') statusValue = 'delivered';
-        else if (activeTab === 'Pending') statusValue = 'pending';
+        if (activeTab === 'Unprocessed') statusValue = 'unprocessed';
+        else if (activeTab === 'Partially Processed') statusValue = 'partially_processed';
+        else if (activeTab === 'Unprocessed & Partially') statusValue = 'unprocessed_partially';
+        else if (activeTab === 'Archived') statusValue = 'archived';
         else if (activeTab === 'Cancelled') statusValue = 'cancelled';
+        else if (activeTab === 'Merged') statusValue = 'merged';
+        else if (activeTab === 'Delivered') statusValue = 'delivered';
         
         if (statusValue) {
           queryParams.append('status', statusValue);
@@ -559,7 +595,7 @@ export default function OrdersPage() {
             key={tab.label}
             onClick={() => handleTabChange(tab.label)}
             disabled={loading}
-            className={`px-4 py-2.5 border-2 border-gray-300 rounded-md text-base cursor-pointer font-medium transition-colors ${
+            className={`px-2 py-2 border-2 border-gray-300 rounded-md text-sm cursor-pointer font-medium transition-colors ${
               activeTab === tab.label
                 ? 'bg-black text-white'
                 : 'bg-white hover:bg-black hover:text-white text-black'
@@ -711,12 +747,17 @@ export default function OrdersPage() {
                   <td className="py-2.5 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'processing' || order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'shipped' ? 'bg-purple-100 text-purple-800' :
-                      'bg-red-100 text-red-800'
+                      order.status === 'unprocessed' ? 'bg-yellow-100 text-yellow-800' :
+                      order.status === 'partially_processed' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'unprocessed_partially' ? 'bg-orange-100 text-orange-800' :
+                      order.status === 'archived' ? 'bg-gray-100 text-gray-800' :
+                      order.status === 'merged' ? 'bg-purple-100 text-purple-800' :
+                      order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      {order.status === 'partially_processed' ? 'Partially Processed' :
+                       order.status === 'unprocessed_partially' ? 'Unprocessed & Partially' :
+                       order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </span>
                   </td>
                   <td className="py-2.5 px-4">${(order.totals?.total || 0).toLocaleString()}</td>

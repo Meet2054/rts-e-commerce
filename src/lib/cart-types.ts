@@ -95,7 +95,7 @@ export interface Order {
   shipping: number;
   total: number;
   currency: string;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'unprocessed' | 'partially_processed' | 'unprocessed_partially' | 'archived' | 'cancelled' | 'merged' | 'delivered';
   shippingAddress: ShippingAddress;
   notes?: string;
   createdAt: string;

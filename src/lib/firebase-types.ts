@@ -156,7 +156,7 @@ export interface Order extends BaseDocument {
   orderId: string; // Unique order number
   clientId: string;
   clientEmail: string;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'unprocessed' | 'partially_processed' | 'unprocessed_partially' | 'archived' | 'cancelled' | 'merged' | 'delivered';
   items: OrderItem[];
   totals: {
     itemCount: number;

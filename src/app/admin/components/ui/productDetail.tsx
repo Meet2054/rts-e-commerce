@@ -18,7 +18,6 @@ interface ProductDetailProps {
     description: string;
     category: string;
     price: string;
-    stock: number;
     status: string;
     images?: string[];
   };
@@ -39,7 +38,6 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
   const [desc, setDesc] = useState(product.description);
   const [cat, setCat] = useState(product.category);
   const [price, setPrice] = useState(product.price);
-  const [stock, setStock] = useState(product.stock);
   const [status, setStatus] = useState(product.status);
 
   // Image upload states
@@ -73,7 +71,6 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
       setDesc(product.description);
       setCat(product.category);
       setPrice(product.price);
-      setStock(product.stock);
       setStatus(product.status);
       setError('');
       setSuccess('');
@@ -92,7 +89,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
       setImagePreview(null);
       setIsDragOver(false);
     }
-  }, [open, product.id, product.name, product.description, product.category, product.price, product.stock, product.status, hasBeenUpdated])
+  }, [open, product.id, product.name, product.description, product.category, product.price, product.status, hasBeenUpdated])
 
   // Function to fetch latest product data
   const fetchLatestProductData = async () => {
@@ -114,7 +111,6 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
         setDesc(latestProduct.description || '');
         setCat(latestProduct.category || latestProduct.brand || 'General');
         setPrice(`$${latestProduct.price.toLocaleString()}`);
-        setStock(0); // API doesn't provide stock
         setStatus(latestProduct.isActive ? 'Active' : 'Inactive');
         console.log('✅ Refreshed modal with latest product data');
       }
@@ -621,27 +617,15 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
               disabled={!editMode}
             />
           </div>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block font-semibold text-base mb-1 text-black">Price:</label>
-              <input
-                type="text"
-                className="w-full text-sm border rounded px-4 py-2 bg-[#F1F2F4]"
-                value={price}
-                onChange={e => setPrice(e.target.value)}
-                disabled={!editMode}
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block font-semibold text-base mb-1 text-black">Stock:</label>
-              <input
-                type="text"
-                className="w-full text-sm border rounded px-4 py-2 bg-[#F1F2F4]"
-                value={stock}
-                onChange={e => setStock(Number(e.target.value))}
-                disabled={!editMode}
-              />
-            </div>
+          <div>
+            <label className="block font-semibold text-base mb-1 text-black">Price:</label>
+            <input
+              type="text"
+              className="w-full text-sm border rounded px-4 py-2 bg-[#F1F2F4]"
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              disabled={!editMode}
+            />
           </div>
           {editMode ? (
             <button

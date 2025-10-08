@@ -13,6 +13,7 @@ interface KatunProductRow {
   'Comments:': string;
   'Description:': string;
   'Brand:': string;
+  'Category:': string;
   'For use in:': string;
 }
 
@@ -61,7 +62,7 @@ function convertKatunToStandard(katunRow: KatunProductRow): StandardProductRow {
     sku: String(katunRow['Katun PN:']).trim(),
     name: String(katunRow['Name:']).trim(),
     description: katunRow['Description:'] ? String(katunRow['Description:']).trim() : undefined,
-    category: katunRow['OEM:'] ? String(katunRow['OEM:']).trim().toLowerCase() : 'general',
+    category: katunRow['Category:'] ? String(katunRow['Category:']).trim().toLowerCase() : 'general',
     brand: katunRow['Brand:'] ? String(katunRow['Brand:']).trim() : undefined,
     price: katunRow['Price'] ? parseFloat(String(katunRow['Price'])) : undefined,
     oem: katunRow['OEM:'] ? String(katunRow['OEM:']).trim() : undefined,

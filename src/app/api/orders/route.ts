@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       orderId,
       clientId: userId || 'anonymous',
       clientEmail: userEmail || 'customer@example.com',
-      status: 'pending',
+      status: 'unprocessed',
       items: orderItems,
       totals: {
         itemCount: items.reduce((sum: number, item: any) => sum + item.quantity, 0),
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       order: {
         id: orderRef.id,
         orderId: orderId,
-        status: 'pending',
+        status: 'unprocessed',
         total: total,
         currency: currency,
         itemCount: orderData.totals.itemCount
@@ -330,7 +330,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const validStatuses = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const validStatuses = ['unprocessed', 'partially_processed', 'unprocessed_partially', 'archived', 'cancelled', 'merged', 'delivered'];
     if (!validStatuses.includes(status)) {
       return NextResponse.json(
         { success: false, error: 'Invalid status' },
@@ -346,7 +346,7 @@ export async function PUT(request: NextRequest) {
       updatedAt: new Date()
     };
 
-    if (trackingNumber && status === 'shipped') {
+    if (trackingNumber && status === 'delivered') {
       updateData.trackingInfo = {
         trackingNumber,
         estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now

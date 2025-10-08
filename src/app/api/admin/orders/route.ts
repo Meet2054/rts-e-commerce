@@ -170,7 +170,7 @@ export async function GET(request: Request) {
         orderId: orderData.orderId || orderData.id,
         clientId: orderData.clientId || '',
         clientEmail: orderData.clientEmail || '',
-        status: orderData.status || 'pending',
+        status: orderData.status || 'unprocessed',
         items: Array.isArray(orderData.items) ? orderData.items : [],
         totals: orderData.totals || {
           itemCount: 0,
@@ -194,7 +194,7 @@ export async function GET(request: Request) {
         notes: orderData.notes || '',
         paymentInfo: orderData.paymentInfo || {
           method: 'cash_on_delivery',
-          status: 'pending'
+          status: 'unprocessed'
         },
         trackingInfo: orderData.trackingInfo || null,
         createdAt: orderData.createdAt,

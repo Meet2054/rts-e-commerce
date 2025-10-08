@@ -115,7 +115,7 @@ export default function Dashboard() {
             todayOrders: todayOrders.length, // Use API filtered count
             totalRevenue: orders.reduce((sum: number, order: RecentOrder) => 
               sum + (order.totals?.total || order.totalAmount || 0), 0),
-            pendingOrders: orders.filter((order: RecentOrder) => order.status === 'pending').length
+            pendingOrders: orders.filter((order: RecentOrder) => order.status === 'unprocessed').length
           });
 
           // Set recent orders - map to the structure we need for display
@@ -559,9 +559,9 @@ export default function Dashboard() {
                   <td className="py-3 px-2">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'processing' || order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                      order.status === 'shipped' ? 'bg-purple-100 text-purple-800' :
+                      order.status === 'unprocessed' ? 'bg-yellow-100 text-yellow-800' :
+                      order.status === 'partially_processed' || order.status === 'unprocessed_partially' ? 'bg-blue-100 text-blue-800' :
+                      order.status === 'merged' ? 'bg-purple-100 text-purple-800' :
                       'bg-red-100 text-red-800'
                     }`}>
                       {order.status.charAt(0).toUpperCase() + order.status.slice(1)}

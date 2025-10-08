@@ -7,7 +7,7 @@ interface UserOrder {
   id: string;
   orderId: string;
   createdAt: Date | { toDate(): Date } | string;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'unprocessed' | 'partially_processed' | 'unprocessed_partially' | 'archived' | 'cancelled' | 'merged' | 'delivered';
   totals: {
     total: number;
   };
@@ -236,14 +236,20 @@ export default function UserDetailsModal({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active':
+      case 'delivered':
         return 'text-green-600 bg-green-100';
-      case 'pending':
+      case 'unprocessed':
         return 'text-yellow-600 bg-yellow-100';
+      case 'partially_processed':
+        return 'text-blue-600 bg-blue-100';
+      case 'unprocessed_partially':
+        return 'text-orange-600 bg-orange-100';
+      case 'archived':
+        return 'text-gray-600 bg-gray-100';
+      case 'merged':
+        return 'text-purple-600 bg-purple-100';
       case 'cancelled':
         return 'text-red-600 bg-red-100';
-      case 'complete':
-        return 'text-green-600 bg-green-100';
       default:
         return 'text-gray-600 bg-gray-100';
     }
@@ -360,12 +366,18 @@ export default function UserDetailsModal({
                             <span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
                               order.status === 'delivered' 
                                 ? 'bg-green-100 text-green-800' 
-                                : order.status === 'shipped'
+                                : order.status === 'partially_processed'
                                 ? 'bg-blue-100 text-blue-800'
-                                : order.status === 'processing'
+                                : order.status === 'unprocessed_partially'
                                 ? 'bg-orange-100 text-orange-800'
-                                : order.status === 'pending'
+                                : order.status === 'unprocessed'
                                 ? 'bg-yellow-100 text-yellow-800'
+                                : order.status === 'archived'
+                                ? 'bg-gray-100 text-gray-800'
+                                : order.status === 'merged'
+                                ? 'bg-purple-100 text-purple-800'
+                                : order.status === 'cancelled'
+                                ? 'bg-red-100 text-red-800'
                                 : 'bg-gray-100 text-gray-800'
                             }`}>
                               {order.status}

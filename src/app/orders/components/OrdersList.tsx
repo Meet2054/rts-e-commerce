@@ -148,14 +148,16 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'unprocessed':
         return <Clock className="w-5 h-5 text-yellow-500" />;
-      case 'confirmed':
-        return <CheckCircle className="w-5 h-5 text-blue-500" />;
-      case 'processing':
+      case 'partially_processed':
+        return <Package className="w-5 h-5 text-blue-500" />;
+      case 'unprocessed_partially':
+        return <Package className="w-5 h-5 text-orange-500" />;
+      case 'archived':
+        return <Package className="w-5 h-5 text-gray-500" />;
+      case 'merged':
         return <Package className="w-5 h-5 text-purple-500" />;
-      case 'shipped':
-        return <Truck className="w-5 h-5 text-green-500" />;
       case 'delivered':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'cancelled':
@@ -167,14 +169,16 @@ const OrdersList = forwardRef<OrdersListRef>((props, ref) => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending':
+      case 'unprocessed':
         return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed':
+      case 'partially_processed':
         return 'bg-blue-100 text-blue-800';
-      case 'processing':
+      case 'unprocessed_partially':
+        return 'bg-orange-100 text-orange-800';
+      case 'archived':
+        return 'bg-gray-100 text-gray-800';
+      case 'merged':
         return 'bg-purple-100 text-purple-800';
-      case 'shipped':
-        return 'bg-green-100 text-green-800';
       case 'delivered':
         return 'bg-green-100 text-green-900';
       case 'cancelled':

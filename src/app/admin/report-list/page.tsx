@@ -32,12 +32,13 @@ interface ReportData {
   
   // Order Status Breakdown
   orderStatusBreakdown: {
-    pending: number;
-    confirmed: number;
-    processing: number;
-    shipped: number;
-    delivered: number;
+    unprocessed: number;
+    partially_processed: number;
+    unprocessed_partially: number;
+    archived: number;
     cancelled: number;
+    merged: number;
+    delivered: number;
   };
   
   // Top Products
@@ -225,12 +226,13 @@ export default function ReportsListPage() {
 
           // Order status breakdown
           const orderStatusBreakdown = {
-            pending: orders.filter(o => o.status === 'pending').length,
-            confirmed: orders.filter(o => o.status === 'confirmed').length,
-            processing: orders.filter(o => o.status === 'processing').length,
-            shipped: orders.filter(o => o.status === 'shipped').length,
-            delivered: orders.filter(o => o.status === 'delivered').length,
+            unprocessed: orders.filter(o => o.status === 'unprocessed').length,
+            partially_processed: orders.filter(o => o.status === 'partially_processed').length,
+            unprocessed_partially: orders.filter(o => o.status === 'unprocessed_partially').length,
+            archived: orders.filter(o => o.status === 'archived').length,
             cancelled: orders.filter(o => o.status === 'cancelled').length,
+            merged: orders.filter(o => o.status === 'merged').length,
+            delivered: orders.filter(o => o.status === 'delivered').length,
           };
 
           // Top products analysis
@@ -622,15 +624,15 @@ export default function ReportsListPage() {
 
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600">Pending Orders</h3>
+            <h3 className="text-sm font-medium text-gray-600">Unprocessed Orders</h3>
             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
           </div>
           <div className="text-3xl font-bold text-black mb-2">
-            {reportData.orderStatusBreakdown.pending}
+            {reportData.orderStatusBreakdown.unprocessed}
           </div>
           <div className="text-sm text-gray-500">
             {reportData.totalOrders > 0 ? 
-              ((reportData.orderStatusBreakdown.pending / reportData.totalOrders) * 100).toFixed(1) : 0}% of total
+              ((reportData.orderStatusBreakdown.unprocessed / reportData.totalOrders) * 100).toFixed(1) : 0}% of total
           </div>
         </div>
       </div>
@@ -667,10 +669,11 @@ export default function ReportsListPage() {
             {Object.entries(reportData.orderStatusBreakdown).map(([status, count]) => {
               const percentage = reportData.totalOrders > 0 ? (count / reportData.totalOrders) * 100 : 0;
               const colors = {
-                pending: 'bg-yellow-500',
-                confirmed: 'bg-blue-500',
-                processing: 'bg-indigo-500',
-                shipped: 'bg-purple-500',
+                unprocessed: 'bg-yellow-500',
+                partially_processed: 'bg-blue-500',
+                unprocessed_partially: 'bg-orange-500',
+                archived: 'bg-gray-500',
+                merged: 'bg-purple-500',
                 delivered: 'bg-green-500',
                 cancelled: 'bg-red-500'
               };

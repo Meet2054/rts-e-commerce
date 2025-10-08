@@ -63,15 +63,18 @@ interface OrderDetailsModalProps {
 }
 
 const statusOptions = [
-	{ label: 'Active', value: 'active' },
-	{ label: 'Complete', value: 'delivered' },
-	{ label: 'Hold', value: 'hold' },
-	{ label: 'Out Of Stock', value: 'out_of_stock' },
+	{ label: 'Unprocessed', value: 'unprocessed' },
+	{ label: 'Partially Processed', value: 'partially_processed' },
+	{ label: 'Unprocessed & Partially', value: 'unprocessed_partially' },
+	{ label: 'Archived', value: 'archived' },
+	{ label: 'Cancelled', value: 'cancelled' },
+	{ label: 'Merged', value: 'merged' },
+	{ label: 'Delivered', value: 'delivered' },
 ];
 
 export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate }: OrderDetailsModalProps) {
 	const modalRef = useRef<HTMLDivElement>(null);
-	const [status, setStatus] = useState(order?.status || 'pending');
+	const [status, setStatus] = useState(order?.status || 'unprocessed');
 	const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 	const [notes, setNotes] = useState(order?.notes || '');
 	const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
@@ -80,7 +83,7 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 	const { token } = useAuth();
 
 	useEffect(() => {
-		setStatus(order?.status || 'pending');
+		setStatus(order?.status || 'unprocessed');
 		setNotes(order?.notes || '');
 		setUpdateMessage(null); // Clear any previous messages when order changes
 	}, [order]);
@@ -306,11 +309,16 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 							<span className="font-semibold">Status:</span>
 							<span className={`px-2 py-1 rounded text-xs font-medium capitalize ${
 								status === 'delivered' ? 'bg-green-100 text-green-800' :
-								status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-								status === 'processing' || status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-								status === 'shipped' ? 'bg-purple-100 text-purple-800' :
+								status === 'unprocessed' ? 'bg-yellow-100 text-yellow-800' :
+								status === 'partially_processed' ? 'bg-blue-100 text-blue-800' :
+								status === 'unprocessed_partially' ? 'bg-orange-100 text-orange-800' :
+								status === 'archived' ? 'bg-gray-100 text-gray-800' :
+								status === 'merged' ? 'bg-purple-100 text-purple-800' :
+								status === 'cancelled' ? 'bg-red-100 text-red-800' :
 								'bg-gray-100 text-gray-800'
-							}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
+							}`}>{status === 'partially_processed' ? 'Partially Processed' :
+								status === 'unprocessed_partially' ? 'Unprocessed & Partially' :
+								status.charAt(0).toUpperCase() + status.slice(1)}</span>
 							
 						</div>
 						<div className="mb-4">

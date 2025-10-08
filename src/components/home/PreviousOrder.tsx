@@ -104,7 +104,7 @@ const PreviousOrders = () => {
 				
 				// Sort orders by date (newest first) and include all order statuses
 				const eligibleOrders = foundOrders
-					.filter(order => ['delivered', 'confirmed', 'processing', 'pending'].includes(order.status))
+					.filter(order => ['delivered', 'partially_processed', 'unprocessed_partially', 'merged', 'unprocessed'].includes(order.status))
 					.sort((a, b) => {
 						const aTime = new Date(a.createdAt).getTime();
 						const bTime = new Date(b.createdAt).getTime();

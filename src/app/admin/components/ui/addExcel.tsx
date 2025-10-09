@@ -20,15 +20,19 @@ interface UploadWarning {
 
 interface UploadResult {
   totalRows: number;
-  successfulAdds: number;
-  failedAdds: number;
-  duplicatesSkipped: number;
+  successfulAdds?: number;
+  successfulUpdates?: number;
+  failedAdds?: number;
+  failedUpdates?: number;
+  duplicatesSkipped?: number;
+  notFound?: number;
   errors: UploadError[];
   warnings: UploadWarning[];
 }
 
 export default function AddExcelModal({ open, onClose }: AddExcelProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<'main' | 'update'>('main');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
@@ -48,6 +52,14 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open, onClose]);
 
+  // Reset state when switching tabs
+  const handleTabChange = (tab: 'main' | 'update') => {
+    setActiveTab(tab);
+    setSelectedFile(null);
+    setUploadResult(null);
+    setError('');
+  };
+
   const handleFileUpload = async () => {
     if (!selectedFile) {
       setError('Please select a product file');
@@ -66,8 +78,13 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
     try {
       const formData = new FormData();
       formData.append('file', selectedFile);
+      formData.append('uploadType', activeTab); // Add upload type to form data
 
-      const response = await fetch('/api/admin/products/upload', {
+      const endpoint = activeTab === 'main' 
+        ? '/api/admin/products/upload' 
+        : '/api/admin/products/update-details';
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -105,47 +122,149 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
         </button>
         <h2 className="text-2xl font-bold mb-6 text-black flex items-center gap-2">
           <Package className="h-6 w-6" />
-          Upload Products (Excel)
+          Product Excel Management
         </h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Product Excel File</label>
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              className="w-full border border-gray-300 rounded px-3 py-2"
-            />
-          </div>
+
+        {/* Tab Selection */}
+        <div className="flex border-b mb-6">
           <button
-            onClick={handleFileUpload}
-            disabled={loading || !selectedFile}
-            className="bg-[#2E318E] hover:bg-black disabled:opacity-40 text-white px-4 py-2.5 rounded-md flex items-center gap-2 w-full"
+            onClick={() => handleTabChange('main')}
+            className={`px-4 py-2 font-medium ${
+              activeTab === 'main'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
           >
-            <Package size={20} />
-            {loading ? 'Uploading Products...' : 'Upload Products'}
+            Main Product Upload
           </button>
+          <button
+            onClick={() => handleTabChange('update')}
+            className={`px-4 py-2 font-medium ${
+              activeTab === 'update'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Update Product Details
+          </button>
+        </div>
+
+        {/* Content based on active tab */}
+        <div className="space-y-4">
+          {activeTab === 'main' ? (
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-blue-800 mb-2">Main Product Upload</h3>
+                <p className="text-sm text-blue-700">
+                  Upload Excel file with basic product information. Required columns:
+                </p>
+                <ul className="text-sm text-blue-700 list-disc list-inside mt-2">
+                  <li><strong>Katun PN:</strong> Product SKU/Part Number</li>
+                  <li><strong>Name:</strong> Product Name</li>
+                  <li><strong>Category:</strong> Product Category</li>
+                  <li><strong>Price:</strong> Product Price</li>
+                  <li><strong>OEM:</strong> Original Equipment Manufacturer</li>
+                </ul>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Main Product Excel File</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              
+              <button
+                onClick={handleFileUpload}
+                disabled={loading || !selectedFile}
+                className="bg-[#2E318E] hover:bg-black disabled:opacity-40 text-white px-4 py-2.5 rounded-md flex items-center gap-2 w-full"
+              >
+                <Package size={20} />
+                {loading ? 'Adding Products...' : 'Add Products'}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h3 className="font-semibold text-green-800 mb-2">Update Product Details</h3>
+                <p className="text-sm text-green-700">
+                  Upload Excel file to update existing products by matching Katun PN. Supported columns:
+                </p>
+                <ul className="text-sm text-green-700 list-disc list-inside mt-2">
+                  <li><strong>Katun PN:</strong> Must match existing product</li>
+                  <li><strong>For use in:</strong> Compatible devices/printers</li>
+                  <li><strong>Description:</strong> Detailed product description</li>
+                  <li><strong>Specifications:</strong> Technical specifications</li>
+                  <li><strong>Comments:</strong> Additional notes</li>
+                </ul>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1">Product Details Excel File</label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              
+              <button
+                onClick={handleFileUpload}
+                disabled={loading || !selectedFile}
+                className="bg-green-600 hover:bg-green-700 disabled:opacity-40 text-white px-4 py-2.5 rounded-md flex items-center gap-2 w-full"
+              >
+                <Package size={20} />
+                {loading ? 'Updating Product Details...' : 'Update Product Details'}
+              </button>
+            </div>
+          )}
         </div>
         {/* Upload Results */}
         {uploadResult && (
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold mb-2">Product Upload Results:</h3>
+            <h3 className="font-semibold mb-2">
+              {activeTab === 'main' ? 'Product Upload Results:' : 'Product Update Results:'}
+            </h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="font-medium">Total Rows:</span> {uploadResult.totalRows}
               </div>
-              <div>
-                <span className="font-medium">Successfully Added:</span>
-                <span className="text-green-600 ml-1">{uploadResult.successfulAdds}</span>
-              </div>
-              <div>
-                <span className="font-medium">Failed:</span>
-                <span className="text-red-600 ml-1">{uploadResult.failedAdds}</span>
-              </div>
-              <div>
-                <span className="font-medium">Duplicates Skipped:</span>
-                <span className="text-yellow-600 ml-1">{uploadResult.duplicatesSkipped || 0}</span>
-              </div>
+              
+              {activeTab === 'main' ? (
+                <>
+                  <div>
+                    <span className="font-medium">Successfully Added:</span>
+                    <span className="text-green-600 ml-1">{uploadResult.successfulAdds || 0}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Failed to Add:</span>
+                    <span className="text-red-600 ml-1">{uploadResult.failedAdds || 0}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Duplicates Skipped:</span>
+                    <span className="text-yellow-600 ml-1">{uploadResult.duplicatesSkipped || 0}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <span className="font-medium">Successfully Updated:</span>
+                    <span className="text-green-600 ml-1">{uploadResult.successfulUpdates || 0}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Failed to Update:</span>
+                    <span className="text-red-600 ml-1">{uploadResult.failedUpdates || 0}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Products Not Found:</span>
+                    <span className="text-orange-600 ml-1">{uploadResult.notFound || 0}</span>
+                  </div>
+                </>
+              )}
             </div>
             {uploadResult.errors?.length > 0 && (
               <div className="mt-3">

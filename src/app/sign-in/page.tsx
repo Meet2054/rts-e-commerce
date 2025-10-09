@@ -1,7 +1,7 @@
 // src/components/auth/auth-forms.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
@@ -9,6 +9,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { FcGoogle } from "react-icons/fc";
 import { signIn, signInWithGoogle, resetPassword, checkUserApproval, getUserData } from '@/lib/firebase-auth';
+
+// Declare ReCAPTCHA types
+declare global {
+  interface Window {
+    grecaptcha: {
+      ready: (callback: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      render: (container: string | HTMLElement, options: {
+        sitekey: string;
+        callback?: (token: string) => void;
+        'expired-callback'?: () => void;
+        'error-callback'?: () => void;
+        theme?: 'light' | 'dark';
+        size?: 'compact' | 'normal';
+      }) => void;
+      reset: (widgetId?: number) => void;
+    };
+  }
+}
 
 
 
@@ -20,7 +39,65 @@ export default function AuthForms() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaLoaded, setCaptchaLoaded] = useState(false);
+  const captchaRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // reCAPTCHA site key - fallback to test key for localhost
+  const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+
+  // Load reCAPTCHA script
+  useEffect(() => {
+    const loadRecaptcha = () => {
+      if (window.grecaptcha) {
+        setCaptchaLoaded(true);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://www.google.com/recaptcha/api.js';
+      script.onload = () => {
+        setCaptchaLoaded(true);
+      };
+      document.head.appendChild(script);
+    };
+
+    loadRecaptcha();
+  }, []);
+
+  // Render CAPTCHA when loaded
+  useEffect(() => {
+    if (captchaLoaded && captchaRef.current && window.grecaptcha) {
+      window.grecaptcha.ready(() => {
+        if (captchaRef.current) {
+          window.grecaptcha.render(captchaRef.current, {
+            sitekey: RECAPTCHA_SITE_KEY,
+            callback: (token: string) => {
+              setCaptchaToken(token);
+            },
+            'expired-callback': () => {
+              setCaptchaToken(null);
+            },
+            'error-callback': () => {
+              setCaptchaToken(null);
+              setError('CAPTCHA error occurred. Please try again.');
+            },
+            theme: 'light',
+            size: 'normal'
+          });
+        }
+      });
+    }
+  }, [captchaLoaded, RECAPTCHA_SITE_KEY]);
+
+  // Reset CAPTCHA
+  const resetCaptcha = () => {
+    if (window.grecaptcha) {
+      window.grecaptcha.reset();
+      setCaptchaToken(null);
+    }
+  };
 
   const variants = {
     initial: { opacity: 0, y: 40 },
@@ -34,6 +111,11 @@ export default function AuthForms() {
 
     if (!email || !password) {
       setError('Please fill in all fields');
+      return;
+    }
+
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification');
       return;
     }
 
@@ -65,6 +147,7 @@ export default function AuthForms() {
             // Sign out the user since they're not approved
             const { signOut } = await import('@/lib/firebase-auth');
             await signOut();
+            resetCaptcha(); // Reset CAPTCHA on failed approval
           } else {
             // Approved user - redirect to home
             router.push('/');
@@ -74,6 +157,7 @@ export default function AuthForms() {
     } catch (err) {
       setError('An unexpected error occurred');
       console.error('Sign-in error:', err);
+      resetCaptcha(); // Reset CAPTCHA on error
     } finally {
       setLoading(false);
     }
@@ -81,6 +165,12 @@ export default function AuthForms() {
 
   const handleGoogleSignIn = async () => {
     setError('');
+
+    if (!captchaToken) {
+      setError('Please complete the CAPTCHA verification');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -109,6 +199,7 @@ export default function AuthForms() {
             // Sign out the user since they're not approved
             const { signOut } = await import('@/lib/firebase-auth');
             await signOut();
+            resetCaptcha(); // Reset CAPTCHA on failed approval
           } else {
             // Approved user - redirect to home
             router.push('/');
@@ -118,6 +209,7 @@ export default function AuthForms() {
     } catch (err) {
       setError('An unexpected error occurred');
       console.error('Google sign-in error:', err);
+      resetCaptcha(); // Reset CAPTCHA on error
     } finally {
       setLoading(false);
     }
@@ -229,11 +321,17 @@ export default function AuthForms() {
                       setStep('reset');
                       setError('');
                       setSuccess('');
+                      resetCaptcha();
                     }}
                     className="text-black hover:underline text-base mt-2 hover:text-blue-400"
                   >
                     Forgot Password?
                   </button>
+
+                  {/* reCAPTCHA */}
+                  <div className="flex justify-center py-2">
+                    <div ref={captchaRef}></div>
+                  </div>
 
                   {/* Submit */}
                   <button

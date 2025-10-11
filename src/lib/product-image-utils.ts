@@ -47,17 +47,10 @@ export const getProductImageUrlQuick = (sku: string | undefined | null, katunPn?
     return '';
   }
   
-  // Try SKU first, then Katun PN if available
-  let firebaseUrl = `https://firebasestorage.googleapis.com/v0/b/rts-imaging-e-commerce.firebasestorage.app/o/products%2F${cleanSku}.jpg?alt=media`;
+  // Always try SKU first since that's the primary identifier
+  const firebaseUrl = `https://firebasestorage.googleapis.com/v0/b/rts-imaging-e-commerce.firebasestorage.app/o/products%2F${cleanSku}.jpg?alt=media`;
+  console.log(`🔍 [Product Image] Using SKU for image URL: ${cleanSku} ${katunPn ? `(Katun PN: ${katunPn} available for fallback)` : '(no Katun PN available)'}`);
   
-  // If we have Katun PN, prioritize it since your images might be stored by Katun PN
-  if (katunPn) {
-    const cleanKatunPn = katunPn.toString().trim();
-    firebaseUrl = `https://firebasestorage.googleapis.com/v0/b/rts-imaging-e-commerce.firebasestorage.app/o/products%2F${cleanKatunPn}.jpg?alt=media`;
-    console.log(`🔍 [Product Image] Using Katun PN for image URL: ${cleanKatunPn}`);
-  } else {
-    console.log(`🔍 [Product Image] Using SKU for image URL: ${cleanSku}`);
-  }
   
   // Cache the URL (Note: This is optimistic caching)
   imageUrlCache.set(cacheKey, firebaseUrl);
@@ -91,15 +84,26 @@ export const handleImageError = (
     return;
   }
   
-  const extensions = ['png', 'jpeg', 'webp'];
+  const extensions = ['jpg', 'png', 'jpeg', 'webp'];
   let extensionIndex = 0;
   let tryingKatunPn = false;
   
   const tryNextExtension = () => {
     if (extensionIndex < extensions.length) {
       const ext = extensions[extensionIndex];
+      // Always try SKU first, then Katun PN as fallback
       const currentIdentifier = tryingKatunPn ? cleanKatunPn : cleanSku;
+      
+      if (tryingKatunPn && !cleanKatunPn) {
+        // No Katun PN available, skip to failure
+        console.log(`⚠️ [Product Image Error Handler] No Katun PN available for fallback`);
+        setImageUrl('');
+        imageUrlCache.set(cacheKey, '');
+        return;
+      }
+      
       const url = `https://firebasestorage.googleapis.com/v0/b/rts-imaging-e-commerce.firebasestorage.app/o/products%2F${currentIdentifier}.${ext}?alt=media`;
+      console.log(`🔍 [Product Image Error Handler] Trying ${tryingKatunPn ? 'Katun PN' : 'SKU'}: ${currentIdentifier}.${ext}`);
       
       // Test if image exists
       const img = new Image();
@@ -109,6 +113,7 @@ export const handleImageError = (
         console.log(`✅ [Product Image Error Handler] Found image using ${tryingKatunPn ? 'Katun PN' : 'SKU'}: ${currentIdentifier} with extension: ${ext}`);
       };
       img.onerror = () => {
+        console.log(`❌ [Product Image Error Handler] Failed ${tryingKatunPn ? 'Katun PN' : 'SKU'}: ${currentIdentifier}.${ext}`);
         extensionIndex++;
         tryNextExtension();
       };

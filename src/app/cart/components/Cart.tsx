@@ -418,6 +418,16 @@ export default function ShoppingCart() {
 									)}
 								</span>
 							</div>
+							{userData?.freeShippingThreshold && shipping > 0 && (
+								<div className="text-xs text-gray-500 mt-1">
+									Free shipping on orders over ₹{userData.freeShippingThreshold}
+									{subtotal < userData.freeShippingThreshold && (
+										<span className="block text-blue-600">
+											Add ₹{(userData.freeShippingThreshold - subtotal).toFixed(2)} more for free shipping
+										</span>
+									)}
+								</div>
+							)}
 							<div className="flex justify-between text-lg font-bold pt-3 border-t">
 								<span>Total</span>
 								<span>{currency === 'USD' ? '$' : ''}{total.toFixed(2)}</span>

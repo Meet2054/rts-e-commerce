@@ -123,17 +123,29 @@ export async function GET(request: NextRequest) {
 
     let filteredProducts = allProducts;
     
-    // Apply search filter
+    // Apply comprehensive search filter
     if (searchTerm) {
-      const search = searchTerm.toLowerCase();
-      filteredProducts = filteredProducts.filter(product => 
-        product.name.toLowerCase().includes(search) ||
-        product.sku.toLowerCase().includes(search) ||
-        product.brand.toLowerCase().includes(search) ||
-        product.description.toLowerCase().includes(search) ||
-        product.oem.toLowerCase().includes(search)
-      );
-      console.log(`Found ${filteredProducts.length} products matching "${searchTerm}"`);
+      const search = searchTerm.toLowerCase().trim();
+      filteredProducts = filteredProducts.filter(product => {
+        // Helper function to safely check if a field contains the search term
+        const safeIncludes = (field: unknown) => {
+          return field && typeof field === 'string' && field.toLowerCase().includes(search);
+        };
+        
+        return (
+          safeIncludes(product.name) ||
+          safeIncludes(product.sku) ||
+          safeIncludes(product.brand) ||
+          safeIncludes(product.description) ||
+          safeIncludes(product.oem) ||
+          safeIncludes(product.oemPN) ||
+          safeIncludes(product.katunPN) ||
+          safeIncludes(product.category) ||
+          safeIncludes(product.comments) ||
+          safeIncludes(product.forUseIn)
+        );
+      });
+      console.log(`Found ${filteredProducts.length} products matching "${searchTerm}" across all fields`);
     }
     
     // Apply OEM filter

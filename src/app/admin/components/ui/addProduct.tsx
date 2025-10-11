@@ -1,6 +1,6 @@
 'use client';
 import React, { useRef, useEffect, useState } from 'react';
-import { X, Upload, ImageIcon } from 'lucide-react';
+import { X, Upload } from 'lucide-react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { uploadProductImage, validateImageFile } from '@/lib/firebase-storage';
 

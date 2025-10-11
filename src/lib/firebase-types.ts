@@ -40,6 +40,9 @@ export interface User extends BaseDocument {
   currency?: 'INR' | 'USD' | 'EUR';
   language?: 'en' | 'hi';
   
+  // Shipping Preferences
+  freeShippingThreshold?: number; // Default 1000
+  
   // Agreements
   agreedToTerms?: boolean;
   agreementDate?: Timestamp;

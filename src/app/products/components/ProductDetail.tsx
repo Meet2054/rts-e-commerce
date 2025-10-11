@@ -234,7 +234,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
         <div className="w-full lg:w-2/5">
         <div className="w-full max-w-sm flex flex-col gap-3"> 
           <h1 className="text-2xl sm:text-3xl font-bold text-black mt-4">{product.name}</h1>
-          <h1 className="text-xl sm:text-2xl font-bold text-black mb-0">OEM PN: <span className="font-medium">{product.oemPN}</span></h1>    
+          <h1 className="text-lg sm:text-xl font-bold text-black mb-0">OEM PN: <span className="font-medium text-gray-600">{product.oemPN}</span></h1>    
           {token ? (
             <div className="flex items-center gap-3 mb-2">
               <span className="text-2xl font-bold text-black">${formatPrice(product.price)}</span>
@@ -245,7 +245,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
           )}
           {token && <div className="text-green-600 text-sm mb-2">You save an extra 25% for being our valued existing customer.</div>}
 
-          <h1 className="text-xl sm:text-2xl font-bold text-black mb-0">For Use In: <span className="font-medium text-lg">{product.forUseIn}</span></h1>    
+          <h1 className="text-lg sm:text-xl font-bold text-black mb-0">For Use In: <span className="font-medium text-base sm:text-lg text-gray-600">{product.forUseIn}</span></h1>    
           
           {token && (
             <>
@@ -339,7 +339,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
           </div>
           <div className="rounded-lg p-4 max-w-2xl max-h-[90vh] overflow-y-auto">
           {tab === "description" && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {product.oem && (
                 <div className="space-y-2">
                   <div className="text-base font-bold text-black">OEM:</div>

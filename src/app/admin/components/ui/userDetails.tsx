@@ -46,7 +46,6 @@ interface UserDetailsModalProps {
   open: boolean;
   onClose: () => void;
   userData: UserData | null;
-  onAddNewPricing?: (userId: string) => void;
   currentUserRole?: string; // Add current user role to check if admin
 }
 
@@ -54,7 +53,6 @@ export default function UserDetailsModal({
   open, 
   onClose, 
   userData,
-  onAddNewPricing,
   currentUserRole = 'client' // Default to client if not provided
 }: UserDetailsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -259,7 +257,7 @@ export default function UserDetailsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
       <div 
         ref={modalRef} 
-        className="bg-white rounded-lg max-w-2xl max-h-[90vh] overflow-y-auto w-full max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-lg max-w-2xl max-h-[90vh] overflow-y-auto w-full overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b bg-white">
@@ -299,7 +297,6 @@ export default function UserDetailsModal({
                 'bg-gray-100 text-gray-800'
               }`}>{userData.role}</span></div>
               <div className="text-sm text-gray-700 mb-1">Role in Company: <span className="font-medium">{userData.roleInCompany}</span></div>
-              <div className="text-sm text-gray-400 mb-1">Password: <span className="font-medium">[hidden for security]</span></div>
               <div className="text-sm text-gray-700 mb-1">Agreed to Terms: <span className="font-medium">{userData.agreedToTerms ? 'Yes' : 'No'}</span></div>
             </div>
             <div>
@@ -404,7 +401,7 @@ export default function UserDetailsModal({
         <div className="flex items-center justify-center gap-3 p-4 border-t">
           <button
             onClick={handleSuspendAccount}
-            className={`px-2 py-2.5  text-sm font-medium rounded border ${
+            className={`px-4 py-2.5  text-sm font-medium rounded-md border ${
               suspendedAccount
                 ? 'bg-red-600 text-white border-red-600 hover:bg-red-700'
                 : 'bg-white text-black border-gray-300 hover:bg-gray-50'
@@ -471,15 +468,6 @@ export default function UserDetailsModal({
             <Download size={16} />
             Export Client Data
           </button>
-          
-          {onAddNewPricing && (
-            <button
-              onClick={() => onAddNewPricing(userData.id)}
-              className="px-4 py-2 text-sm admin-button"
-            >
-              Add New Pricing
-            </button>
-          )}
         </div>
       </div>
     </div>

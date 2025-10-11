@@ -337,19 +337,7 @@ export default function ClientPage() {
     setShowUserModal(false);
   };
 
-  const handleAddNewPricing = (userId: string) => {
-    console.log('Adding new pricing for user:', userId);
-    
-    // Find the user by ID
-    const user = clients.find(client => client.id === userId);
-    if (user) {
-      setPricingUser(user);
-      setShowPricingModal(true);
-      setShowUserModal(false); // Close user details modal
-    } else {
-      alert(`Could not find user with ID: ${userId}`);
-    }
-  };
+
 
   const handleClosePricingModal = () => {
     setShowPricingModal(false);
@@ -811,7 +799,6 @@ export default function ClientPage() {
           open={showUserModal}
           onClose={handleCloseModal}
           userData={convertClientToUserData(selectedUser)}
-          onAddNewPricing={handleAddNewPricing}
           currentUserRole={userData?.role || 'client'} // Pass current user's role
         />
       )}
@@ -822,7 +809,6 @@ export default function ClientPage() {
           open={showUserModal}
           onClose={handleCloseModal}
           userData={convertClientToUserData(selectedUser)}
-          onAddNewPricing={handleAddNewPricing}
           onApprove={(userId) => handleUserAction(userId, 'approve')}
           onReject={(userId) => handleUserAction(userId, 'reject')}
         />

@@ -90,15 +90,17 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onClose }) => {
 
   // Handle free search functionality
   const performFreeSearch = async (searchTerm: string) => {
-    if (!searchTerm.trim()) {
+    if (!searchTerm.trim() || searchTerm.trim().length < 2) {
       return;
     }
 
     try {
       setIsSearching(true);
-      const response = await fetch(`/api/products?search=${encodeURIComponent(searchTerm)}&pageSize=100`);
+      console.log(`🔍 Performing free search for: "${searchTerm}"`);
+      const response = await fetch(`/api/products?search=${encodeURIComponent(searchTerm.trim())}&pageSize=200`);
       if (response.ok) {
         const data = await response.json();
+        console.log(`✅ Found ${data.products?.length || 0} products for search: "${searchTerm}"`);
         setSelectedProducts(data.products || []);
         setSelectedOEM(''); // Clear OEM selection when doing free search
         setSelectedProductType(''); // Clear product type selection
@@ -110,21 +112,25 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onClose }) => {
     }
   };
 
-  // Debounced free search effect
+  // Debounced free search effect with improved logic
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
     if (searchModel.trim().length >= 2) {
+      setIsSearching(true); // Show loading immediately
       searchTimeoutRef.current = setTimeout(() => {
         performFreeSearch(searchModel);
-      }, 500); // 500ms debounce
+      }, 300); // Reduced debounce time for better responsiveness
     } else if (searchModel.trim().length === 0) {
       // Clear search results when input is cleared
       if (selectedProducts.length > 0 && !selectedOEM) {
         setSelectedProducts([]);
       }
+      setIsSearching(false);
+    } else if (searchModel.trim().length === 1) {
+      // For single character, don't search but don't show loading either
       setIsSearching(false);
     }
 
@@ -247,7 +253,8 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onClose }) => {
       <div className="mb-6 flex items-center justify-between">
         <div className="text-2xl font-semibold text-black">
           {selectedOEM ? `${selectedOEM} Products` : 
-           searchModel.length >= 2 ? `Search results for "${searchModel}"` :
+           searchModel.length >= 2 ? `Search results for "${searchModel}" (${selectedProducts.length} found)` :
+           searchModel.length === 1 ? `Type at least 2 characters to search...` :
            'Search for products, categories, or brands...'}
           {isSearching && (
             <span className="ml-2 text-base text-gray-500">
@@ -317,21 +324,35 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onClose }) => {
             </div>
           )}
         </div>
-        <input
-          type="text"
-          value={searchModel}
-          onChange={(e) => setSearchModel(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') {
-              handleFreeSearch();
-              if (onClose) {
-                onClose();
+        <div className="flex-1 relative">
+          <input
+            type="text"
+            value={searchModel}
+            onChange={(e) => setSearchModel(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                handleFreeSearch();
+                if (onClose) {
+                  onClose();
+                }
               }
-            }
-          }}
-          className="flex-1 bg-gray-100 rounded-lg py-2 px-4 text-left text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500"
-          placeholder="Search products by name, SKU, model..."
-        />
+            }}
+            className="w-full bg-gray-100 rounded-lg py-2 px-4 pr-8 text-left text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-orange-500"
+            placeholder="Search by name, SKU, OEM PN, Katun PN, description..."
+          />
+          {searchModel && (
+            <button
+              onClick={() => {
+                setSearchModel('');
+                setSelectedProducts([]);
+                setIsSearching(false);
+              }}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg"
+            >
+              ×
+            </button>
+          )}
+        </div>
         <button 
           onClick={handleSearch}
           className="bg-[#2E318E] text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
@@ -375,11 +396,16 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onClose }) => {
                         <Link
                           href={`/products/${product.sku}`}
                           onClick={() => onClose && onClose()}
-                          className="block px-4 py-2 hover:bg-gray-50 transition-colors text-gray-600 hover:text-blue-600"
+                          className="block px-4 py-2 hover:bg-gray-50 transition-colors"
                         >
-                          <span className="text-sm">
-                            {product.name} ({product.sku})
-                          </span>
+                          <div className="text-sm">
+                            <div className="font-medium text-gray-900 hover:text-blue-600 line-clamp-2">
+                              {product.name}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              SKU: {product.sku} | {product.brand} | {product.oem}
+                            </div>
+                          </div>
                         </Link>
                         {index < column.length - 1 && (
                           <div className="border-b border-gray-100"></div>
@@ -391,12 +417,20 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({ onClose }) => {
               </div>
             </div>
           </div>
+        ) : searchModel.length === 1 ? (
+          // Show message for single character
+          <div className="col-span-4 text-center py-12">
+            <div className="text-gray-500">
+              <div className="text-lg mb-2">Type at least 2 characters to search</div>
+              <div className="text-sm">Search across product names, SKUs, descriptions, and more</div>
+            </div>
+          </div>
         ) : searchModel.length >= 2 && !isSearching ? (
           // Show no results message for search
           <div className="col-span-4 text-center py-12">
             <div className="text-gray-500">
-              <div className="text-lg mb-2">No products found</div>
-              <div className="text-sm">Try adjusting your search terms</div>
+              <div className="text-lg mb-2">No products found for &ldquo;{searchModel}&rdquo;</div>
+              <div className="text-sm">Try different keywords or check the spelling</div>
             </div>
           </div>
         ) : !selectedOEM && searchModel.length < 2 ? (

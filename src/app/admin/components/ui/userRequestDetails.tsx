@@ -33,7 +33,6 @@ interface UserDetailsModalProps {
   open: boolean;
   onClose: () => void;
   userData: UserData | null;
-  onAddNewPricing?: (userId: string) => void;
 }
 
 export default function RequestedUserDetailsModal({ 
@@ -128,7 +127,6 @@ export default function RequestedUserDetailsModal({
               <div className="text-sm text-gray-700 mb-1">Email Address: <span className="font-medium">{userData.email}</span></div>
               <div className="text-sm text-gray-700 mb-1">Phone Number: <span className="font-medium">{userData.phoneNumber}</span></div>
               <div className="text-sm text-gray-700 mb-1">Role in Company: <span className="font-medium">{userData.roleInCompany}</span></div>
-              <div className="text-sm text-gray-400 mb-1">Password: <span className="font-medium">[hidden for security]</span></div>
               <div className="text-sm text-gray-700 mb-1">Agreed to Terms: <span className="font-medium">{userData.agreedToTerms ? 'Yes' : 'No'}</span></div>
             </div>
             <div>

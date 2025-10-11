@@ -11,8 +11,58 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState<number>(1000);
   
-  const { user, token } = useAuth();
+  const { user, token, userData } = useAuth();
+
+  // Fetch user's free shipping threshold
+  const fetchFreeShippingThreshold = useCallback(async () => {
+    if (userData?.freeShippingThreshold) {
+      setFreeShippingThreshold(userData.freeShippingThreshold);
+      return;
+    }
+
+    if (!user?.uid || !token) {
+      setFreeShippingThreshold(1000); // Default value
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/users-firebase?userId=${user.uid}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const userThreshold = data.user?.freeShippingThreshold || 1000;
+        setFreeShippingThreshold(userThreshold);
+        console.log(`🚚 [CART] Updated free shipping threshold to ₹${userThreshold}`);
+      }
+    } catch (error) {
+      console.error('Failed to fetch free shipping threshold:', error);
+      setFreeShippingThreshold(1000); // Fallback to default
+    }
+  }, [userData, user?.uid, token]);
+
+  // Update cart totals with user-specific free shipping threshold
+  const updateCartWithUserThreshold = useCallback((cartData: Cart): Cart => {
+    const subtotal = CartCalculations.calculateSubtotal(cartData.items);
+    const tax = CartCalculations.calculateTax(subtotal);
+    const shipping = CartCalculations.calculateShipping(subtotal, freeShippingThreshold);
+    const total = CartCalculations.calculateTotal(subtotal, tax, shipping);
+
+    return {
+      ...cartData,
+      subtotal,
+      tax,
+      shipping,
+      total,
+      updatedAt: new Date().toISOString()
+    };
+  }, [freeShippingThreshold]);
 
   // Helper function to build headers with authentication
   const buildHeaders = useCallback((additionalHeaders: Record<string, string> = {}): HeadersInit => {
@@ -64,9 +114,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const data: CartResponse = await response.json();
 
       if (data.success && data.cart) {
-        setCart(data.cart);
-        CartStorage.saveCart(data.cart);
-        console.log(`✅ [Context] Cart loaded with ${data.cart.items.length} items from ${data.cart.items.length > 0 ? 'API' : 'empty state'}`);
+        const cartWithUserThreshold = updateCartWithUserThreshold(data.cart);
+        setCart(cartWithUserThreshold);
+        CartStorage.saveCart(cartWithUserThreshold);
+        console.log(`✅ [Context] Cart loaded with ${cartWithUserThreshold.items.length} items (Shipping threshold: ₹${freeShippingThreshold})`);
       } else {
         throw new Error(data.error || 'Failed to load cart');
       }
@@ -81,7 +132,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [getUserIdentifier, buildHeaders]);
+  }, [getUserIdentifier, buildHeaders, freeShippingThreshold, updateCartWithUserThreshold, token]);
 
   // Add item to cart
   const addToCart = useCallback(async (
@@ -134,12 +185,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           });
         }
         
-        const recalculatedCart = CartCalculations.updateCartTotals(updatedCart);
+        const recalculatedCart = updateCartWithUserThreshold(updatedCart);
         setCart(recalculatedCart);
         CartStorage.saveCart(recalculatedCart);
       }
     }
-  }, [cart, getUserIdentifier]);
+  }, [cart, getUserIdentifier, buildHeaders, updateCartWithUserThreshold]);
 
   // Remove item from cart
   const removeFromCart = useCallback(async (itemId: string): Promise<void> => {
@@ -177,12 +228,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (cart) {
         const updatedCart = { ...cart };
         updatedCart.items = updatedCart.items.filter(item => item.id !== itemId);
-        const recalculatedCart = CartCalculations.updateCartTotals(updatedCart);
+        const recalculatedCart = updateCartWithUserThreshold(updatedCart);
         setCart(recalculatedCart);
         CartStorage.saveCart(recalculatedCart);
       }
     }
-  }, [cart, getUserIdentifier]);
+  }, [cart, getUserIdentifier, buildHeaders, updateCartWithUserThreshold]);
 
   // Update item quantity
   const updateQuantity = useCallback(async (itemId: string, quantity: number): Promise<void> => {
@@ -224,12 +275,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         if (itemIndex >= 0) {
           updatedCart.items[itemIndex].quantity = quantity;
         }
-        const recalculatedCart = CartCalculations.updateCartTotals(updatedCart);
+        const recalculatedCart = updateCartWithUserThreshold(updatedCart);
         setCart(recalculatedCart);
         CartStorage.saveCart(recalculatedCart);
       }
     }
-  }, [cart, getUserIdentifier]);
+  }, [cart, getUserIdentifier, buildHeaders, updateCartWithUserThreshold]);
 
   // Clear cart
   const clearCart = useCallback(async (): Promise<void> => {
@@ -268,7 +319,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setCart(emptyCart);
       CartStorage.saveCart(emptyCart);
     }
-  }, [user?.uid, getUserIdentifier]);
+  }, [user?.uid, getUserIdentifier, buildHeaders]);
 
   // Sync cart when user changes
   const syncCart = useCallback(async (): Promise<void> => {
@@ -287,6 +338,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const getTotal = useCallback((): number => {
     return cart?.total || 0;
   }, [cart]);
+
+  // Fetch free shipping threshold when user data changes
+  useEffect(() => {
+    fetchFreeShippingThreshold();
+  }, [fetchFreeShippingThreshold]);
+
+  // Update cart totals when free shipping threshold changes
+  useEffect(() => {
+    if (cart && cart.items.length > 0) {
+      const updatedCart = updateCartWithUserThreshold(cart);
+      if (updatedCart.shipping !== cart.shipping || updatedCart.total !== cart.total) {
+        setCart(updatedCart);
+        CartStorage.saveCart(updatedCart);
+        console.log(`🚚 [CART] Updated shipping costs with threshold ₹${freeShippingThreshold}`);
+      }
+    }
+  }, [cart, freeShippingThreshold, updateCartWithUserThreshold]);
 
   // Load cart on mount and when user changes
   useEffect(() => {

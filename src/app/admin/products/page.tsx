@@ -285,7 +285,11 @@ export default function ProductsPage() {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       setCurrentPage(1); // Reset to first page when searching
-    }, 300);
+      // Only trigger fetch if search term has actually changed and component is mounted
+      if (searchTerm.trim().length >= 2 || searchTerm.trim().length === 0) {
+        // This will trigger the fetchProducts useEffect
+      }
+    }, 500); // Increased debounce time for better UX
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
 
@@ -422,15 +426,23 @@ export default function ProductsPage() {
       
       {/* Search Bar */}
       <div className="flex justify-between items-center mb-4">
-        <div className="relative max-w-md">
+        <div className="relative max-w-md flex-1 mr-4">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search products by name, brand, OEM..."
+            placeholder="Search products by name, SKU, brand, OEM PN, Katun PN, description..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
+          )}
         </div>
         <div className="relative" ref={oemDropdownRef}>
           <button 

@@ -49,6 +49,7 @@ export const signInWithGoogle = async () => {
         role: isAdmin ? 'admin' as const : 'client' as const,
         status: isAdmin ? 'active' as const : 'requested' as const,
         approved: isAdmin ? true : false,
+        freeShippingThreshold: 1000, // Default free shipping threshold
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         authProvider: 'google'
@@ -101,6 +102,7 @@ export const signUp = async (email: string, password: string, userData: Partial<
       role: isAdmin ? 'admin' as const : 'client' as const,
       status: isAdmin ? 'active' as const : 'requested' as const,
       approved: isAdmin ? true : false,
+      freeShippingThreshold: 1000, // Default free shipping threshold
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };

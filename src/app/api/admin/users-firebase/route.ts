@@ -92,7 +92,9 @@ export async function GET(request: NextRequest) {
           approvedAt: userData.approvedAt || null,
           rejectedAt: userData.rejectedAt || null,
           approvedBy: userData.approvedBy || null,
-          rejectedBy: userData.rejectedBy || null
+          rejectedBy: userData.rejectedBy || null,
+          // Shipping preferences
+          freeShippingThreshold: userData.freeShippingThreshold || 1000
         });
       });
 
@@ -100,12 +102,23 @@ export async function GET(request: NextRequest) {
         totalUsers: allUsers.length
       });
 
-      // Get order counts for each user (if you have orders collection)
+      // Get order counts and custom pricing status for each user
       const usersWithOrderCounts = await Promise.all(
         allUsers.map(async (user) => {
           let totalOrders = 0;
+          let hasCustomPricing = false;
           
           try {
+            // Check for custom pricing subcollection
+            const customPricingSnapshot = await adminDb
+              .collection('users')
+              .doc(user.id)
+              .collection('customPricing')
+              .limit(1)
+              .get();
+            
+            hasCustomPricing = !customPricingSnapshot.empty;
+            
             // Try to get orders for this user
             const ordersSnapshot = await adminDb
               .collection('orders')
@@ -179,7 +192,10 @@ export async function GET(request: NextRequest) {
             approvedAt: user.approvedAt,
             rejectedAt: user.rejectedAt,
             approvedBy: user.approvedBy,
-            rejectedBy: user.rejectedBy
+            rejectedBy: user.rejectedBy,
+            // Pricing info
+            hasCustomPricing,
+            freeShippingThreshold: user.freeShippingThreshold
           };
         })
       );
@@ -331,19 +347,20 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, action, role } = body;
+    const { userId, action, role, freeShippingThreshold, clientEmails } = body;
     
     adminLogger.debug(LogCategory.USER_MANAGEMENT, 'Processing user update request', {
       userId, action, role
     });
     
-    if (!userId) {
+    // Validate userId for non-bulk operations
+    if (!userId && action !== 'bulkUpdateFreeShipping') {
       adminLogger.warn(LogCategory.USER_MANAGEMENT, 'User update request missing userId');
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
     // Validate action type
-    if (action && !['approve', 'reject', 'changeRole'].includes(action)) {
+    if (action && !['approve', 'reject', 'changeRole', 'updateFreeShipping', 'bulkUpdateFreeShipping'].includes(action)) {
       adminLogger.warn(LogCategory.USER_MANAGEMENT, 'Invalid action in user update request', { action });
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
@@ -356,8 +373,69 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Validate free shipping threshold for free shipping actions
+    if (action === 'updateFreeShipping' || action === 'bulkUpdateFreeShipping') {
+      if (freeShippingThreshold === undefined || freeShippingThreshold < 0) {
+        adminLogger.warn(LogCategory.USER_MANAGEMENT, 'Invalid free shipping threshold', { freeShippingThreshold });
+        return NextResponse.json({ error: 'Free shipping threshold must be a non-negative number' }, { status: 400 });
+      }
+    }
+
+    // Validate client emails for bulk free shipping updates
+    if (action === 'bulkUpdateFreeShipping') {
+      if (!clientEmails || !Array.isArray(clientEmails) || clientEmails.length === 0) {
+        adminLogger.warn(LogCategory.USER_MANAGEMENT, 'Invalid client emails for bulk update');
+        return NextResponse.json({ error: 'Client emails array is required for bulk updates' }, { status: 400 });
+      }
+    }
+
     try {
-      // Update user in Firebase
+      // Handle bulk free shipping updates
+      if (action === 'bulkUpdateFreeShipping') {
+        const batch = adminDb.batch();
+        let updatedCount = 0;
+        const errors: string[] = [];
+
+        for (const email of clientEmails) {
+          try {
+            const usersSnapshot = await adminDb.collection('users').where('email', '==', email).get();
+            
+            if (usersSnapshot.empty) {
+              errors.push(`User with email ${email} not found`);
+              continue;
+            }
+
+            usersSnapshot.docs.forEach((doc) => {
+              batch.update(doc.ref, {
+                freeShippingThreshold: freeShippingThreshold,
+                updatedAt: new Date()
+              });
+              updatedCount++;
+            });
+          } catch (error) {
+            errors.push(`Error updating ${email}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+
+        await batch.commit();
+
+        adminLogger.info(LogCategory.USER_MANAGEMENT, 'Bulk free shipping threshold update completed', {
+          totalEmails: clientEmails.length,
+          updatedCount,
+          errorCount: errors.length,
+          threshold: freeShippingThreshold
+        });
+
+        return NextResponse.json({
+          message: `Bulk free shipping threshold update completed`,
+          updatedCount,
+          totalRequested: clientEmails.length,
+          errors: errors.length > 0 ? errors : undefined,
+          threshold: freeShippingThreshold
+        });
+      }
+
+      // Single user updates
       const userRef = adminDb.collection('users').doc(userId);
       const userDoc = await userRef.get();
       
@@ -396,6 +474,13 @@ export async function PUT(request: NextRequest) {
           fromRole: userData?.role,
           toRole: role
         });
+      } else if (action === 'updateFreeShipping') {
+        updateData.freeShippingThreshold = freeShippingThreshold;
+        adminLogger.info(LogCategory.USER_MANAGEMENT, 'Updating free shipping threshold', {
+          userId,
+          fromThreshold: userData?.freeShippingThreshold,
+          toThreshold: freeShippingThreshold
+        });
       } else {
         // Handle legacy requests that don't specify an action but have approve/reject
         if (!action && !role) {
@@ -415,13 +500,21 @@ export async function PUT(request: NextRequest) {
         duration: `${duration}ms`
       });
 
+      let message = '';
+      if (action === 'changeRole') {
+        message = `User role changed to ${role} successfully`;
+      } else if (action === 'updateFreeShipping') {
+        message = `Free shipping threshold updated to ${freeShippingThreshold} successfully`;
+      } else {
+        message = `User ${action}d successfully`;
+      }
+
       return NextResponse.json({ 
-        message: action === 'changeRole' 
-          ? `User role changed to ${role} successfully`
-          : `User ${action}d successfully`,
+        message,
         userId,
         action,
-        role: action === 'changeRole' ? role : undefined
+        role: action === 'changeRole' ? role : undefined,
+        freeShippingThreshold: action === 'updateFreeShipping' ? freeShippingThreshold : undefined
       });
 
     } catch (firebaseError) {

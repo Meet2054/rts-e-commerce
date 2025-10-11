@@ -12,7 +12,7 @@ export class CartCalculations {
   }
 
   static calculateShipping(subtotal: number, freeShippingThreshold: number = 1000): number {
-    return subtotal >= freeShippingThreshold ? 0 : 10.00;
+    return subtotal >= freeShippingThreshold ? 0 : 50.00;
   }
 
   static calculateTotal(subtotal: number, tax: number, shipping: number): number {

@@ -5,7 +5,6 @@ import Image from 'next/image';
 const companyLinks = [
     { name: 'Products', href: '/products' },
     { name: 'Customer Support', href: '/support' },
-    { name: 'Delivery Details', href: '/delivery' },
     { name: 'Terms & Conditions', href: '/terms-conditions' },
     { name: 'Privacy Policy', href: '/privacy-policy' },
 ];

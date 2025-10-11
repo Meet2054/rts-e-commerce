@@ -20,6 +20,7 @@ interface Product {
     price: number;
     category: string;
     brand: string;
+    katunPN?: string;
 }
 
 interface SimilarProductsProps {
@@ -140,8 +141,9 @@ const SimilarProducts: React.FC<SimilarProductsProps> = ({ product, products }) 
                                 </Link>
                                 <ProductImage 
                                     sku={item.sku} 
+                                    katunPn={item.katunPN}
                                     name={item.name} 
-                                    width={300} 
+                                    width={200} 
                                     height={200} 
                                     className="object-contain rounded-lg" 
                                 />

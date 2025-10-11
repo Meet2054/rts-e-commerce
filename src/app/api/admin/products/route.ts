@@ -35,7 +35,6 @@ export async function POST(request: Request) {
       description = '',
       category = '',
       price,
-      stock = 0,
       sku,
       brand = '',
       oem = '',
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
     // Validate required fields
     if (!name || !sku || price === undefined) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, sku, and price are required' },
+        { error: 'Missing required fields: name, OEM PN, and price are required' },
         { status: 400 }
       );
     }
@@ -57,7 +56,7 @@ export async function POST(request: Request) {
     const existingProduct = await adminDb.collection('products').where('sku', '==', sku).get();
     if (!existingProduct.empty) {
       return NextResponse.json(
-        { error: 'A product with this SKU already exists' },
+        { error: 'A product with this OEM PN already exists' },
         { status: 409 }
       );
     }
@@ -75,7 +74,6 @@ export async function POST(request: Request) {
       katunPN: katunPN.trim(),
       image: image || '',
       isActive: Boolean(isActive),
-      stock: parseInt(stock) || 0,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: FieldValue.serverTimestamp()
     };

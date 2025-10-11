@@ -66,7 +66,8 @@ export async function POST(request: NextRequest) {
       imageSnap: item.image || '',
       qty: item.quantity,
       unitPrice: item.price,
-      lineTotal: item.price * item.quantity
+      lineTotal: item.price * item.quantity,
+      katunPN: item.katunPN || ''
     }));
 
     // Create order document

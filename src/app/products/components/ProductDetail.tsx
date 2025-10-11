@@ -36,6 +36,7 @@ interface RelatedProduct {
   rating: number;
   reviews: number;
   price: number;
+  katunPN?: string;
 }
 
 export default function ProductDetail({ product, related }: { product: Product, related: RelatedProduct[] }) {
@@ -211,7 +212,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
             <div className="flex flex-col gap-5">
                 {/* Main image */}
                 <div className="bg-white rounded-md flex-1 flex justify-center">
-                    <ProductImage sku={product.sku} name={product.name} width={650} height={500} className="rounded-md" />
+                    <ProductImage sku={product.sku} katunPn={product.katunPN} name={product.name} width={600} height={500} className="rounded-md" />
                 </div>
 
                 {/* Gallery info */}
@@ -231,8 +232,9 @@ export default function ProductDetail({ product, related }: { product: Product, 
 
         {/* Product Info */}
         <div className="w-full lg:w-2/5">
-        <div className="w-full max-w-sm flex flex-col gap-3">     
-          <h1 className="text-2xl sm:text-3xl font-bold text-black mt-4 mb-2">{product.name}</h1>
+        <div className="w-full max-w-sm flex flex-col gap-3"> 
+          <h1 className="text-2xl sm:text-3xl font-bold text-black mt-4">{product.name}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-black mb-0">OEM PN: <span className="font-medium">{product.oemPN}</span></h1>    
           {token ? (
             <div className="flex items-center gap-3 mb-2">
               <span className="text-2xl font-bold text-black">${formatPrice(product.price)}</span>
@@ -242,15 +244,9 @@ export default function ProductDetail({ product, related }: { product: Product, 
             <div className="text-lg text-gray-600 mb-2">Sign in to view pricing</div>
           )}
           {token && <div className="text-green-600 text-sm mb-2">You save an extra 25% for being our valued existing customer.</div>}
-          <div className="mb-2">
-            <div className="font-semibold mb-1">Features:</div>
-            <ul className="list-disc ml-5 text-gray-700 text-sm space-y-1">
-              <li>Fast printing up to 40 pages per minute</li>
-              <li>Compact design, perfect for offices</li>
-              <li>Energy-efficient with auto on/off</li>
-              <li>Quality assured by RTS Imaging</li>
-            </ul>
-          </div>
+
+          <h1 className="text-xl sm:text-2xl font-bold text-black mb-0">For Use In: <span className="font-medium text-lg">{product.forUseIn}</span></h1>    
+          
           {token && (
             <>
               <div className="mb-2">
@@ -341,7 +337,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
               <button key={t} className={`py-2 px-4 font-semibold text-base border-b-2 ${tab === t.toLowerCase() ? "border-black text-black" : "border-transparent text-gray-500"}`} onClick={() => setTab(t.toLowerCase())}>{t}</button>
             ))}
           </div>
-          <div className="rounded-lg p-4 max-w-2xl">
+          <div className="rounded-lg p-4 max-w-2xl max-h-[90vh] overflow-y-auto">
           {tab === "description" && (
             <div className="space-y-6">
               {product.oem && (
@@ -350,11 +346,18 @@ export default function ProductDetail({ product, related }: { product: Product, 
                   <div className="text-sm text-gray-700 pl-2">{product.oem}</div>
                 </div>
               )}
-              
-              {product.katunPN && (
+
+               {product.katunPN && (
                 <div className="space-y-2">
-                  <div className="text-base font-bold text-black">Product ID:</div>
+                  <div className="text-base font-bold text-black">Katun PN:</div>
                   <div className="text-sm text-gray-700 pl-2">{product.katunPN}</div>
+                </div>
+              )}
+
+              {product.oem && (
+                <div className="space-y-2">
+                  <div className="text-base font-bold text-black">Description:</div>
+                  <div className="text-sm text-gray-700 pl-2">{product.oem}</div>
                 </div>
               )}
               
@@ -395,7 +398,7 @@ export default function ProductDetail({ product, related }: { product: Product, 
               >
                 <div className="flex flex-col sm:flex-row gap-4 xl:items-center">
                   <Link href={`/products/${rp.sku}`} className="cursor-pointer flex justify-center sm:w-1/2">
-                    <ProductImage sku={rp.sku} name={rp.name} width={210} height={80} className="object-contain rounded hover:opacity-80 transition-opacity" />
+                    <ProductImage sku={rp.sku} katunPn={rp.katunPN} name={rp.name} width={150} height={80} className="object-contain rounded hover:opacity-80 transition-opacity" />
                   </Link>
                   <div className="flex flex-col flex-1">
                     <div className="font-semibold text-base text-black">{rp.name}</div>

@@ -109,6 +109,7 @@ interface Product {
   image?: string;
   rating?: number;
   oem?: string;
+  katunPN?: string;
 }
 
 function ProductList() {
@@ -689,8 +690,9 @@ function ProductList() {
                   >
                     <ProductImage 
                       sku={order.sku} 
+                      katunPn={order.katunPN}
                       name={order.name} 
-                      width={300} 
+                      width={200} 
                       height={200} 
                       className="object-cover rounded-lg"
                     />

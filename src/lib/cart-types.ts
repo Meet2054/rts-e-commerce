@@ -8,6 +8,7 @@ export interface CartItem {
   quantity: number;
   brand?: string;
   category?: string;
+  katunPN?: string;
   addedAt: string;
 }
 
@@ -72,6 +73,7 @@ export interface OrderItem {
   price: number;
   quantity: number;
   total: number;
+  katunPN?: string;
 }
 
 export interface ShippingAddress {

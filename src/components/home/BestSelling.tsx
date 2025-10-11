@@ -19,6 +19,7 @@ interface Product {
 	description: string;
 	rating?: number;
 	reviews?: number;
+	katunPN?: string;
 }
 
 interface BestSellingProduct extends Product {
@@ -341,8 +342,9 @@ const BestSelling = () => {
 								</button>
 								<ProductImage 
 									sku={product.sku}
+									katunPn={product.katunPN}
 									name={product.name} 
-									width={300} 
+									width={200} 
 									height={200} 
 									className="object-contain rounded-lg"
 								/>

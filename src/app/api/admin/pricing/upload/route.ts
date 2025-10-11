@@ -8,7 +8,7 @@ interface PricingRow {
   sku?: string;
   price?: number | string;
   productName?: string;
-  'SKU'?: string;
+  'OEM PN'?: string;
   'Price'?: number | string;
   'Product ID'?: string;
   'Product_ID'?: string;
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         const row = rawData[i] as unknown[];
         if (row && row.length > 0) {
           const hasSkuColumn = row.some((cell: unknown) => 
-            cell && (String(cell).toLowerCase().includes('sku') || 
+            cell && (String(cell).toLowerCase().includes('oem pn') || 
             String(cell).toLowerCase().includes('product') ||
             String(cell).toLowerCase().includes('katun pn') ||
             String(cell).toLowerCase().includes('katun_pn') ||
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
       // Parse headers and find column indexes (case-insensitive)
       const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
       const skuColumnIndex = normalizedHeaders.findIndex(h => 
-        h.includes('sku') || h.includes('product id') || h.includes('product_id') || h.includes('productid') || 
+        h.includes('oem pn') || h.includes('product id') || h.includes('product_id') || h.includes('productid') || 
         h.includes('katun pn') || h.includes('katun_pn') || h.includes('katunpn')
       );
       const priceColumnIndex = normalizedHeaders.findIndex(h => 
@@ -176,15 +176,15 @@ export async function POST(request: NextRequest) {
       );
 
       console.log(`📋 Sheet '${sheetName}' - Headers found:`, headers);
-      console.log(`📊 Sheet '${sheetName}' - SKU column at index: ${skuColumnIndex}, Price column at index: ${priceColumnIndex}`);
+      console.log(`📊 Sheet '${sheetName}' - OEM PN column at index: ${skuColumnIndex}, Price column at index: ${priceColumnIndex}`);
 
       if (skuColumnIndex === -1) {
         totalResult.warnings.push({
           row: 0,
           sku: 'N/A',
-          warning: `Sheet '${sheetName}' skipped: Could not find SKU column`
+          warning: `Sheet '${sheetName}' skipped: Could not find OEM PN column`
         });
-        console.log(`⚠️ Sheet '${sheetName}' skipped: No SKU column found`);
+        console.log(`⚠️ Sheet '${sheetName}' skipped: No OEM PN column found`);
         continue;
       }
 
@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
           totalResult.errors.push({
             row: rowNumber,
             sku: 'N/A',
-            error: `Sheet '${sheetName}': Missing SKU value`
+            error: `Sheet '${sheetName}': Missing OEM PN value`
           });
           totalResult.failedUpdates++;
           continue;
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
           totalResult.errors.push({
             row: rowNumber,
             sku: sku,
-            error: `Sheet '${sheetName}': Product not found with this SKU`
+            error: `Sheet '${sheetName}': Product not found with this OEM PN`
           });
           totalResult.failedUpdates++;
           continue;
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
 
         totalResult.successfulUpdates++;
         
-        console.log(`✅ Sheet '${sheetName}' - Updated custom pricing for user ${clientEmail}, SKU: ${sku}, Price: ${price}`);
+        console.log(`✅ Sheet '${sheetName}' - Updated custom pricing for user ${clientEmail}, OEM PN: ${sku}, Price: ${price}`);
 
       } catch (error) {
         console.error(`Error processing row ${rowNumber} in sheet '${sheetName}':`, error);

@@ -10,7 +10,16 @@ import { OrderItem } from '@/lib/firebase-types';
 import ProductImage from '@/components/ui/product-image';
 import { clientLogger } from '@/lib/client-logger';
 
-interface PreviousOrderItem extends OrderItem {
+interface PreviousOrderItem {
+  productId: string;
+  sku: string;
+  nameSnap: string;
+  brandSnap: string;
+  imageSnap?: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  katunPN?: string;
   orderId: string;
   orderDate: unknown;
 }
@@ -333,8 +342,9 @@ const PreviousOrders = () => {
 									>
 										<ProductImage 
 											sku={order.sku} 
+											katunPn={order.katunPN}
 											name={order.nameSnap} 
-											width={300} 
+											width={200} 
 											height={200} 
 											className="object-contain rounded-lg" 
 										/>

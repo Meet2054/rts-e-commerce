@@ -283,8 +283,9 @@ export default function ShoppingCart() {
 										<Link href={`/products/${item.sku}`} className="">
 											<ProductImage 
 												sku={item.sku}
+												katunPn={item.katunPN}
 												name={item.name} 
-												width={150} 
+												width={100} 
 												height={80} 
 												className="rounded-md mb-4 object-contain" 
 											/>
@@ -297,7 +298,7 @@ export default function ShoppingCart() {
 												{item.name}
 											</Link>
 											<div className="text-sm text-gray-500 mt-1">
-												SKU: {item.sku}
+												OEM PN: {item.sku}
 											</div>
 											{item.brand && (
 												<div className="text-sm text-gray-500">

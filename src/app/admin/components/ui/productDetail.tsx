@@ -20,6 +20,7 @@ interface ProductDetailProps {
     price: string;
     status: string;
     images?: string[];
+    katunPN?: string;
   };
 }
 
@@ -392,7 +393,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
     setSuccess('');
 
     try {
-      console.log(`🗑️ Deleting product: ${product.name} (SKU: ${product.sku})`);
+      console.log(`🗑️ Deleting product: ${product.name} (OEM PN: ${product.sku})`);
       
       const token = await user.getIdToken();
       
@@ -449,7 +450,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-      <div ref={modalRef} className="bg-white border-2 border-gray-200 rounded-md shadow-xl max-w-2xl w-full mx-4 p-8 relative">
+      <div ref={modalRef} className="bg-white border-2 border-gray-200 rounded-md shadow-xl max-w-2xl max-h-[90vh] overflow-y-auto w-full mx-4 p-8 relative">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -480,6 +481,7 @@ export default function ProductDetailModal({ open, onClose, onUpdate, product }:
             <div className="relative">
               <ProductImage 
                 sku={product.sku}
+                katunPn={product.katunPN}
                 name={product.name}
                 width={160}
                 height={120}

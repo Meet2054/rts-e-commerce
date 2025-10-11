@@ -53,13 +53,13 @@ function isKatunFormat(data: unknown[]): boolean {
   return firstRow && 
          typeof firstRow === 'object' &&
          'OEM:' in firstRow && 
-         'Katun PN:' in firstRow && 
+         'OEM PN:' in firstRow && 
          'Name:' in firstRow;
 }
 
 function convertKatunToStandard(katunRow: KatunProductRow): StandardProductRow {
   return {
-    sku: String(katunRow['Katun PN:']).trim(),
+    sku: String(katunRow['OEM PN:']).trim(),
     name: String(katunRow['Name:']).trim(),
     description: katunRow['Description:'] ? String(katunRow['Description:']).trim() : undefined,
     category: katunRow['Category:'] ? String(katunRow['Category:']).trim().toLowerCase() : 'general',
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         if (!row.sku || !row.name || !row.category) {
           totalResult.errors.push({
             row: rowNumber,
-            error: 'Missing required fields: sku, name, and category are required'
+            error: 'Missing required fields: OEM PN, name, and category are required'
           });
           totalResult.failedAdds++;
           continue;

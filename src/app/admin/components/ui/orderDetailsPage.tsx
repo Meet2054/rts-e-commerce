@@ -189,7 +189,7 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 			
 			// Order Items Section
 			csvContent.push('ORDER ITEMS');
-			csvContent.push('SKU,Product Name,Brand,Quantity,Unit Price,Line Total');
+			csvContent.push('Oem PN,Product Name,Brand,Quantity,Unit Price,Line Total');
 			order.items.forEach(item => {
 				csvContent.push(`${item.sku},"${item.nameSnap.replace(/"/g, '""')}","${item.brandSnap || ''}",${item.qty},${item.unitPrice},${item.lineTotal}`);
 			});
@@ -248,7 +248,7 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 
 		return (
 			<div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-				<div ref={modalRef} className="bg-white border-2 border-gray-300 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+				<div ref={modalRef} className="bg-white border-2 border-gray-300 rounded-lg max-w-2xl max-h-[90vh] overflow-y-auto w-full overflow-hidden flex flex-col">
 					{/* Header */}
 					<div className="flex items-center justify-between p-6 border-b bg-white">
 						<h2 className="text-xl font-bold text-black">Order Details Page</h2>
@@ -285,7 +285,7 @@ export default function OrderDetailsModal({ open, onClose, order, onOrderUpdate 
 							<table className="w-full text-sm border rounded">
 								<thead>
 									<tr className="bg-gray-50">
-								<th className="py-2 px-4 text-left">SKU</th>
+								<th className="py-2 px-4 text-left">OEM PN</th>
 										<th className="py-2 px-4 text-left">Product Name</th>
 										<th className="py-2 px-4 text-left">Quantity</th>
 										<th className="py-2 px-4 text-left">Price</th>

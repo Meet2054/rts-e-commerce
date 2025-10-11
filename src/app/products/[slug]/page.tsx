@@ -36,6 +36,7 @@ interface RelatedProduct {
   rating: number;
   reviews: number;
   category: string;
+  katunPN?: string;
 }
 
 async function fetchProduct(sku: string, token?: string): Promise<Product | null> {
@@ -124,7 +125,7 @@ export default function ProductDescriptionPage({ params }: { params: { slug: str
         const awaitedParams = await params;
         const { slug } = awaitedParams;
         
-        console.log(`🔍 [Page] Loading product detail page for SKU: ${slug}`);
+        console.log(`🔍 [Page] Loading product detail page for OEM PN: ${slug}`);
         
         // Fetch the main product with user authentication
         const fetchedProduct = await fetchProduct(slug, token || undefined);

@@ -2,9 +2,6 @@
 import { storage } from './firebase-config';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
-// Storage bucket reference
-const STORAGE_BUCKET = 'gs://rts-imaging-e-commerce.firebasestorage.app';
-
 /**
  * Upload product image to Firebase Storage with SKU as filename
  */
@@ -21,7 +18,7 @@ export const uploadProductImage = async (file: File, sku: string): Promise<strin
     const storageRef = ref(storage, `products/${cleanSku}.jpg`);
     
     console.log(`📁 [Storage] Storage reference path:`, storageRef.fullPath);
-    console.log(`📁 [Storage] Uploading image for SKU: ${sku} as ${cleanSku}.jpg`);
+    console.log(`📁 [Storage] Uploading image for OEM PN: ${sku} as ${cleanSku}.jpg`);
     console.log(`📁 [Storage] File details:`, {
       name: file.name,
       size: file.size,
@@ -34,12 +31,12 @@ export const uploadProductImage = async (file: File, sku: string): Promise<strin
     // Get download URL
     const downloadURL = await getDownloadURL(snapshot.ref);
     
-    console.log(`✅ [Storage] Image uploaded successfully for SKU: ${sku}`);
+    console.log(`✅ [Storage] Image uploaded successfully for OEM PN: ${sku}`);
     console.log(`🔗 [Storage] Download URL: ${downloadURL}`);
     
     return downloadURL;
   } catch (error) {
-    console.error(`❌ [Storage] Error uploading image for SKU ${sku}:`, error);
+    console.error(`❌ [Storage] Error uploading image for OEM PN ${sku}:`, error);
     
     // Enhanced error logging
     if (error instanceof Error) {
@@ -54,9 +51,9 @@ export const uploadProductImage = async (file: File, sku: string): Promise<strin
 };
 
 /**
- * Get product image URL from Firebase Storage based on SKU
+ * Get product image URL from Firebase Storage based on SKU, with Katun PN fallback
  */
-export const getProductImageUrl = async (sku: string): Promise<string> => {
+export const getProductImageUrl = async (sku: string, katunPn?: string): Promise<string> => {
   try {
     // Use SKU directly (matching your structure: 47409.jpg)
     const cleanSku = sku.trim();
@@ -64,6 +61,7 @@ export const getProductImageUrl = async (sku: string): Promise<string> => {
     // Try .jpg first (your primary format), then other extensions as fallback
     const extensions = ['jpg', 'jpeg', 'png', 'webp'];
     
+    // First, try to find image with SKU
     for (const ext of extensions) {
       try {
         const storageRef = ref(storage, `products/${cleanSku}.${ext}`);
@@ -77,27 +75,67 @@ export const getProductImageUrl = async (sku: string): Promise<string> => {
       }
     }
     
-    // If no image found, return default
-    console.log(`⚠️ [Storage] No image found for SKU: ${sku}, using default`);
-    return '/product.png';
+    // If SKU not found and Katun PN is provided, try with Katun PN
+    if (katunPn) {
+      const cleanKatunPn = katunPn.toString().trim();
+      console.log(`🔍 [Storage] SKU image not found, trying Katun PN: ${katunPn}`);
+      
+      for (const ext of extensions) {
+        try {
+          const storageRef = ref(storage, `products/${cleanKatunPn}.${ext}`);
+          const downloadURL = await getDownloadURL(storageRef);
+          
+          console.log(`✅ [Storage] Found image for Katun PN: ${katunPn} with extension: ${ext}`);
+          return downloadURL;
+        } catch {
+          // Continue to next extension if this one fails
+          continue;
+        }
+      }
+    }
+    
+    // If no image found with either SKU or Katun PN, return empty string
+    console.log(`⚠️ [Storage] No image found for SKU: ${sku}${katunPn ? ` or Katun PN: ${katunPn}` : ''}`);
+    return '';
   } catch (error) {
-    console.error(`❌ [Storage] Error getting image for SKU ${sku}:`, error);
-    return '/product.png';
+    console.error(`❌ [Storage] Error getting image for SKU ${sku}${katunPn ? ` or Katun PN ${katunPn}` : ''}:`, error);
+    return '';
   }
 };
 
+
+
 /**
- * Get product image URL synchronously (for immediate use) with fallback
+ * Get product image URL with intelligent fallback (SKU -> Katun PN -> Default)
+ * This function tries SKU first, then Katun PN if provided
  */
-export const getProductImageUrlSync = (sku: string): string => {
-  // Clean SKU for filename
-  const cleanSku = sku.replace(/[^a-zA-Z0-9-_]/g, '_');
+export const getProductImageWithFallback = async (sku: string, katunPn?: string): Promise<string> => {
+  // First try with SKU
+  try {
+    const skuImage = await getProductImageUrl(sku);
+    if (skuImage && skuImage !== '') {
+      return skuImage;
+    }
+  } catch {
+    console.log(`⚠️ [Storage] SKU image search failed for ${sku}, trying Katun PN...`);
+  }
   
-  // Construct Firebase Storage public URL
-  // Note: This assumes the file exists as .jpg - you might need to adjust
-  const storageUrl = `https://firebasestorage.googleapis.com/v0/b/rts-imaging-e-commerce.firebasestorage.app/o/products%2F${cleanSku}.jpg?alt=media`;
+  // If SKU fails and Katun PN is available, try with Katun PN
+  if (katunPn) {
+    try {
+      const katunImage = await getProductImageUrl(katunPn.toString());
+      if (katunImage && katunImage !== '') {
+        console.log(`✅ [Storage] Found image using Katun PN: ${katunPn}`);
+        return katunImage;
+      }
+    } catch {
+      console.log(`⚠️ [Storage] Katun PN image search also failed for ${katunPn}`);
+    }
+  }
   
-  return storageUrl;
+  // Return empty string if both fail
+  console.log(`⚠️ [Storage] No image found for SKU: ${sku}${katunPn ? ` or Katun PN: ${katunPn}` : ''}`);
+  return '';
 };
 
 /**
@@ -143,10 +181,10 @@ export const uploadMultipleProductImages = async (files: File[], sku: string): P
     
     const downloadURLs = await Promise.all(uploadPromises);
     
-    console.log(`✅ [Storage] Uploaded ${files.length} images for SKU: ${sku}`);
+    console.log(`✅ [Storage] Uploaded ${files.length} images for OEM PN: ${sku}`);
     return downloadURLs;
   } catch (error) {
-    console.error(`❌ [Storage] Error uploading multiple images for SKU ${sku}:`, error);
+    console.error(`❌ [Storage] Error uploading multiple images for OEM PN ${sku}:`, error);
     throw new Error(`Failed to upload images: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };

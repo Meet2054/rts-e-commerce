@@ -17,6 +17,7 @@ interface Product {
     price: number;
     category?: string;
     brand?: string;
+    katunPN?: string;
 }
 
 const RecommendedProducts: React.FC = () => {
@@ -179,8 +180,9 @@ const RecommendedProducts: React.FC = () => {
                                 </Link>
                                 <ProductImage 
                                     sku={item.sku}
+                                    katunPn={item.katunPN}
                                     name={item.name} 
-                                    width={300} 
+                                    width={200} 
                                     height={200} 
                                     className="object-contain rounded-lg" 
                                 />

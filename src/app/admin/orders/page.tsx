@@ -488,7 +488,7 @@ export default function OrdersPage() {
         
         // ORDER ITEMS Section
         csvRows.push('ORDER ITEMS');
-        csvRows.push('SKU,Product Name,Brand,Quantity,Unit Price,Line Total');
+        csvRows.push('OEM PN,Product Name,Brand,Quantity,Unit Price,Line Total');
         
         if (order.items && order.items.length > 0) {
           order.items.forEach((item) => {

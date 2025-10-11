@@ -111,7 +111,7 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-      <div ref={modalRef} className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-8 relative">
+      <div ref={modalRef} className="bg-white rounded-xl shadow-xl max-w-2xl max-h-[90vh] overflow-y-auto w-full mx-4 p-8 relative">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -159,7 +159,7 @@ export default function AddExcelModal({ open, onClose }: AddExcelProps) {
                   Upload Excel file with basic product information. Required columns:
                 </p>
                 <ul className="text-sm text-blue-700 list-disc list-inside mt-2">
-                  <li><strong>Katun PN:</strong> Product SKU/Part Number</li>
+                  <li><strong>Katun PN:</strong> Product OEM/Part Number</li>
                   <li><strong>Name:</strong> Product Name</li>
                   <li><strong>Category:</strong> Product Category</li>
                   <li><strong>Price:</strong> Product Price</li>

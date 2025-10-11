@@ -32,6 +32,7 @@ interface ModalProduct {
   stock: number;
   status: string;
   images?: string[];
+  katunPN?: string;
 }
 
 interface PaginationInfo {
@@ -208,21 +209,17 @@ export default function ProductsPage() {
       
       // Define CSV headers
       const headers = [
-        'SKU',
-        'Name',
-        'Description',
-        'Brand',
+        'OEM PN:',
+        'Name:',
+        'Description:',
+        'Brand:',
         'Price',
-        'Base Price',
-        'OEM',
-        'OEM Part Number',
-        'Katun Part Number',
-        'Category',
-        'Status',
-        'Comments',
-        'For Use In',
-        'Created At',
-        'Updated At'
+        'OEM:',
+        'OEM PN:',
+        'Katun PN:',
+        'Category:',
+        'Comments:',
+        'For Use In:',
       ];
       
       // Convert products to CSV format
@@ -251,16 +248,12 @@ export default function ProductsPage() {
           `"${(product.description || '').replace(/"/g, '""')}"`,
           `"${product.brand || ''}"`,
           `"${product.price || 0}"`,
-          `"${(product as any).basePrice || product.price || 0}"`,
           `"${product.oem || ''}"`,
           `"${product.oemPN || ''}"`,
           `"${product.katunPN || ''}"`,
           `"${product.category || ''}"`,
-          `"${product.isActive ? 'Active' : 'Inactive'}"`,
           `"${((product as any).comments || '').replace(/"/g, '""')}"`,
           `"${((product as any).forUseIn || '').replace(/"/g, '""')}"`,
-          `"${formatDate(product.createdAt)}"`,
-          `"${formatDate(product.updatedAt)}"`
         ];
         csvRows.push(row.join(','));
       });
@@ -323,7 +316,8 @@ export default function ProductsPage() {
       price: `$${product.price.toLocaleString()}`,
       stock: 0, // API doesn't provide stock info
       status: product.isActive ? 'Active' : 'Inactive',
-      images: product.image ? [product.image] : []
+      images: product.image ? [product.image] : [],
+      katunPN: product.katunPN
     };
     
     setSelectedProduct(modalProduct);
@@ -432,7 +426,7 @@ export default function ProductsPage() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search products by name, SKU, brand, OEM..."
+            placeholder="Search products by name, brand, OEM..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -502,9 +496,9 @@ export default function ProductsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-black font-semibold border-b">
-              <th className="py-3 px-4">SKU</th>
+              <th className="py-3 px-4">OEM PN</th>
+              <th className="py-3 px-4">Katun PN</th>
               <th className="py-3 px-4">Name</th>
-              <th className="py-3 px-4">Category</th>
               <th className="py-3 px-4">OEM</th>
               <th className="py-3 px-4">Price</th>
               <th className="py-3 px-4">Status</th>
@@ -551,8 +545,8 @@ export default function ProductsPage() {
               products.map((prod) => (
                 <tr key={prod.id} className=" text-[#84919A]">
                   <td className="py-2.5 px-4 font-medium">{prod.sku}</td>
-                  <td className="py-2.5 px-4 max-w-xs truncate" title={prod.name}>{prod.name}</td>
-                  <td className="py-2.5 px-4">{prod.category}</td>
+                  <td className="py-2.5 px-4 max-w-xs truncate" title={prod.katunPN}>{prod.katunPN}</td>
+                  <td className="py-2.5 px-4">{prod.name}</td>
                   <td className="py-2.5 px-4">{prod.oem}</td>
                   <td className="py-2.5 px-4 font-semibold">${prod.price.toLocaleString()}</td>
                   <td className="py-2.5 px-4">
@@ -674,7 +668,6 @@ export default function ProductsPage() {
             description: "",
             category: "",
             price: "",
-            stock: 0,
             status: "",
             images: [],
           }

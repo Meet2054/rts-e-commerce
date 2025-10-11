@@ -194,6 +194,7 @@ export interface OrderItem {
   qty: number;
   unitPrice: number;
   lineTotal: number;
+  katunPN?: string;
 }
 
 // Support ticket types

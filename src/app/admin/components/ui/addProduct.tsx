@@ -158,7 +158,7 @@ export default function AddProductModal({ open, onClose }: AddProductProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
-      <div ref={modalRef} className="bg-white border-2 border-gray-200 rounded-md max-w-2xl w-full mx-4 p-8 relative">
+      <div ref={modalRef} className="bg-white border-2 border-gray-200 rounded-md max-w-2xl max-h-[90vh] overflow-y-auto w-full mx-4 p-8 relative">
         {/* Close button */}
         <button
           onClick={onClose}
@@ -237,7 +237,7 @@ export default function AddProductModal({ open, onClose }: AddProductProps) {
                 value={formData.sku}
                 onChange={handleInputChange}
                 className="w-full text-sm border rounded px-4 py-2 bg-[#F1F2F4]" 
-                placeholder="HP-123456"
+                placeholder="Enter Oem PN"
                 required
               />
             </div>

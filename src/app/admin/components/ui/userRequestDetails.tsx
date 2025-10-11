@@ -105,7 +105,7 @@ export default function RequestedUserDetailsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs">
       <div 
         ref={modalRef} 
-        className="bg-white rounded-md shadow-lg max-w-2xl w-full mx-4 flex flex-col"
+        className="bg-white rounded-md shadow-lg max-w-2xl max-h-[90vh] overflow-y-auto w-full mx-4 flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-white">

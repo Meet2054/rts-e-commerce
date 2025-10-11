@@ -101,7 +101,8 @@ export async function GET(
         image: data.image || data.imageUrl || '/product-placeholder.png',
         rating: data.rating || 4.5,
         reviews: data.reviews || 0,
-        category: data.category || 'Printer Supplies'
+        category: data.category || 'Printer Supplies',
+        katunPN: data.katunPN || ''
       };
     });
 

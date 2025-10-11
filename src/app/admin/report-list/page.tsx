@@ -388,7 +388,7 @@ export default function ReportsListPage() {
       
       // Top Products
       csvRows.push('*** TOP PRODUCTS BY REVENUE ***');
-      csvRows.push('Product Name,SKU,Units Sold,Revenue');
+      csvRows.push('Product Name,OEM PN,Units Sold,Revenue');
       reportData.topProducts.forEach(product => {
         csvRows.push(`${product.name},${product.sku},${product.unitsSold},${formatCurrency(product.revenue)}`);
       });
@@ -715,7 +715,7 @@ export default function ReportsListPage() {
                     <td className="py-3">
                       <div>
                         <div className="font-medium text-black">{product.name}</div>
-                        <div className="text-gray-500 text-xs">SKU: {product.sku}</div>
+                        <div className="text-gray-500 text-xs">OEM PN: {product.sku}</div>
                       </div>
                     </td>
                     <td className="py-3 text-gray-700">{product.unitsSold}</td>

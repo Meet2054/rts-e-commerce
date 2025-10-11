@@ -23,7 +23,6 @@ export default function PricingUploadModal({
   open, 
   onClose, 
   userEmail, 
-  userId,
   userName 
 }: PricingUploadModalProps) {
   const { token } = useAuth();
@@ -141,7 +140,7 @@ export default function PricingUploadModal({
 
   const downloadTemplate = () => {
     // Create a simple CSV template
-    const csvContent = "SKU,Price,Product Name (Optional)\\n" +
+    const csvContent = "OEM PN,Price,Product Name (Optional)\\n" +
                       "EXAMPLE-001,99.99,Example Product\\n" +
                       "EXAMPLE-002,149.50,Another Product\\n";
     
@@ -173,7 +172,7 @@ export default function PricingUploadModal({
     <div className="fixed inset-0 backdrop-blur-xs flex items-center justify-center z-50 p-4">
       <div 
         ref={modalRef}
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col"
+        className="bg-white rounded-lg shadow-xl max-w-2xl overflow-y-auto w-full max-h-[90vh] flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -199,8 +198,8 @@ export default function PricingUploadModal({
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h3 className="text-sm font-medium text-blue-900 mb-2">Instructions:</h3>
                 <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Excel file must have columns: "SKU" and "Price"</li>
-                  <li>• SKU must match existing products in the database</li>
+                  <li>• Excel file must have columns: "OEM PN" and "Price"</li>
+                  <li>• OEM PN must match existing products in the database</li>
                   <li>• Price should be in INR (e.g., 99.99)</li>
                   <li>• First row should contain column headers</li>
                 </ul>
@@ -309,7 +308,7 @@ export default function PricingUploadModal({
                   <div className="text-sm text-yellow-800 space-y-1 max-h-32 overflow-y-auto">
                     {uploadResult.errors.slice(0, 5).map((error, index) => (
                       <div key={index}>
-                        Row {error.row} (SKU: {error.sku}): {error.error}
+                        Row {error.row} (OEM PN: {error.sku}): {error.error}
                       </div>
                     ))}
                     {uploadResult.errors.length > 5 && (

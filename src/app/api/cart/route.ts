@@ -321,6 +321,7 @@ export async function POST(request: NextRequest) {
       quantity,
       brand: productData.brand || 'Unknown Brand',
       category: productData.category || 'General',
+      katunPN: productData.katunPN || '',
       addedAt: new Date().toISOString()
     };
 
